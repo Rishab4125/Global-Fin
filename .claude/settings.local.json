@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(git --version)",
+      "Bash(npx --yes create-next-app@15 . --ts --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack --yes)",
+      "Read(//c/Users/RishabGupta/Documents/**)",
+      "Bash(npx --yes create-next-app@15 globalfin-tmp --ts --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack --yes)",
+      "Bash(npm i *)",
+      "Bash(npx vitest *)"
+    ]
+  }
+}

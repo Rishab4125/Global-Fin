@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm pkg *)",
+      "Bash(python -)",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(DATABASE_URL=\"postgres://u:p@localhost.neon.tech/db\" AUTH_SECRET=dummysecretdummysecretdummysecret AUTH_GOOGLE_ID=x AUTH_GOOGLE_SECRET=y npx next build)",
+      "Bash(python -c ' *)",
+      "Bash(node --check /tmp/x.js)",
+      "Bash(node --check x.tmp.js)",
+      "Bash(rm -f x.tmp.js)",
+      "Bash(sed -i 's/text-white hover:bg-white\\\\/10/text-white hover:bg-white\\\\/10/' src/components/Nav.tsx)",
+      "Bash(tasklist)",
+      "Bash(time timeout 100 npx tsc --noEmit)",
+      "Bash(DATABASE_URL=\"postgres://u:p@localhost.neon.tech/db\" AUTH_SECRET=dummysecretdummysecretdummysecret AUTH_GOOGLE_ID=x AUTH_GOOGLE_SECRET=y timeout 280 npx next build)",
+      "Bash(node --check mockup/x.tmp.js)",
+      "Bash(rm -f mockup/x.tmp.js)"
+    ]
+  }
+}
