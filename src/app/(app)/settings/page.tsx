@@ -48,6 +48,13 @@ export default async function SettingsPage() {
             </tbody>
           </table>
         </SectionCard>
+
+        <SectionCard title="About">
+          <p className="text-sm text-muted">
+            Global Fin is created by <span className="font-medium text-ink">Rishab Gupta</span>. Tax figures are
+            estimates, not tax advice.
+          </p>
+        </SectionCard>
       </div>
     </div>
   );

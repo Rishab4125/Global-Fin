@@ -140,6 +140,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-4.9 2.3-8.2 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
       Continue with Google</button>
     <p class="hint" style="text-align:center;margin-top:20px">Prototype: click to enter with sample data.</p>
+    <p class="hint" style="text-align:center;margin-top:40px">Created by <b style="color:var(--ink);font-weight:500">Rishab Gupta</b></p>
   </div></div>
 </div>
 
@@ -280,6 +281,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
     <tr><td><b>FD / RD / debt MF / unlisted bonds</b></td><td>n/a</td><td>Slab rate</td><td>Slab rate</td></tr>
     <tr><td><b>PPF / EPF</b></td><td>n/a</td><td>Exempt</td><td>Exempt</td></tr>
     <tr><td><b>Crypto</b></td><td>n/a</td><td>30%</td><td>30%</td></tr></tbody></table></div></div>
+  <div class="card flush"><div class="ct"><h2>About</h2></div><p class="muted" style="margin:0;padding:20px">Global Fin is created by <b style="color:var(--ink);font-weight:500">Rishab Gupta</b>. Tax figures are estimates, not tax advice.</p></div>
 </section>
 
     </main>
@@ -324,14 +326,15 @@ function addM(d,m){const[y,mo,da]=d.split('-').map(Number);const t=y*12+mo-1+m,n
 const today=new Date().toISOString().slice(0,10);
 
 /* theme */
-const TH=[['light','Light','sun'],['dark','Dark','moon'],['system','System','monitor']];
-function theme(){const t=localStorage.getItem('theme');return t==='light'||t==='dark'?t:'system'}
-function applyTheme(){const t=theme(),d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);
+const TH=[['light','Light','sun'],['dark','Dark','moon']];
+const sysDark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
+function theme(){const t=localStorage.getItem('theme');return t==='light'||t==='dark'?t:(sysDark()?'dark':'light')}
+function applyTheme(){const t=theme();document.documentElement.classList.toggle('dark',t==='dark');
  $('seg').innerHTML=TH.map(([v,l,ic])=>`<button class="${t===v?'on':''}" onclick="setTheme('${v}')">${svg(ic,14)}${l}</button>`).join('');
- const cur=TH.find(x=>x[0]===t);['tbtn','tbtn2'].forEach(id=>{$(id).innerHTML=svg(cur[2],18);$(id).title='Theme: '+cur[1]+' (click to change)'})}
+ const ic=t==='dark'?'moon':'sun';['tbtn','tbtn2'].forEach(id=>{$(id).innerHTML=svg(ic,18);$(id).title='Switch to '+(t==='dark'?'light':'dark')+' mode'})}
 function setTheme(v){localStorage.setItem('theme',v);applyTheme()}
-function cycleTheme(){const i=TH.findIndex(x=>x[0]===theme());setTheme(TH[(i+1)%3][0])}
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>theme()==='system'&&applyTheme());
+function cycleTheme(){setTheme(theme()==='dark'?'light':'dark')}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(!localStorage.getItem('theme'))applyTheme()});
 
 /* navigation */
 const NAV=[['Overview',[['dashboard','Dashboard','dash']]],['Portfolio',[['holdings','Holdings','brief'],['transactions','Transactions','swap'],['misc','Misc P/L','plus']]],['Reports',[['realised','Realised gains','trend']]],['Account',[['settings','Settings','settings']]]];

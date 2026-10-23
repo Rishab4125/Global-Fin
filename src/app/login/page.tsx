@@ -79,6 +79,9 @@ export default async function LoginPage() {
           <p className="mt-6 text-center text-xs text-muted">
             By continuing you agree that tax figures are estimates, not advice.
           </p>
+          <p className="mt-10 text-center text-xs text-muted">
+            Created by <span className="font-medium text-ink">Rishab Gupta</span>
+          </p>
         </div>
       </div>
     </div>

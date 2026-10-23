@@ -1,48 +1,57 @@
 "use client";
 
-import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
+import { Moon, Sun, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
-type Theme = "light" | "dark" | "system";
+type Theme = "light" | "dark";
 
 const options: { value: Theme; label: string; icon: LucideIcon }[] = [
   { value: "light", label: "Light", icon: Sun },
   { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
 ];
 
-function applyTheme(theme: Theme) {
-  const dark = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.classList.toggle("dark", dark);
-}
+const systemTheme = (): Theme => (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 
+/**
+ * Starts from the device setting. Once the user picks a theme it is saved and used instead.
+ */
 function useTheme() {
-  const [theme, setTheme] = useState<Theme>("system");
+  const [theme, setTheme] = useState<Theme>("light");
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    setTheme(saved === "light" || saved === "dark" ? saved : "system");
+    const stored = localStorage.getItem("theme");
+    if (stored === "light" || stored === "dark") {
+      setTheme(stored);
+      setSaved(true);
+    } else {
+      setTheme(systemTheme());
+    }
   }, []);
 
   useEffect(() => {
-    applyTheme(theme);
-    if (theme !== "system") return;
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
+  useEffect(() => {
+    if (saved) return;
     const mq = matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => applyTheme("system");
+    const onChange = () => setTheme(systemTheme());
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [theme]);
+  }, [saved]);
 
   const choose = (t: Theme) => {
     localStorage.setItem("theme", t);
+    setSaved(true);
     setTheme(t);
   };
   return { theme, choose };
 }
 
 /**
- * "segmented": three-way switch styled for the dark sidebar.
- * "icon": one button that cycles Light, Dark, System; styled for light/dark surfaces.
+ * "segmented": Light / Dark switch styled for the dark sidebar.
+ * "icon": one button that flips between Light and Dark.
  */
 export function ThemeToggle({ variant = "icon" }: { variant?: "segmented" | "icon" }) {
   const { theme, choose } = useTheme();
@@ -72,16 +81,16 @@ export function ThemeToggle({ variant = "icon" }: { variant?: "segmented" | "ico
     );
   }
 
-  const current = options.find((o) => o.value === theme) ?? options[2];
-  const next = options[(options.indexOf(current) + 1) % options.length];
+  const next = theme === "dark" ? "light" : "dark";
+  const Icon = theme === "dark" ? Moon : Sun;
   return (
     <button
-      onClick={() => choose(next.value)}
-      aria-label={`Theme: ${current.label}. Switch to ${next.label}`}
-      title={`Theme: ${current.label} (click for ${next.label})`}
+      onClick={() => choose(next)}
+      aria-label={`Switch to ${next} mode`}
+      title={`Switch to ${next} mode`}
       className="grid size-9 place-items-center rounded-lg text-muted transition hover:bg-surface2 hover:text-ink"
     >
-      <current.icon size={18} />
+      <Icon size={18} />
     </button>
   );
 }
