@@ -163,6 +163,9 @@ describe("realised gains and tax", () => {
       amount: 10000,
       taxAdjusted: false,
       term: "STCG",
+      entryType: "general",
+      cost: 0,
+      brokerage: 0,
       note: "",
       ...p,
     });
@@ -175,5 +178,65 @@ describe("realised gains and tax", () => {
     expect(b.tax).toBe(0);
     expect(c.tax).toBe(0);
     expect(c.gain).toBe(-500);
+  });
+});
+
+describe("misc brokerage and buyback", () => {
+  const misc = (p: Partial<MiscEvent>): MiscEvent => ({
+    kind: "misc",
+    id: "m",
+    assetType: "equity",
+    date: "2025-06-01",
+    amount: 10000,
+    taxAdjusted: false,
+    term: "STCG",
+    entryType: "general",
+    cost: 0,
+    brokerage: 0,
+    note: "",
+    ...p,
+  });
+
+  it("brokerage reduces a profit before tax", () => {
+    const [r] = computeRealised([misc({ amount: 10000, brokerage: 500 })], [], 0.3);
+    expect(r.gain).toBe(9500);
+    expect(r.tax).toBe(1976); // 9500 * 20% * 1.04
+  });
+
+  it("brokerage deepens a loss and no tax is charged", () => {
+    const [r] = computeRealised([misc({ amount: -2000, brokerage: 100 })], [], 0.3);
+    expect(r.gain).toBe(-2100);
+    expect(r.tax).toBe(0);
+  });
+
+  it("buyback after 1 Oct 2024 is taxed as dividend at slab rate on full proceeds", () => {
+    const [r] = computeRealised(
+      [misc({ entryType: "buyback", amount: 100000, cost: 40000, brokerage: 200 })],
+      [],
+      0.3,
+    );
+    expect(r.gain).toBe(59800); // proceeds - cost - brokerage
+    expect(r.tax).toBe(31200); // 100000 * 30% * 1.04
+    expect(r.proceeds).toBe(100000);
+    expect(r.cost).toBe(40000);
+  });
+
+  it("buyback before 1 Oct 2024 is tax-free for the shareholder", () => {
+    const [r] = computeRealised(
+      [misc({ entryType: "buyback", date: "2024-09-15", amount: 100000, cost: 40000 })],
+      [],
+      0.3,
+    );
+    expect(r.gain).toBe(60000);
+    expect(r.tax).toBe(0);
+  });
+
+  it("buyback marked tax adjusted has no tax", () => {
+    const [r] = computeRealised(
+      [misc({ entryType: "buyback", amount: 100000, cost: 40000, taxAdjusted: true })],
+      [],
+      0.3,
+    );
+    expect(r.tax).toBe(0);
   });
 });

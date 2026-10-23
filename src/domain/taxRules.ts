@@ -44,6 +44,10 @@ export const DEFAULT_SLAB_RATE = 0.3;
 
 export const EQUITY_REGIME_CHANGE_DATE = "2024-07-23";
 
+// Buyback proceeds are taxed as deemed dividend in the shareholder's hands from this date;
+// before it the company paid the tax and the shareholder received the proceeds tax-free.
+export const BUYBACK_DIVIDEND_FROM = "2024-10-01";
+
 // Equity rates by sale date: [effective-from, stcg, ltcg, annual LTCG exemption]
 export const EQUITY_RATES = [
   { from: "0000-01-01", stcg: 0.15, ltcg: 0.1, exemption: 100000 },

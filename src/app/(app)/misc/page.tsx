@@ -32,6 +32,7 @@ export default async function MiscPage() {
                   <th className="th">Date</th>
                   <th className="th">Type</th>
                   <th className="th text-right">Amount</th>
+                  <th className="th text-right">Brokerage</th>
                   <th className="th">Tax adjusted</th>
                   <th className="th text-right">Tax</th>
                   <th className="th text-right">Net</th>
@@ -45,8 +46,19 @@ export default async function MiscPage() {
                   return (
                     <tr key={e.id}>
                       <td className="td">{formatDate(e.date)}</td>
-                      <td className="td">{ASSET_RULES[e.assetType].label}</td>
-                      <td className={`td text-right font-medium ${gainClass(e.amount)}`}>{formatINR(e.amount)}</td>
+                      <td className="td">
+                        {ASSET_RULES[e.assetType].label}
+                        {e.entryType === "buyback" && (
+                          <span className="badge ml-2 bg-accent/15 text-accent-strong">Buyback</span>
+                        )}
+                      </td>
+                      <td className={`td text-right font-medium ${e.entryType === "buyback" ? "" : gainClass(e.amount)}`}>
+                        {formatINR(e.amount)}
+                        {e.entryType === "buyback" && (
+                          <div className="text-xs font-normal text-muted">cost {formatINR(e.cost)}</div>
+                        )}
+                      </td>
+                      <td className="td text-right">{formatINR(e.brokerage)}</td>
                       <td className="td">
                         <span className={`badge ${e.taxAdjusted ? "bg-primary-soft text-primary-strong" : "bg-surface2 text-muted"}`}>
                           {e.taxAdjusted ? "Yes" : "No"}

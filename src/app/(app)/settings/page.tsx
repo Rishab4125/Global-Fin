@@ -18,7 +18,7 @@ export default async function SettingsPage() {
         <SlabForm slabPercent={+(pf.slabRate * 100).toFixed(2)} />
         <SectionCard
           title="Tax rules applied"
-          description="Rates after 23 Jul 2024, plus 4% cess. Surcharge is not included. An estimate, not tax advice."
+          description="Rates after 23 Jul 2024, plus 4% cess. Surcharge is not included. Share buybacks from 1 Oct 2024 are taxed as dividend at your slab rate. An estimate, not tax advice."
           flush
         >
           <table className="w-full">

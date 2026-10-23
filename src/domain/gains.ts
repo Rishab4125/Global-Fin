@@ -2,6 +2,7 @@ import { financialYear, heldLongerThan } from "./dates";
 import { lotUnitCost, type Allocation, type Lot } from "./fifo";
 import {
   ASSET_RULES,
+  BUYBACK_DIVIDEND_FROM,
   CESS,
   equityRatesFor,
   type AssetTypeId,
@@ -26,6 +27,11 @@ export interface SaleEvent {
 
 export interface MiscEvent {
   kind: "misc";
+  /** "general" is a plain profit/loss; "buyback" has proceeds (amount) and a cost of shares. */
+  entryType: "general" | "buyback";
+  /** Cost of the shares bought back (buyback only). */
+  cost: number;
+  brokerage: number;
   id: string;
   assetType: AssetTypeId;
   date: string;
@@ -61,6 +67,8 @@ export interface RealisedRow {
   exemptionLeft: number | null;
   note: string;
 }
+
+const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -143,8 +151,10 @@ export function computeRealised(
       };
     } else {
       const isLong = e.term === "LTCG" && rule.longTermMonths !== null;
-      stcg = isLong ? 0 : e.amount;
-      ltcg = isLong ? e.amount : 0;
+      const buyback = e.entryType === "buyback";
+      const net = (buyback ? e.amount - e.cost : e.amount) - e.brokerage;
+      stcg = isLong ? 0 : net;
+      ltcg = isLong ? net : 0;
       taxApplied = !e.taxAdjusted;
       row = {
         id: e.id,
@@ -152,18 +162,31 @@ export function computeRealised(
         date: e.date,
         fy,
         assetType: e.assetType,
-        label: "Misc P/L",
+        label: buyback ? "Buyback" : "Misc P/L",
         qty: null,
-        proceeds: null,
-        cost: null,
-        note: (e.taxAdjusted ? "Tax already adjusted. " : "") + e.note,
+        proceeds: buyback ? round2(e.amount) : null,
+        cost: buyback ? round2(e.cost) : null,
+        note: [e.taxAdjusted ? "Tax already adjusted." : "", e.brokerage > 0 ? `Brokerage ${inr(e.brokerage)}.` : "", e.note]
+          .filter(Boolean)
+          .join(" "),
       };
     }
 
     let tax = 0;
     let exemptionUsed = 0;
     let taxableGain = 0;
-    if (taxApplied) {
+    let extraNote = "";
+    if (e.kind === "misc" && e.entryType === "buyback") {
+      if (e.date < BUYBACK_DIVIDEND_FROM) {
+        extraNote = "Buyback before 1 Oct 2024: tax-free for the shareholder.";
+      } else {
+        extraNote = `Proceeds taxed as dividend at slab rate; cost ${inr(e.cost)} is a capital loss to set off against other capital gains (not modelled).`;
+        if (taxApplied && e.amount > 0) {
+          taxableGain = e.amount;
+          tax = e.amount * slabRate * (1 + CESS);
+        }
+      }
+    } else if (taxApplied) {
       const pieces: Piece[] = [
         { term: "STCG", gain: stcg },
         { term: "LTCG", gain: ltcg },
@@ -193,6 +216,7 @@ export function computeRealised(
     const gain = stcg + ltcg;
     rows.push({
       ...row,
+      note: [row.note, extraNote].filter(Boolean).join(" "),
       gain: round2(gain),
       stcg: round2(stcg),
       ltcg: round2(ltcg),

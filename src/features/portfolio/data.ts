@@ -97,6 +97,9 @@ export async function loadPortfolio(userId: string): Promise<Portfolio> {
     amount: Number(m.amount),
     taxAdjusted: m.taxAdjusted,
     term: (m.term === "LTCG" ? "LTCG" : "STCG") as Term,
+    entryType: m.entryType === "buyback" ? "buyback" : "general",
+    cost: Number(m.cost),
+    brokerage: Number(m.brokerage),
     note: m.note,
   }));
 
