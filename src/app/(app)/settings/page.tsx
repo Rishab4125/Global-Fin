@@ -49,6 +49,19 @@ export default async function SettingsPage() {
           </table>
         </SectionCard>
 
+        <SectionCard title="Account" description="Your data is stored against this Google account ID.">
+          <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="kpi-label">Signed in as</dt>
+              <dd className="mt-1 break-all font-medium">{user.email || user.name}</dd>
+            </div>
+            <div>
+              <dt className="kpi-label">Account ID</dt>
+              <dd className="mt-1 break-all font-mono text-xs">{user.id}</dd>
+            </div>
+          </dl>
+        </SectionCard>
+
         <SectionCard title="About">
           <p className="text-sm text-muted">
             Global Fin is created by <span className="font-medium text-ink">Rishab Gupta</span>. Tax figures are

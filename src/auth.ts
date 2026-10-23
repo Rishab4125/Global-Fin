@@ -11,8 +11,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (path === "/login") return true;
       return !!auth?.user;
     },
+    // Auth.js generates a fresh random user id on every sign-in when no database adapter is used,
+    // so the stable Google account id (providerAccountId) is what identifies a person.
+    jwt({ token, account }) {
+      if (account?.providerAccountId) token.uid = account.providerAccountId;
+      return token;
+    },
     session({ session, token }) {
-      if (token.sub) session.user.id = token.sub;
+      if (token.uid) session.user.id = token.uid;
       return session;
     },
   },

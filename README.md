@@ -18,3 +18,6 @@ Push to GitHub, import the repo in Vercel, add the same four env vars, deploy. R
 - `src/db` Drizzle schema and client.
 
 Tax output is an estimate, not tax advice. Surcharge, indexation for pre-Jul-2024 property and cross-year loss set-off are not modelled.
+
+## Recovering data saved before the sign-in fix
+Earlier versions keyed your data on an ID that Auth.js regenerated on every login, so each login looked like a new user. This is fixed (data is now keyed on your Google account ID). If you already entered data, sign in once, copy your Account ID from Settings, and run `scripts/reassign-user.sql` in the Neon SQL editor. Only do this if you are the only user of the app.

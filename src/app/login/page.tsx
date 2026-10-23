@@ -11,7 +11,7 @@ const points = [
 
 export default async function LoginPage() {
   const session = await auth();
-  if (session?.user) redirect("/dashboard");
+  if (session?.user?.id) redirect("/dashboard");
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
