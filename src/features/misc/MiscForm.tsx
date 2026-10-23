@@ -7,38 +7,26 @@ import { addMiscAction } from "./actions";
 
 export function MiscForm({ today }: { today: string }) {
   const { formRef, state, pending, onSubmit } = useServerForm(addMiscAction, true);
-  const [entryType, setEntryType] = useState<"general" | "buyback">("general");
-  const buyback = entryType === "buyback";
+  const [buyback, setBuyback] = useState(false);
 
   return (
     <form
       ref={formRef}
       onSubmit={onSubmit}
-      onReset={() => setEntryType("general")}
+      onReset={() => setBuyback(false)}
       className="card space-y-4"
     >
       <h2 className="text-base font-semibold">Add miscellaneous profit / loss</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field
-          label="Entry type"
+          label="Investment type"
           hint={
             buyback
               ? "From 1 Oct 2024 buyback proceeds are taxed as dividend at your slab rate. Before that they are tax-free for you."
               : undefined
           }
         >
-          <select
-            name="entryType"
-            className="input"
-            value={entryType}
-            onChange={(e) => setEntryType(e.target.value as "general" | "buyback")}
-          >
-            <option value="general">Profit / loss</option>
-            <option value="buyback">Share buyback</option>
-          </select>
-        </Field>
-        <Field label="Investment type">
-          <AssetTypeSelect name="assetType" />
+          <AssetTypeSelect name="assetType" includeBuyback onChange={(v) => setBuyback(v === "buyback")} />
         </Field>
         <Field label="Date">
           <input name="entryDate" type="date" required defaultValue={today} max={today} className="input" />

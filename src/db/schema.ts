@@ -84,7 +84,6 @@ export const miscEntries = pgTable(
     amount: money("amount").notNull(),
     taxAdjusted: boolean("tax_adjusted").notNull().default(false),
     term: text("term").notNull().default("STCG"),
-    entryType: text("entry_type").notNull().default("general"),
     cost: money("cost").notNull().default("0"),
     brokerage: money("brokerage").notNull().default("0"),
     note: text("note").notNull().default(""),

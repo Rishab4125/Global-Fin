@@ -30,7 +30,7 @@ const settings: NavLink = { href: "/settings", label: "Settings", short: "Settin
 
 const sections: { title: string; links: NavLink[] }[] = [
   { title: "Overview", links: [dashboard] },
-  { title: "Portfolio", links: [holdings, transactions, misc] },
+  { title: "Portfolio", links: [holdings, misc, transactions] },
   { title: "Reports", links: [realised] },
   { title: "Account", links: [settings] },
 ];

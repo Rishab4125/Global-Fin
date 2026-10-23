@@ -15,7 +15,7 @@ export function AddBuyForm({ today }: { today: string }) {
       <h2 className="text-base font-semibold">Add investment</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Type" hint={ASSET_RULES[type].note}>
-          <AssetTypeSelect onChange={setType} />
+          <AssetTypeSelect onChange={(v) => setType(v as AssetTypeId)} />
         </Field>
         <Field label="Name / symbol">
           <input name="name" required placeholder="e.g. RELIANCE, HDFC FD, Plot 12" className="input" />

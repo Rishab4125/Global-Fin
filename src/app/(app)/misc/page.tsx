@@ -47,10 +47,7 @@ export default async function MiscPage() {
                     <tr key={e.id}>
                       <td className="td">{formatDate(e.date)}</td>
                       <td className="td">
-                        {ASSET_RULES[e.assetType].label}
-                        {e.entryType === "buyback" && (
-                          <span className="badge ml-2 bg-accent/15 text-accent-strong">Buyback</span>
-                        )}
+                        {e.entryType === "buyback" ? "Share buyback" : ASSET_RULES[e.assetType].label}
                       </td>
                       <td className={`td text-right font-medium ${e.entryType === "buyback" ? "" : gainClass(e.amount)}`}>
                         {formatINR(e.amount)}

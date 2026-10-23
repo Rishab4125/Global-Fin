@@ -22,10 +22,13 @@ export function AssetTypeSelect({
   name = "type",
   defaultValue = "equity",
   onChange,
+  includeBuyback = false,
 }: {
   name?: string;
   defaultValue?: AssetTypeId;
-  onChange?: (value: AssetTypeId) => void;
+  onChange?: (value: string) => void;
+  /** Adds "Share buyback" (used by Misc P/L only). */
+  includeBuyback?: boolean;
 }) {
   const groups = new Map<string, AssetTypeId[]>();
   for (const id of ASSET_TYPE_IDS) {
@@ -37,7 +40,7 @@ export function AssetTypeSelect({
       name={name}
       defaultValue={defaultValue}
       className="input"
-      onChange={onChange ? (e) => onChange(e.target.value as AssetTypeId) : undefined}
+      onChange={onChange ? (e) => onChange(e.target.value) : undefined}
     >
       {[...groups.entries()].map(([group, ids]) => (
         <optgroup key={group} label={group}>
@@ -48,6 +51,11 @@ export function AssetTypeSelect({
           ))}
         </optgroup>
       ))}
+      {includeBuyback && (
+        <optgroup label="Corporate action">
+          <option value="buyback">Share buyback</option>
+        </optgroup>
+      )}
     </select>
   );
 }
