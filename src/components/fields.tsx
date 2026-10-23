@@ -13,7 +13,7 @@ export function Field({
     <label className="block">
       <span className="label">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-muted">{hint}</span>}
+      {hint && <span className="mt-1.5 block text-xs text-muted">{hint}</span>}
     </label>
   );
 }
@@ -55,7 +55,7 @@ export function AssetTypeSelect({
 export function FormError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">
+    <p role="alert" className="rounded-lg border border-loss/25 bg-loss/10 px-3 py-2.5 text-sm text-loss">
       {message}
     </p>
   );
@@ -63,10 +63,10 @@ export function FormError({ message }: { message?: string }) {
 
 export function YesNo({ name, defaultValue = "yes" }: { name: string; defaultValue?: "yes" | "no" }) {
   return (
-    <div className="flex gap-4 py-2 text-sm">
+    <div className="flex h-10 items-center gap-5 text-sm">
       {(["yes", "no"] as const).map((v) => (
         <label key={v} className="flex items-center gap-2">
-          <input type="radio" name={name} value={v} defaultChecked={defaultValue === v} className="accent-[var(--primary)]" />
+          <input type="radio" name={name} value={v} defaultChecked={defaultValue === v} className="size-4 accent-[var(--primary)]" />
           {v === "yes" ? "Yes" : "No"}
         </label>
       ))}

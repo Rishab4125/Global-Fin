@@ -9,7 +9,7 @@ export function SlabForm({ slabPercent }: { slabPercent: number }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveSlabAction, {});
   return (
     <form action={action} className="card max-w-md space-y-4">
-      <h2 className="text-lg font-semibold text-primary-strong">Your income-tax slab rate</h2>
+      <h2 className="text-base font-semibold">Your income-tax slab rate</h2>
       <Field label="Slab rate (%)" hint="Used for short-term gains on debt, gold, land, FD interest, etc.">
         <input
           name="slabPercent"

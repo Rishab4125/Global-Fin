@@ -9,7 +9,7 @@ export function MiscForm({ today }: { today: string }) {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="card space-y-4">
-      <h2 className="text-lg font-semibold text-primary-strong">Add miscellaneous profit / loss</h2>
+      <h2 className="text-base font-semibold">Add miscellaneous profit / loss</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Investment type">
           <AssetTypeSelect name="assetType" />

@@ -15,6 +15,7 @@ import { loadPortfolio } from "@/features/portfolio/data";
 
 const saleSchema = z.object({
   assetId: z.string().uuid(),
+  saleId: z.string().uuid().optional(),
   sellDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date"),
   qty: z.coerce.number().positive("Quantity must be positive"),
   price: z.coerce.number().min(0, "Price cannot be negative"),
@@ -26,6 +27,7 @@ const saleSchema = z.object({
 function parse(form: FormData) {
   return saleSchema.safeParse({
     assetId: form.get("assetId"),
+    saleId: form.get("saleId") || undefined,
     sellDate: form.get("sellDate"),
     qty: form.get("qty"),
     price: form.get("price"),
@@ -35,6 +37,7 @@ function parse(form: FormData) {
   });
 }
 
+/** Match the sale to lots and compute its tax. When editing, the existing sale is treated as absent. */
 async function plan(userId: string, form: FormData) {
   const parsed = parse(form);
   if (!parsed.success) return { error: parsed.error.issues[0].message } as const;
@@ -44,8 +47,14 @@ async function plan(userId: string, form: FormData) {
   const asset = pf.assets.find((a) => a.id === v.assetId);
   if (!asset) return { error: "Holding not found" } as const;
 
+  const existing = v.saleId ? pf.saleEvents.find((s) => s.id === v.saleId) : undefined;
+  if (v.saleId && (!existing || existing.assetId !== asset.id)) return { error: "Sale not found" } as const;
+
+  const sold = new Map(pf.sold);
+  for (const a of existing?.allocations ?? []) sold.set(a.lotId, (sold.get(a.lotId) ?? 0) - a.qty);
+
   const assetLots = pf.lots.filter((l) => l.assetId === asset.id);
-  const remaining = new Map(assetLots.map((l) => [l.id, l.qty - (pf.sold.get(l.id) ?? 0)]));
+  const remaining = new Map(assetLots.map((l) => [l.id, l.qty - (sold.get(l.id) ?? 0)]));
   const { allocations, shortfall } = allocateFifo(assetLots, remaining, v.qty, v.sellDate);
   if (shortfall > 1e-9) {
     const have = v.qty - shortfall;
@@ -68,9 +77,10 @@ async function plan(userId: string, form: FormData) {
     exemptRedemption: asset.type === "sgb" && v.exemptRedemption,
     allocations,
   };
-  const rows = computeRealised([...pf.saleEvents, ...pf.miscEvents, hypo], pf.lots, pf.slabRate);
+  const others = pf.saleEvents.filter((s) => s.id !== v.saleId);
+  const rows = computeRealised([...others, ...pf.miscEvents, hypo], pf.lots, pf.slabRate);
   const row = rows.find((r) => r.id === "preview")!;
-  return { v, hypo, row } as const;
+  return { v, hypo, row, others, pf } as const;
 }
 
 export async function previewSaleAction(_: ActionState, form: FormData): Promise<ActionState> {
@@ -79,11 +89,10 @@ export async function previewSaleAction(_: ActionState, form: FormData): Promise
   if ("error" in p) return { error: p.error };
   let taxIfApplied: number | undefined;
   if (!p.hypo.applyTax) {
-    const pf = await loadPortfolio(user.id);
     const again = computeRealised(
-      [...pf.saleEvents, ...pf.miscEvents, { ...p.hypo, applyTax: true }],
-      pf.lots,
-      pf.slabRate,
+      [...p.others, ...p.pf.miscEvents, { ...p.hypo, applyTax: true }],
+      p.pf.lots,
+      p.pf.slabRate,
     );
     taxIfApplied = again.find((r) => r.id === "preview")?.tax;
   }
@@ -117,9 +126,44 @@ export async function recordSaleAction(_: ActionState, form: FormData): Promise<
   redirect("/realised");
 }
 
-export async function deleteSaleAction(formData: FormData): Promise<void> {
+export async function updateSaleAction(_: ActionState, form: FormData): Promise<ActionState> {
   const user = await requireUser();
-  const id = String(formData.get("id") ?? "");
+  const p = await plan(user.id, form);
+  if ("error" in p) return { error: p.error };
+  const saleId = p.v.saleId;
+  if (!saleId) return { error: "Sale not found" };
+
+  await db.batch([
+    db
+      .update(sales)
+      .set({
+        sellDate: p.v.sellDate,
+        qty: String(p.v.qty),
+        price: String(p.v.price),
+        fees: String(p.v.fees),
+        applyTax: p.v.applyTax,
+        exemptRedemption: p.hypo.exemptRedemption,
+      })
+      .where(and(eq(sales.id, saleId), eq(sales.userId, user.id))),
+    db.delete(saleAllocations).where(eq(saleAllocations.saleId, saleId)),
+    db.insert(saleAllocations).values(
+      p.hypo.allocations.map((a) => ({ saleId, lotId: a.lotId, qty: String(a.qty) })),
+    ),
+  ]);
+
+  revalidatePath("/", "layout");
+  redirect(`/holdings/${p.v.assetId}`);
+}
+
+export async function deleteSaleAction(id: string): Promise<ActionState> {
+  const user = await requireUser();
+  const [sale] = await db
+    .select({ assetId: sales.assetId })
+    .from(sales)
+    .where(and(eq(sales.id, id), eq(sales.userId, user.id)))
+    .limit(1);
+  if (!sale) return { error: "Sale not found" };
   await db.delete(sales).where(and(eq(sales.id, id), eq(sales.userId, user.id)));
   revalidatePath("/", "layout");
+  redirect(`/holdings/${sale.assetId}`);
 }

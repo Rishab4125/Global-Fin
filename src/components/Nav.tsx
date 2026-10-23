@@ -21,44 +21,62 @@ interface NavLink {
   icon: LucideIcon;
 }
 
-const links: NavLink[] = [
-  { href: "/dashboard", label: "Dashboard", short: "Home", icon: LayoutDashboard },
-  { href: "/holdings", label: "Holdings", short: "Holdings", icon: BriefcaseBusiness },
-  { href: "/realised", label: "Realised gains", short: "Gains", icon: TrendingUp },
-  { href: "/misc", label: "Misc P/L", short: "Misc", icon: PlusCircle },
-  { href: "/transactions", label: "Transactions", short: "Transactions", icon: ArrowLeftRight },
-  { href: "/settings", label: "Settings", short: "Settings", icon: Settings },
+const dashboard: NavLink = { href: "/dashboard", label: "Dashboard", short: "Home", icon: LayoutDashboard };
+const holdings: NavLink = { href: "/holdings", label: "Holdings", short: "Holdings", icon: BriefcaseBusiness };
+const transactions: NavLink = { href: "/transactions", label: "Transactions", short: "Activity", icon: ArrowLeftRight };
+const realised: NavLink = { href: "/realised", label: "Realised gains", short: "Gains", icon: TrendingUp };
+const misc: NavLink = { href: "/misc", label: "Misc P/L", short: "Misc", icon: PlusCircle };
+const settings: NavLink = { href: "/settings", label: "Settings", short: "Settings", icon: Settings };
+
+const sections: { title: string; links: NavLink[] }[] = [
+  { title: "Overview", links: [dashboard] },
+  { title: "Portfolio", links: [holdings, transactions, misc] },
+  { title: "Reports", links: [realised] },
+  { title: "Account", links: [settings] },
 ];
 
-const primary = links.slice(0, 4);
-const more = links.slice(4);
+const primary = [dashboard, holdings, realised, misc];
+const more = [transactions, settings];
 
 const isActive = (path: string, href: string) =>
   path === href || path.startsWith(href + "/") || (href === "/holdings" && path.startsWith("/sell"));
 
-/** Top tabs: tablet/desktop only. */
-export function Nav() {
+/** Desktop sidebar navigation. */
+export function SideNav() {
   const path = usePathname();
   return (
-    <nav className="hidden gap-1 md:flex">
-      {links.map((l) => (
-        <Link
-          key={l.href}
-          href={l.href}
-          className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-            isActive(path, l.href)
-              ? "bg-white/12 text-white shadow-[inset_0_-2px_0_var(--accent)]"
-              : "text-white/80 hover:bg-white/10 hover:text-white"
-          }`}
-        >
-          {l.label}
-        </Link>
+    <nav className="flex flex-col gap-5">
+      {sections.map((s) => (
+        <div key={s.title}>
+          <p className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wider text-white/40">{s.title}</p>
+          <ul className="space-y-0.5">
+            {s.links.map((l) => {
+              const active = isActive(path, l.href);
+              return (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                      active
+                        ? "bg-white/12 text-white"
+                        : "text-white/70 hover:bg-white/7 hover:text-white"
+                    }`}
+                  >
+                    <l.icon size={18} className={active ? "text-emerald-300" : ""} />
+                    {l.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       ))}
     </nav>
   );
 }
 
-/** Bottom tab bar: phones only. Less-used pages and sign-out live under "More". */
+/** Bottom tab bar for phones and tablets. Less-used pages and sign-out live under "More". */
 export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
@@ -70,7 +88,7 @@ export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
   return (
     <>
       {open && (
-        <div className="fixed inset-0 z-40 md:hidden" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <div
             className="absolute inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] mx-3 rounded-2xl border border-line bg-surface p-2 shadow-xl"
@@ -80,7 +98,7 @@ export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
               <Link
                 key={l.href}
                 href={l.href}
-                className="flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium hover:bg-surface2"
+                className="flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium hover:bg-surface2"
               >
                 <l.icon size={20} className="text-primary" />
                 {l.label}
@@ -93,7 +111,7 @@ export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
 
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(16,40,28,.08)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
       >
         <ul className="grid h-16 grid-cols-5">
           {primary.map((l) => (
@@ -109,7 +127,9 @@ export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
                 open || moreActive ? "text-primary" : "text-muted"
               }`}
             >
-              <MoreHorizontal size={22} />
+              <span className={`rounded-full px-4 py-1 ${open || moreActive ? "bg-primary-soft" : ""}`}>
+                <MoreHorizontal size={20} />
+              </span>
               More
             </button>
           </li>
@@ -128,8 +148,8 @@ function TabLink({ link, active }: { link: NavLink; active: boolean }) {
         active ? "text-primary" : "text-muted"
       }`}
     >
-      <span className={`rounded-full px-4 py-0.5 ${active ? "bg-primary-soft" : ""}`}>
-        <link.icon size={22} />
+      <span className={`rounded-full px-4 py-1 ${active ? "bg-primary-soft" : ""}`}>
+        <link.icon size={20} />
       </span>
       {link.short}
     </Link>

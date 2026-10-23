@@ -2,317 +2,462 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Global Fin – clickable flow prototype</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Global Fin – clickable prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f3f6f4;--surface:#fff;--surface2:#eaf0ec;--ink:#12241b;--muted:#5d6e64;--line:#dce5df;--primary:#0f7a4a;--primary-strong:#0a5c37;--soft:#e1f3e9;--accent:#c58a2b;--accent-strong:#a16207;--gain:#0f7a4a;--loss:#c8372d;--sunset:linear-gradient(135deg,#0a2a1c 0%,#0f4d33 100%);--shadow:0 1px 2px rgba(16,40,28,.06),0 4px 14px rgba(16,40,28,.04)}
-@media(prefers-color-scheme:dark){:root{--bg:#0a1410;--surface:#112019;--surface2:#172a21;--ink:#e8f0ec;--muted:#93a79c;--line:#223a2f;--primary:#34d399;--primary-strong:#6ee7b7;--soft:#10342a;--accent:#e0a84a;--accent-strong:#e0a84a;--gain:#34d399;--loss:#f87171}}
-*{box-sizing:border-box}html,body{overflow-x:clip;max-width:100%}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
-header{background:var(--sunset);color:#fff;padding:12px 24px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
-header b{font-size:18px}nav{display:flex;gap:4px;flex-wrap:wrap}
-nav button{background:none;border:0;color:rgba(255,255,255,.85);padding:6px 12px;border-radius:8px;cursor:pointer;font:inherit;font-weight:500}
-nav button:hover{background:rgba(255,255,255,.12)}nav button.on{background:rgba(255,255,255,.12);color:#fff;box-shadow:inset 0 -2px 0 var(--accent)}
-.out{border:1px solid rgba(255,255,255,.5);color:#fff;background:none;border-radius:8px;padding:4px 12px;cursor:pointer}
-main{max-width:1100px;margin:0 auto;padding:22px 16px}
-h1{font-size:24px;color:var(--primary-strong);margin:0 0 14px}h2{font-size:17px;color:var(--primary-strong);margin:0 0 10px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:18px}
-.grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-label.l,.lab{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px}
-input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit}
-input:focus,select:focus{outline:2px solid color-mix(in srgb,var(--primary) 40%,transparent);border-color:var(--primary)}
-.hint{font-size:12px;color:var(--muted);margin-top:3px}
-.btn{border:0;border-radius:8px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer;color:#fff;background:var(--primary)}
-.btn:hover{background:var(--primary-strong)}.btn.acc{background:var(--accent-strong);color:#fff}@media(prefers-color-scheme:dark){.btn.acc{color:#1a1204}}.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
-.btn.sm{padding:4px 12px}
-table{width:100%;border-collapse:collapse}th{background:var(--surface2);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
-td{padding:10px;border-bottom:1px solid var(--line)}tr:last-child td{border-bottom:0}.r{text-align:right}
-.gain{color:var(--gain)}.loss{color:var(--loss)}.muted{color:var(--muted)}.big{font-size:24px;font-weight:700}
-.pill{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}.buy{background:var(--soft);color:var(--primary-strong)}.sell{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent-strong)}
-.preview{background:var(--soft);border-radius:12px;padding:14px;margin:14px 0;display:none}.preview.show{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
-.yn{display:flex;gap:16px;padding:6px 0}.yn label{display:flex;gap:6px;align-items:center}
-.screen{display:none}.screen.on{display:block}
-.bars{display:flex;align-items:flex-end;gap:18px;height:200px;padding:8px 4px;border-bottom:1px solid var(--line)}
-.bars div{flex:1;text-align:center;font-size:12px;color:var(--muted);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
-.bars i{display:block;width:100%;max-width:46px;border-radius:4px 4px 0 0;background:var(--gain)}
-.hb{display:grid;grid-template-columns:90px 1fr 80px;gap:10px;align-items:center;margin:9px 0;font-size:13px}.hb i{display:block;height:18px;border-radius:0 4px 4px 0;background:var(--primary)}
-.login{min-height:100vh;background:var(--sunset);display:flex;align-items:center;justify-content:center}.login .card{width:340px;text-align:center}
-.steps{background:var(--surface2);border-radius:12px;padding:10px 14px;margin-bottom:18px;font-size:13px;color:var(--muted)}.steps b{color:var(--ink)}
-.toast{position:fixed;bottom:20px;right:20px;background:var(--primary-strong);color:#fff;padding:10px 16px;border-radius:10px;display:none}
-@media(prefers-color-scheme:dark){.btn{color:#04130c}}
+:root{--bg:#f6f8f7;--surface:#fff;--surface2:#f1f5f3;--ink:#0f1a14;--muted:#64746b;--line:#e2e8e4;--primary:#0f7a4a;--primary-strong:#0b5f3a;--soft:#e6f4ec;--on-primary:#fff;--accent:#c58a2b;--accent-strong:#9a5b0a;--gain:#0f7a4a;--loss:#c8372d;--sidebar:#0b2a1d;--brand:linear-gradient(135deg,#0b2a1d 0%,#0f4d33 100%)}
+@media(prefers-color-scheme:dark){:root{--bg:#0a110e;--surface:#111b16;--surface2:#16241d;--ink:#e9f1ed;--muted:#8fa398;--line:#1f3128;--primary:#34d399;--primary-strong:#6ee7b7;--soft:#10342a;--on-primary:#04130c;--accent:#e0a84a;--accent-strong:#e0a84a;--gain:#34d399;--loss:#f87171;--sidebar:#08130d;--brand:linear-gradient(135deg,#08130d 0%,#0c3a27 100%)}}
+*{box-sizing:border-box}
+html,body{margin:0;max-width:100%;overflow-x:clip}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;letter-spacing:-.006em;font-feature-settings:"cv11","ss03";-webkit-font-smoothing:antialiased}
+h1,h2,h3{letter-spacing:-.02em;margin:0}table,.num{font-variant-numeric:tabular-nums}
+a{color:inherit}svg{flex:none}
 
+/* shell */
+.shell{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+aside{position:sticky;top:0;height:100vh;background:var(--sidebar);color:#fff;padding:16px;display:flex;flex-direction:column;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px;padding:4px 8px}.logo b{font-size:17px;font-weight:600;letter-spacing:-.02em}
+.mark{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,#34d399,#047857);color:#fff}
+.sec{margin:22px 0 0}.sec p{margin:0 0 6px;padding:0 12px;font-size:11px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.4)}
+.sidelink{display:flex;align-items:center;gap:12px;width:100%;padding:8px 12px;border:0;border-radius:8px;background:none;color:rgba(255,255,255,.7);font:inherit;font-weight:500;cursor:pointer;text-align:left}
+.sidelink:hover{background:rgba(255,255,255,.07);color:#fff}.sidelink.on{background:rgba(255,255,255,.12);color:#fff}.sidelink.on svg{color:#6ee7b7}
+.userbox{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.06);border-radius:12px;padding:12px}
+.avatar{width:36px;height:36px;border-radius:99px;background:#059669;display:grid;place-items:center;font-weight:600;flex:none}
+.userbox div{min-width:0;flex:1}.userbox p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.userbox small{color:rgba(255,255,255,.5);font-size:12px}
+.iconbtn{background:none;border:0;color:rgba(255,255,255,.6);padding:8px;border-radius:8px;cursor:pointer}.iconbtn:hover{background:rgba(255,255,255,.1);color:#fff}
+.content{min-width:0}.topbar{display:none}
+main{max-width:1152px;margin:0 auto;padding:36px 40px 48px}
+
+/* type + layout atoms */
+.ph{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:24px}
+.ph h1{font-size:24px;font-weight:600}.ph p{margin:4px 0 0;color:var(--muted)}
+.back{display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;color:var(--muted);font-weight:500;font-size:14px;background:none;border:0;cursor:pointer;padding:0;font-family:inherit}.back:hover{color:var(--ink)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:0 1px 2px rgba(15,26,20,.04);margin-bottom:20px;min-width:0}
+.card.flush{padding:0;overflow:hidden}.card .ct{padding:16px 20px;border-bottom:1px solid var(--line)}.card .ct h2{font-size:16px;font-weight:600}.card .ct p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.scroll{overflow-x:auto}
+.grid{display:grid;gap:16px}.k4{grid-template-columns:repeat(4,1fr)}.k3{grid-template-columns:repeat(3,1fr)}.c2{grid-template-columns:repeat(2,1fr)}.f3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.grid>*{min-width:0}
+.kpi{padding:20px;margin:0}.kpi .top{display:flex;justify-content:space-between;align-items:center}.kpi .l{font-size:13px;font-weight:500;color:var(--muted)}
+.kpi .ic{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--soft);color:var(--primary)}
+.kpi .v{font-size:26px;font-weight:600;line-height:1;margin-top:10px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.kpi .h{font-size:12px;color:var(--muted);margin-top:8px}
+.gain{color:var(--gain)}.loss{color:var(--loss)}.muted{color:var(--muted)}
+.note{background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--muted);margin-bottom:20px}
+
+/* forms */
+label.fl{display:block;margin-bottom:6px;font-size:13px;font-weight:500}
+input,select{width:100%;min-width:0;max-width:100%;height:40px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;outline:0;transition:.15s}
+input:hover,select:hover{border-color:color-mix(in srgb,var(--muted) 50%,var(--line))}
+input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 20%,transparent)}
+input[type=radio],input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary);padding:0;box-shadow:none}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}.yn{display:flex;align-items:center;gap:20px;height:40px}.yn label{display:flex;align-items:center;gap:8px}
+.err{border:1px solid color-mix(in srgb,var(--loss) 25%,transparent);background:color-mix(in srgb,var(--loss) 10%,transparent);color:var(--loss);border-radius:8px;padding:10px 12px;margin-top:14px;display:none}
+.err.show{display:block}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:8px;border:1px solid transparent;background:var(--primary);color:var(--on-primary);font:inherit;font-weight:500;cursor:pointer;white-space:nowrap;transition:.15s;text-decoration:none}
+.btn:hover{background:var(--primary-strong)}.btn:focus-visible{outline:0;box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 30%,transparent)}
+.btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line)}.btn.ghost:hover{background:var(--surface2)}
+.btn.soft{background:var(--soft);color:var(--primary-strong);border-color:color-mix(in srgb,var(--primary) 30%,transparent)}.btn.soft:hover{border-color:color-mix(in srgb,var(--primary) 60%,transparent)}
+.btn.del{background:transparent;color:var(--loss);border-color:color-mix(in srgb,var(--loss) 30%,transparent)}.btn.del:hover{background:color-mix(in srgb,var(--loss) 10%,transparent)}
+.btn.sm{height:32px;padding:0 10px;font-size:13px}
+.actions{display:flex;gap:8px;justify-content:flex-end}.mt{margin-top:20px}.row{display:flex;gap:12px;flex-wrap:wrap}
+details.card{padding:0}details summary{cursor:pointer;list-style:none;padding:14px 20px;font-weight:500;display:flex;gap:8px;align-items:center}details summary::-webkit-details-marker{display:none}details .body{border-top:1px solid var(--line);padding:20px}
+
+/* tables */
+table{width:100%;border-collapse:collapse}
+th{padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:var(--muted);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:12px 16px;border-bottom:1px solid var(--line);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)}.r{text-align:right}
+.badge{display:inline-flex;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:500}.b-buy{background:var(--soft);color:var(--primary-strong)}.b-sell{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent-strong)}.b-off{background:var(--surface2);color:var(--muted)}
+.lnk{background:none;border:0;padding:0;font:inherit;font-weight:500;color:inherit;cursor:pointer;text-align:left}.lnk:hover{color:var(--primary);text-decoration:underline}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:48px 24px}.empty .ic{width:44px;height:44px;border-radius:99px;background:var(--soft);color:var(--primary);display:grid;place-items:center;margin-bottom:12px}.empty p{margin:0}.empty .m{color:var(--muted);max-width:360px;margin-top:4px}
+
+/* preview box */
+.preview{display:none;background:var(--soft);border:1px solid color-mix(in srgb,var(--primary) 20%,transparent);border-radius:12px;padding:16px;margin-top:20px}.preview.show{display:block}
+.preview .stats{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}.preview .stats small{display:block;font-size:12px;color:var(--muted)}.preview .stats b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.preview ul{list-style:none;margin:14px 0 0;padding:14px 0 0;border-top:1px solid color-mix(in srgb,var(--primary) 15%,transparent);font-size:12px;color:var(--muted)}.preview li+li{margin-top:4px}
+
+/* charts */
+.bars{display:flex;align-items:flex-end;gap:18px;height:220px;padding:8px 4px 0;border-bottom:1px solid var(--line)}
+.bars div{flex:1;text-align:center;font-size:12px;color:var(--muted);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}.bars i{display:block;width:100%;max-width:48px;border-radius:4px 4px 0 0}
+.hb{display:grid;grid-template-columns:96px 1fr 84px;gap:12px;align-items:center;margin:10px 0;font-size:13px}.hb i{display:block;height:18px;border-radius:0 4px 4px 0;background:var(--primary)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:20px}.chip{white-space:nowrap;border-radius:99px;padding:6px 14px;font:inherit;font-weight:500;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--muted)}.chip.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.assets{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.assets>div{border:1px solid var(--line);border-radius:10px;padding:14px}
+
+/* login */
+.login{display:grid;grid-template-columns:1.1fr 1fr;min-height:100vh}
+.login .brand{background:var(--brand);color:#fff;padding:48px;display:flex;flex-direction:column;justify-content:space-between}
+.login .brand h2{font-size:36px;line-height:1.15;font-weight:600;max-width:440px}.login .pt{display:flex;gap:16px;margin-top:28px}.login .pt .ic{width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.1);display:grid;place-items:center;flex:none}.login .pt p{margin:0}.login .pt small{color:rgba(255,255,255,.65);font-size:14px}
+.login .form{display:flex;align-items:center;justify-content:center;padding:48px 24px}.login .form>div{width:100%;max-width:370px}.login .form h1{font-size:24px;font-weight:600}
+.gbtn{width:100%;height:44px;margin-top:32px;font-size:15px}
+
+/* mobile */
 .bnav,.sheet{display:none}
-@media(max-width:760px){
- header nav,header .who{display:none}header{padding:12px 16px}header .mname{display:inline!important}
- main{padding:16px 14px 96px}
- .bnav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;height:64px;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(16,40,28,.08);z-index:50}
- .bnav button{background:none;border:0;color:var(--muted);font:inherit;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer}
- .bnav button span{font-size:19px;line-height:1;padding:3px 16px;border-radius:99px}
- .bnav button.on{color:var(--primary)}.bnav button.on span{background:var(--soft)}
+@media(max-width:1023px){
+ .shell{display:block}aside{display:none}
+ .topbar{display:flex;position:sticky;top:0;z-index:30;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px)}
+ .topbar .mark{background:var(--primary);color:var(--on-primary)}.topbar .avatar{width:32px;height:32px;background:var(--soft);color:var(--primary-strong);font-size:14px}
+ main{padding:20px 16px 104px}
+ .bnav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;height:64px;background:color-mix(in srgb,var(--surface) 95%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
+ .bnav button{background:none;border:0;color:var(--muted);font:inherit;font-size:11px;font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer}
+ .bnav button span{padding:4px 16px;border-radius:99px;display:grid}.bnav button.on{color:var(--primary)}.bnav button.on span{background:var(--soft)}
  .sheet.show{display:block;position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.4)}
  .sheet div{position:absolute;left:12px;right:12px;bottom:76px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
- .sheet button{display:flex;gap:12px;align-items:center;width:100%;background:none;border:0;color:var(--ink);font:inherit;font-size:15px;font-weight:600;padding:13px 14px;border-radius:12px;cursor:pointer;text-align:left}
- .sheet button:hover{background:var(--surface2)}.sheet .so{color:var(--loss);border-top:1px solid var(--line);border-radius:0 0 12px 12px}
- .card{padding:16px}.big{font-size:21px}h1{font-size:21px}
- .toast{bottom:80px;left:14px;right:14px;text-align:center}
+ .sheet button{display:flex;gap:12px;align-items:center;width:100%;background:none;border:0;color:var(--ink);font:inherit;font-size:15px;font-weight:500;padding:12px 16px;border-radius:12px;cursor:pointer}.sheet button:hover{background:var(--surface2)}
+ .sheet .so{color:var(--loss);border-top:1px solid var(--line);border-radius:0 0 12px 12px;margin-top:4px}
+ .k4{grid-template-columns:repeat(2,1fr)}.k3,.c2{grid-template-columns:1fr}.k4,.k3{gap:12px}.kpi{padding:16px}.kpi .v{font-size:22px}
+ .login{display:block}.login .brand{display:none}.ph h1{font-size:22px}
+ .toast{bottom:80px!important;left:16px;right:16px;text-align:center}
 }
-.mname{display:none}
-.card{overflow-x:auto}.grid>*{min-width:0}input,select{min-width:0;max-width:100%}
-header>*{min-width:0}.mname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45vw}
-@media(max-width:760px){td,th{white-space:nowrap}.steps{font-size:12px}.card form,form.card{overflow-x:visible}}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;display:none;z-index:100;font-weight:500}
+.screen{display:none}.screen.on{display:block}
 </style>
 </head>
 <body>
 
-<!-- 1. LOGIN -->
+<!-- LOGIN -->
 <div id="loginView" class="login">
-  <div class="card">
-    <h1 style="margin-bottom:6px">Global Fin</h1>
-    <p class="muted">Track every investment and see your realised gains after Indian tax.</p>
-    <button class="btn" style="width:100%;margin-top:14px" onclick="signIn()">Sign in with Google</button>
-    <p class="hint" style="margin-top:12px">Prototype: click to enter the app with sample data.</p>
+  <div class="brand">
+    <div class="logo"><span class="mark" data-i="trend"></span><b>Global Fin</b></div>
+    <div>
+      <h2>Know what you really earned, after tax.</h2>
+      <div class="pt"><span class="ic" data-i="chart"></span><div><p><b>Every asset in one place</b></p><small>Stocks, funds, bonds, FDs, land, gold and crypto.</small></div></div>
+      <div class="pt"><span class="ic" data-i="calc"></span><div><p><b>Indian capital-gains tax built in</b></p><small>Short and long term rules, FIFO matching and exemptions.</small></div></div>
+      <div class="pt"><span class="ic" data-i="shield"></span><div><p><b>Private to you</b></p><small>Sign in with Google. Your data is only visible to your account.</small></div></div>
+    </div>
+    <small style="color:rgba(255,255,255,.4)">Estimates only. Not tax advice.</small>
   </div>
+  <div class="form"><div>
+    <h1>Welcome back</h1>
+    <p class="muted" style="margin:6px 0 0">Sign in to track your investments and realised gains.</p>
+    <button class="btn ghost gbtn" onclick="signIn()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-4.9 2.3-8.2 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+      Continue with Google</button>
+    <p class="hint" style="text-align:center;margin-top:20px">Prototype: click to enter with sample data.</p>
+  </div></div>
 </div>
 
 <div id="appView" style="display:none">
-<header>
-  <b>Global Fin</b>
-  <nav id="nav"></nav>
-  <span class="who"><span style="color:rgba(255,255,255,.8);margin-right:10px">Rishab Gupta</span><button class="out" onclick="signOut()">Sign out</button></span><span class="mname" style="color:rgba(255,255,255,.8)">Rishab Gupta</span>
-</header>
-<main>
+<div class="shell">
+  <aside>
+    <div>
+      <div class="logo"><span class="mark" data-i="trend"></span><b>Global Fin</b></div>
+      <div id="side"></div>
+    </div>
+    <div class="userbox"><span class="avatar">R</span><div><p>Rishab Gupta</p><small>rishab@example.com</small></div>
+      <button class="iconbtn" title="Sign out" onclick="signOut()" data-i="logout"></button></div>
+  </aside>
+  <div class="content">
+    <div class="topbar"><div class="logo" style="padding:0"><span class="mark" data-i="trend"></span><b>Global Fin</b></div><span class="avatar">R</span></div>
+    <main>
 
-<!-- 2. DASHBOARD -->
+<!-- DASHBOARD -->
 <section class="screen" id="dashboard">
-  <h1>Hello, Rishab</h1>
-  <div class="grid g4" style="margin-bottom:18px">
-    <div class="card" style="margin:0"><span class="lab">Currently invested</span><div class="big" id="kInv"></div></div>
-    <div class="card" style="margin:0"><span class="lab">Realised gain</span><div class="big gain" id="kGain"></div></div>
-    <div class="card" style="margin:0"><span class="lab">Estimated tax</span><div class="big" id="kTax"></div></div>
-    <div class="card" style="margin:0"><span class="lab">Post-tax gain</span><div class="big gain" id="kNet"></div></div>
-  </div>
-  <div class="grid g2">
-    <div class="card"><h2>Post-tax gain by financial year</h2><div class="bars" id="fyBars"></div></div>
-    <div class="card"><h2>Invested by asset class</h2><div id="allocBars"></div></div>
+  <div class="ph"><div><h1>Welcome back, Rishab</h1><p>Your portfolio and realised gains at a glance.</p></div>
+    <button class="btn" onclick="go('holdings')"><span data-i="plus2"></span>Add investment</button></div>
+  <div class="grid k4" style="margin-bottom:24px" id="kpis"></div>
+  <div class="grid c2">
+    <div class="card flush"><div class="ct"><h2>Post-tax gain by financial year</h2><p>Green is profit, red is loss</p></div><div style="padding:20px"><div class="bars" id="fyBars"></div></div></div>
+    <div class="card flush"><div class="ct"><h2>Invested by asset class</h2><p>Cost of what you currently hold</p></div><div style="padding:12px 20px" id="allocBars"></div></div>
   </div>
 </section>
 
-<!-- 3. HOLDINGS -->
+<!-- HOLDINGS -->
 <section class="screen" id="holdings">
-  <div class="steps"><b>Flow:</b> pick type, enter name, date, quantity, price &rarr; Save. It appears in the table below; click <b>Sell</b> on any row.</div>
+  <div class="ph"><div><h1>Holdings</h1><p id="holdSub"></p></div></div>
   <form class="card" onsubmit="addBuy(event)">
-    <h2>Add investment</h2>
-    <div class="grid g3">
-      <div><label class="l">Type</label>
-        <select id="bType" onchange="typeHint()"></select><div class="hint" id="bHint"></div></div>
-      <div><label class="l">Name / symbol</label><input id="bName" required placeholder="e.g. RELIANCE, HDFC FD, Plot 12"></div>
-      <div><label class="l">Purchase date</label><input id="bDate" type="date" required></div>
-      <div><label class="l">Quantity</label><input id="bQty" type="number" step="any" min="0" required><div class="hint">Use 1 for land, FD or lump sums</div></div>
-      <div><label class="l">Price per unit (₹)</label><input id="bPrice" type="number" step="any" min="0" required></div>
-      <div><label class="l">Brokerage / fees (₹)</label><input id="bFees" type="number" step="any" min="0" value="0"></div>
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:16px">Add investment</h2>
+    <div class="grid f3">
+      <div><label class="fl">Type</label><select id="bType" onchange="typeHint()"></select><div class="hint" id="bHint"></div></div>
+      <div><label class="fl">Name / symbol</label><input id="bName" required placeholder="e.g. RELIANCE, HDFC FD, Plot 12"></div>
+      <div><label class="fl">Purchase date</label><input id="bDate" type="date" required></div>
+      <div><label class="fl">Quantity</label><input id="bQty" type="number" step="any" min="0" required><div class="hint">Use 1 for land, FD or lump sums</div></div>
+      <div><label class="fl">Price per unit (₹)</label><input id="bPrice" type="number" step="any" min="0" required></div>
+      <div><label class="fl">Brokerage / fees (₹)</label><input id="bFees" type="number" step="any" min="0" value="0"></div>
     </div>
-    <button class="btn" style="margin-top:14px">Save investment</button>
+    <button class="btn mt">Save investment</button>
   </form>
-  <div class="card"><h2>Current holdings</h2><table id="holdTbl"></table></div>
+  <div class="card flush"><div class="ct"><h2>Current holdings</h2></div><div class="scroll"><table id="holdTbl"></table></div></div>
+  <div class="card flush" id="closedCard" style="display:none"><div class="ct"><h2>Fully sold</h2><p>Past holdings you no longer own</p></div><div id="closedList"></div></div>
 </section>
 
-<!-- 4. SELL -->
+<!-- HOLDING DETAIL -->
+<section class="screen" id="detail">
+  <button class="back" onclick="go('holdings')"><span data-i="back"></span>Holdings</button>
+  <div class="ph"><div><h1 id="dName"></h1><p id="dType"></p></div><button class="btn" id="dSell" onclick="openSell(curAsset)">Sell</button></div>
+  <div class="grid k4" style="margin-bottom:24px" id="dKpis"></div>
+  <details class="card"><summary><span data-i="pencil" style="color:var(--muted)"></span>Rename or change investment type</summary>
+    <form class="body" onsubmit="saveAsset(event)"><div class="grid c2">
+      <div><label class="fl">Name</label><input id="eaName" required></div>
+      <div><label class="fl">Type</label><select id="eaType"></select><div class="hint">Changing the type changes how gains on this holding are taxed.</div></div></div>
+      <button class="btn mt">Save</button></form></details>
+  <div class="card flush"><div class="ct"><h2>Purchases</h2><p>Click Edit to change a purchase</p></div><div class="scroll"><table id="dLots"></table></div></div>
+  <div class="card flush"><div class="ct"><h2>Sales</h2><p>Gains use FIFO matching and your slab rate</p></div><div class="scroll"><table id="dSales"></table></div></div>
+</section>
+
+<!-- EDIT PURCHASE -->
+<section class="screen" id="editbuy">
+  <button class="back" onclick="go('detail',curAsset)"><span data-i="back"></span><span id="ebBack"></span></button>
+  <div class="ph"><div><h1>Edit purchase</h1><p id="ebSub"></p></div><span id="ebDel"></span></div>
+  <form class="card" onsubmit="saveLot(event)"><div class="grid f3">
+    <div><label class="fl">Purchase date</label><input id="ebDate" type="date" required></div>
+    <div><label class="fl">Quantity</label><input id="ebQty" type="number" step="any" min="0" required><div class="hint" id="ebQtyHint"></div></div>
+    <div><label class="fl">Price per unit (₹)</label><input id="ebPrice" type="number" step="any" min="0" required></div>
+    <div><label class="fl">Brokerage / fees (₹)</label><input id="ebFees" type="number" step="any" min="0"></div></div>
+    <div class="err" id="ebErr"></div><button class="btn mt">Save changes</button></form>
+</section>
+
+<!-- SELL / EDIT SALE -->
 <section class="screen" id="sell">
-  <a href="#" onclick="go('holdings');return false" style="color:var(--primary)">&larr; Back to holdings</a>
-  <h1 style="margin-top:6px" id="sellTitle"></h1>
-  <p class="muted" id="sellSub"></p>
-  <div class="steps"><b>Flow:</b> enter quantity + price, choose tax yes/no &rarr; <b>Preview tax</b> shows the FIFO result &rarr; <b>Confirm sale</b> saves it to Realised gains.</div>
+  <button class="back" onclick="go('detail',curAsset)"><span data-i="back"></span><span id="sBack"></span></button>
+  <div class="ph"><div><h1 id="sellTitle"></h1><p id="sellSub"></p></div><span id="sDel"></span></div>
+  <div class="note" id="sNote"></div>
   <form class="card" onsubmit="return false" onchange="if($('prev').classList.contains('show'))previewSale()">
-    <div class="grid g3">
-      <div><label class="l">Sale date</label><input id="sDate" type="date"></div>
-      <div><label class="l">Quantity</label><input id="sQty" type="number" step="any" min="0"><div class="hint" id="sAvail"></div></div>
-      <div><label class="l">Sale price per unit (₹)</label><input id="sPrice" type="number" step="any" min="0"></div>
-      <div><label class="l">Brokerage / fees (₹)</label><input id="sFees" type="number" step="any" min="0" value="0"></div>
-      <div><label class="l">Include tax effect?</label>
-        <div class="yn"><label><input type="radio" name="tax" value="yes" checked style="width:auto"> Yes</label><label><input type="radio" name="tax" value="no" style="width:auto"> No</label></div></div>
+    <div class="grid f3">
+      <div><label class="fl">Sale date</label><input id="sDate" type="date"></div>
+      <div><label class="fl">Quantity</label><input id="sQty" type="number" step="any" min="0"><div class="hint" id="sAvail"></div></div>
+      <div><label class="fl">Sale price per unit (₹)</label><input id="sPrice" type="number" step="any" min="0"></div>
+      <div><label class="fl">Brokerage / fees (₹)</label><input id="sFees" type="number" step="any" min="0" value="0"></div>
+      <div><label class="fl">Include tax effect?</label><div class="yn"><label><input type="radio" name="tax" value="yes" checked> Yes</label><label><input type="radio" name="tax" value="no"> No</label></div></div>
     </div>
-    <div id="sellErr" class="loss" style="margin-top:10px"></div>
+    <div class="err" id="sellErr"></div>
     <div class="preview" id="prev"></div>
-    <div style="display:flex;gap:10px"><button class="btn ghost" onclick="previewSale()">Preview tax</button><button class="btn" onclick="confirmSale()">Confirm sale</button></div>
+    <div class="row mt"><button class="btn ghost" onclick="previewSale()">Preview tax</button><button class="btn" id="sSave" onclick="confirmSale()">Confirm sale</button></div>
   </form>
 </section>
 
-<!-- 5. TRANSACTIONS -->
+<!-- TRANSACTIONS -->
 <section class="screen" id="transactions">
-  <div class="card"><h2>All transactions</h2><table id="txTbl"></table></div>
+  <div class="ph"><div><h1>Transactions</h1><p>Every purchase and sale. Open a holding to edit or delete entries.</p></div></div>
+  <div class="card flush"><div class="scroll"><table id="txTbl"></table></div></div>
 </section>
 
-<!-- 6. REALISED -->
+<!-- REALISED -->
 <section class="screen" id="realised">
-  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
-    <h1 style="margin:0">Realised gains</h1>
-    <div id="fyChips" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-  </div>
-  <div class="grid g3" style="margin-bottom:18px">
-    <div class="card" style="margin:0"><span class="lab">Gross gain</span><div class="big" id="rGain"></div></div>
-    <div class="card" style="margin:0"><span class="lab">Estimated tax</span><div class="big" id="rTax"></div></div>
-    <div class="card" style="margin:0"><span class="lab">Post-tax gain</span><div class="big" id="rNet"></div></div>
-  </div>
-  <div class="card" style="overflow-x:auto"><table id="realTbl"></table></div>
+  <div class="ph"><div><h1>Realised gains</h1><p>Profit and loss from sales and misc entries, with estimated tax.</p></div><button class="btn ghost" onclick="toast('CSV export is in the real app')"><span data-i="download"></span>Export CSV</button></div>
+  <div class="chips" id="fyChips"></div>
+  <div class="grid k3" style="margin-bottom:24px" id="rKpis"></div>
+  <div class="card flush"><div class="ct"><h2>By asset class</h2></div><div style="padding:20px" class="assets" id="rGroups"></div></div>
+  <div class="card flush"><div class="ct"><h2>Details</h2></div><div class="scroll"><table id="realTbl"></table></div></div>
 </section>
 
-<!-- 7. MISC -->
+<!-- MISC -->
 <section class="screen" id="misc">
-  <div class="steps"><b>Flow:</b> add a one-off profit/loss (dividends, F&amp;O, interest, etc.) with just the type and amount. Pick whether tax is already adjusted.</div>
+  <div class="ph"><div><h1>Misc profit / loss</h1><p>Record a one-off gain or loss without a buy and sell, such as dividends or F&amp;O.</p></div></div>
   <form class="card" onsubmit="addMisc(event)">
-    <h2>Add miscellaneous profit / loss</h2>
-    <div class="grid g3">
-      <div><label class="l">Investment type</label><select id="mType"></select></div>
-      <div><label class="l">Date</label><input id="mDate" type="date" required></div>
-      <div><label class="l">Profit or loss</label><select id="mKind"><option value="1">Profit</option><option value="-1">Loss</option></select></div>
-      <div><label class="l">Amount (₹)</label><input id="mAmt" type="number" step="any" min="0" required></div>
-      <div><label class="l">Tax already adjusted?</label>
-        <div class="yn"><label><input type="radio" name="madj" value="yes" style="width:auto"> Yes</label><label><input type="radio" name="madj" value="no" checked style="width:auto"> No</label></div>
-        <div class="hint">Yes: amount is final. No: tax is added on a profit.</div></div>
-      <div><label class="l">Holding period</label><select id="mTerm"><option value="S">Short term</option><option value="L">Long term</option></select></div>
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:16px">Add miscellaneous profit / loss</h2>
+    <div class="grid f3">
+      <div><label class="fl">Investment type</label><select id="mType"></select></div>
+      <div><label class="fl">Date</label><input id="mDate" type="date" required></div>
+      <div><label class="fl">Profit or loss</label><select id="mKind"><option value="1">Profit</option><option value="-1">Loss</option></select></div>
+      <div><label class="fl">Amount (₹)</label><input id="mAmt" type="number" step="any" min="0" required></div>
+      <div><label class="fl">Tax already adjusted?</label><div class="yn"><label><input type="radio" name="madj" value="yes"> Yes</label><label><input type="radio" name="madj" value="no" checked> No</label></div><div class="hint">Yes: amount is final. No: tax is added on a profit.</div></div>
+      <div><label class="fl">Holding period</label><select id="mTerm"><option value="S">Short term</option><option value="L">Long term</option></select></div>
     </div>
-    <button class="btn" style="margin-top:14px">Save entry</button>
+    <button class="btn mt">Save entry</button>
   </form>
-  <div class="card"><h2>Misc entries</h2><table id="miscTbl"></table></div>
+  <div class="card flush"><div class="ct"><h2>Entries</h2></div><div class="scroll"><table id="miscTbl"></table></div></div>
 </section>
 
-<!-- 8. SETTINGS -->
+<!-- SETTINGS -->
 <section class="screen" id="settings">
-  <div class="card" style="max-width:420px"><h2>Your income-tax slab rate</h2>
-    <label class="l">Slab rate (%)</label><input id="slab" type="number" value="30" min="0" max="45" onchange="SLAB=+this.value/100;toast('Saved')">
-    <div class="hint">Used for short-term gains on debt, gold, land, FD interest etc.</div></div>
-  <div class="card"><h2>Tax rules applied</h2>
-    <table><tr><th>Asset</th><th>Long term after</th><th>Short term</th><th>Long term</th></tr>
-    <tr><td>Stocks / Equity MF</td><td>12 months</td><td>20%</td><td>12.5% (first ₹1.25L/yr exempt)</td></tr>
-    <tr><td>Listed bonds, Gold ETF, SGB</td><td>12 months</td><td>Slab</td><td>12.5%</td></tr>
-    <tr><td>Land, physical gold</td><td>24 months</td><td>Slab</td><td>12.5%</td></tr>
-    <tr><td>FD / RD / debt MF / unlisted bonds</td><td>n/a</td><td>Slab</td><td>Slab</td></tr>
-    <tr><td>PPF / EPF</td><td>n/a</td><td>Exempt</td><td>Exempt</td></tr>
-    <tr><td>Crypto</td><td>n/a</td><td>30%</td><td>30%</td></tr></table>
-    <p class="hint">Plus 4% cess. Estimate only, not tax advice.</p></div>
+  <div class="ph"><div><h1>Settings</h1><p>Your tax assumptions and the rules this app applies.</p></div></div>
+  <div class="card" style="max-width:440px"><h2 style="font-size:16px;font-weight:600;margin-bottom:14px">Your income-tax slab rate</h2>
+    <label class="fl">Slab rate (%)</label><input id="slab" type="number" value="30" min="0" max="45" onchange="SLAB=+this.value/100;toast('Saved')">
+    <div class="hint">Used for short-term gains on debt, gold, land, FD interest, etc.</div></div>
+  <div class="card flush"><div class="ct"><h2>Tax rules applied</h2><p>Rates after 23 Jul 2024, plus 4% cess. Surcharge not included. An estimate, not tax advice.</p></div>
+    <div class="scroll"><table><thead><tr><th>Asset</th><th>Long term after</th><th>Short term</th><th>Long term</th></tr></thead><tbody>
+    <tr><td><b>Stocks / Equity MF</b></td><td>12 months</td><td>20%</td><td>12.5% <span class="muted">(first ₹1.25L/yr exempt)</span></td></tr>
+    <tr><td><b>Listed bonds, Gold ETF, SGB</b></td><td>12 months</td><td>Slab rate</td><td>12.5%</td></tr>
+    <tr><td><b>Land, physical gold</b></td><td>24 months</td><td>Slab rate</td><td>12.5%</td></tr>
+    <tr><td><b>FD / RD / debt MF / unlisted bonds</b></td><td>n/a</td><td>Slab rate</td><td>Slab rate</td></tr>
+    <tr><td><b>PPF / EPF</b></td><td>n/a</td><td>Exempt</td><td>Exempt</td></tr>
+    <tr><td><b>Crypto</b></td><td>n/a</td><td>30%</td><td>30%</td></tr></tbody></table></div></div>
 </section>
 
-</main>
+    </main>
+  </div>
 </div>
+</div>
+
 <div class="sheet" id="sheet" onclick="toggleMore(false)"><div onclick="event.stopPropagation()">
-  <button onclick="toggleMore(false);go('transactions')">&#8644;&nbsp; Transactions</button>
-  <button onclick="toggleMore(false);go('settings')">&#9881;&nbsp; Settings</button>
-  <button class="so" onclick="toggleMore(false);signOut()">&#10162;&nbsp; Sign out</button></div></div>
+  <button onclick="toggleMore(false);go('transactions')"><span data-i="swap" style="color:var(--primary)"></span>Transactions</button>
+  <button onclick="toggleMore(false);go('settings')"><span data-i="settings" style="color:var(--primary)"></span>Settings</button>
+  <button class="so" onclick="toggleMore(false);signOut()"><span data-i="logout"></span>Sign out</button></div></div>
 <div class="bnav" id="bnav"></div>
 <div class="toast" id="toast"></div>
 
 <script>
-const T={ // id:[label, group, longMonths|null, stcg, ltcg, equity?]  rate: number | 'slab' | 0
- equity:['Stocks / Equity ETF','Equity',12,.2,.125,1],equity_mf:['Equity Mutual Fund','Equity',12,.2,.125,1],
- debt_mf:['Debt Mutual Fund','Debt',null,'slab','slab'],bond_listed:['Bond (listed)','Debt',12,'slab',.125],
- fd:['Fixed Deposit','Fixed income',null,'slab','slab'],ppf:['PPF / EPF','Fixed income',null,0,0],
- land:['Land / Real Estate','Real estate',24,'slab',.125],gold:['Gold (physical)','Gold',24,'slab',.125],
- gold_etf:['Gold ETF','Gold',12,'slab',.125],crypto:['Crypto / VDA','Crypto',null,.3,.3]};
+const IC={
+ trend:'<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',dash:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+ brief:'<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/>',swap:'<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
+ plus:'<circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/>',plus2:'<path d="M5 12h14M12 5v14"/>',settings:'<path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.8l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.8v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+ more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+ pencil:'<path d="M21.2 5.8a2.1 2.1 0 0 0-3-3L3 18l-1 4 4-1z"/><path d="m15 5 4 4"/>',trash:'<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+ back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+ chart:'<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/>',calc:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>',
+ shield:'<path d="M20 13c0 5-3.5 7.5-7.7 8.9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/>',
+ coins:'<circle cx="8" cy="8" r="6"/><path d="M18.1 10.4A6 6 0 1 1 10.4 18"/>',wallet:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',bank:'<path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>'};
+const svg=(n,s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[n]}</svg>`;
+function paintIcons(root=document){root.querySelectorAll('[data-i]').forEach(e=>{if(e.dataset.done!==e.dataset.i){e.innerHTML=svg(e.dataset.i,e.classList.contains('mark')?17:e.classList.contains('ic')?19:18);e.dataset.done=e.dataset.i}})}
+
+const T={equity:['Stocks / Equity ETF','Equity',12,.2,.125,1],equity_mf:['Equity Mutual Fund','Equity',12,.2,.125,1],debt_mf:['Debt Mutual Fund','Debt',null,'slab','slab'],bond_listed:['Bond (listed)','Debt',12,'slab',.125],
+ fd:['Fixed Deposit','Fixed income',null,'slab','slab'],ppf:['PPF / EPF','Fixed income',null,0,0],land:['Land / Real Estate','Real estate',24,'slab',.125],gold:['Gold (physical)','Gold',24,'slab',.125],gold_etf:['Gold ETF','Gold',12,'slab',.125],crypto:['Crypto / VDA','Crypto',null,.3,.3]};
 let SLAB=.3;const CESS=.04,EXEMPT=125000;
-let lots=[{id:1,aid:'a1',date:'2023-06-12',qty:100,price:2400,fees:0},{id:2,aid:'a1',date:'2025-01-20',qty:50,price:2900,fees:0},
- {id:3,aid:'a2',date:'2022-03-01',qty:1,price:4500000,fees:0},{id:4,aid:'a3',date:'2024-05-10',qty:20,price:6300,fees:0}];
-let assets={a1:{name:'RELIANCE',type:'equity'},a2:{name:'Plot 12, Pune',type:'land'},a3:{name:'Gold ETF - Nippon',type:'gold_etf'}};
-let sales=[{id:1,aid:'a1',date:'2025-09-05',qty:30,price:3100,fees:0,tax:true,alloc:[{lot:1,qty:30}]}];
+let lots=[{id:1,aid:'a1',date:'2023-06-12',qty:100,price:2400,fees:0},{id:2,aid:'a1',date:'2025-01-20',qty:50,price:2900,fees:0},{id:3,aid:'a2',date:'2022-03-01',qty:1,price:4500000,fees:0},{id:4,aid:'a3',date:'2024-05-10',qty:20,price:6300,fees:0},{id:5,aid:'a4',date:'2024-02-01',qty:10,price:1500,fees:0}];
+let assets={a1:{name:'RELIANCE',type:'equity'},a2:{name:'Plot 12, Pune',type:'land'},a3:{name:'Nippon Gold ETF',type:'gold_etf'},a4:{name:'TCS',type:'equity'}};
+let sales=[{id:1,aid:'a1',date:'2025-09-05',qty:30,price:3100,fees:0,tax:true,alloc:[{lot:1,qty:30}]},{id:2,aid:'a4',date:'2025-06-10',qty:10,price:3900,fees:0,tax:true,alloc:[{lot:5,qty:10}]}];
 let misc=[{id:1,type:'fd',date:'2025-11-02',amt:12000,adj:false,term:'S'}];
-let sellAid=null,fy='all';
-const $=id=>document.getElementById(id),inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
-const cls=n=>n>0?'gain':n<0?'loss':'muted';
+let curAsset=null,editLot=null,editSale=null,fy='all',nextId=100;
+const $=id=>document.getElementById(id);
+const inr=n=>(n<0?'-':'')+'₹'+Math.abs(Math.round(n)).toLocaleString('en-IN'),cls=n=>n>0?'gain':n<0?'loss':'muted';
 const FY=d=>{const[y,m]=d.split('-').map(Number);const s=m>=4?y:y-1;return s+'-'+String((s+1)%100).padStart(2,'0')};
+const fmtD=d=>new Date(d+'T00:00:00Z').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
 function addM(d,m){const[y,mo,da]=d.split('-').map(Number);const t=y*12+mo-1+m,ny=Math.floor(t/12),nm=t%12+1,ld=new Date(Date.UTC(ny,nm,0)).getUTCDate();return`${ny}-${String(nm).padStart(2,'0')}-${String(Math.min(da,ld)).padStart(2,'0')}`}
 const today=new Date().toISOString().slice(0,10);
-const pages=['dashboard','holdings','transactions','realised','misc','settings'],names={dashboard:'Dashboard',holdings:'Holdings',transactions:'Transactions',realised:'Realised gains',misc:'Misc P/L',settings:'Settings'};
 
-function remaining(l){return l.qty-sales.reduce((s,x)=>s+x.alloc.filter(a=>a.lot===l.id).reduce((q,a)=>q+a.qty,0),0)}
+/* navigation */
+const NAV=[['Overview',[['dashboard','Dashboard','dash']]],['Portfolio',[['holdings','Holdings','brief'],['transactions','Transactions','swap'],['misc','Misc P/L','plus']]],['Reports',[['realised','Realised gains','trend']]],['Account',[['settings','Settings','settings']]]];
+const BTABS=[['dashboard','Home','dash'],['holdings','Holdings','brief'],['realised','Gains','trend'],['misc','Misc','plus']];
+const group=p=>['detail','editbuy','sell'].includes(p)?'holdings':p;
+function renderSide(p){$('side').innerHTML=NAV.map(([t,ls])=>`<div class="sec"><p>${t}</p>${ls.map(([id,l,ic])=>`<button class="sidelink ${group(p)===id?'on':''}" onclick="go('${id}')">${svg(ic)}${l}</button>`).join('')}</div>`).join('')}
+function renderBnav(p){const g=group(p);$('bnav').innerHTML=BTABS.map(([id,l,ic])=>`<button class="${g===id?'on':''}" onclick="go('${id}')"><span>${svg(ic,20)}</span>${l}</button>`).join('')+`<button class="${['transactions','settings'].includes(g)?'on':''}" onclick="toggleMore(true)"><span>${svg('more',20)}</span>More</button>`}
+function toggleMore(v){$('sheet').classList.toggle('show',v)}
+function go(p,arg){if(p==='detail'&&arg)curAsset=arg;document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===p));renderSide(p);renderBnav(p);
+ ({dashboard:rDash,holdings:rHold,detail:rDetail,transactions:rTx,realised:rReal,misc:rMisc})[p]?.();paintIcons();scrollTo(0,0)}
+function signIn(){$('loginView').style.display='none';$('appView').style.display='block';go('dashboard')}
+function signOut(){$('appView').style.display='none';$('loginView').style.display='grid'}
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2000)}
+const kpi=(l,v,h,ic,c='')=>`<div class="card kpi"><div class="top"><span class="l">${l}</span>${ic?`<span class="ic">${svg(ic,16)}</span>`:''}</div><div class="v ${c}">${v}</div>${h?`<div class="h">${h}</div>`:''}</div>`;
+const empty=(ic,t,m)=>`<div class="empty"><span class="ic">${svg(ic,20)}</span><p><b>${t}</b></p>${m?`<p class="m">${m}</p>`:''}</div>`;
+
+/* data helpers */
+const soldQty=(l,ex)=>sales.filter(s=>s.id!==ex).reduce((q,s)=>q+s.alloc.filter(a=>a.lot===l.id).reduce((x,a)=>x+a.qty,0),0);
+const remaining=(l,ex)=>l.qty-soldQty(l,ex);
 function holdings(){const h={};lots.forEach(l=>{const r=remaining(l);if(r<=1e-9)return;h[l.aid]=h[l.aid]||{aid:l.aid,qty:0,cost:0};h[l.aid].qty+=r;h[l.aid].cost+=r*(l.price+l.fees/l.qty)});return Object.values(h)}
-
-// core calc: processes events by date, shared FY equity exemption
-function compute(extra){
- const ev=[...sales.map(s=>({k:'s',...s})),...misc.map(m=>({k:'m',...m}))];if(extra)ev.push(extra);
+function compute(extra,exclude){
+ const ev=[...sales.filter(s=>s.id!==exclude).map(s=>({k:'s',...s})),...misc.map(m=>({k:'m',...m}))];if(extra)ev.push(extra);
  ev.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);const ex={},rows=[];
  for(const e of ev){let st=0,lt=0,proceeds=null,cost=null,applyTax,type,label;
   if(e.k==='s'){const a=assets[e.aid];type=a.type;label=a.name;const r=T[type];cost=0;
-   e.alloc.forEach(al=>{const l=lots.find(x=>x.id===al.lot);const c=al.qty*(l.price+l.fees/l.qty);cost+=c;
-     const g=al.qty*e.price-e.fees*al.qty/e.qty-c;const long=r[2]&&e.date>addM(l.date,r[2]);long?lt+=g:st+=g});
+   e.alloc.forEach(al=>{const l=lots.find(x=>x.id===al.lot);const c=al.qty*(l.price+l.fees/l.qty);cost+=c;const g=al.qty*e.price-e.fees*al.qty/e.qty-c;const long=r[2]&&e.date>addM(l.date,r[2]);long?lt+=g:st+=g});
    proceeds=e.qty*e.price-e.fees;applyTax=e.tax}
   else{type=e.type;label='Misc P/L';const long=e.term==='L'&&T[type][2];long?lt=e.amt:st=e.amt;applyTax=!e.adj}
   let tax=0,eu=0,tg=0;const r=T[type];
   if(applyTax)[['S',st,r[3]],['L',lt,r[4]]].forEach(([t,g,rate])=>{if(g<=0)return;let taxable=g;
     if(t==='L'&&r[5]){const f=FY(e.date),left=ex[f]??EXEMPT,u=Math.min(left,g);ex[f]=left-u;taxable-=u;eu+=u}
     tg+=taxable;tax+=taxable*(rate==='slab'?SLAB:rate)*(1+CESS)});
-  rows.push({id:e.id,k:e.k,date:e.date,fy:FY(e.date),type,label,qty:e.qty??null,proceeds,cost,st,lt,gain:st+lt,tax,net:st+lt-tax,applyTax,adj:e.adj,extra:e===extra,eu,tg,left:r[5]?(ex[FY(e.date)]??EXEMPT):null})}
+  rows.push({id:e.id,k:e.k,aid:e.aid,date:e.date,fy:FY(e.date),type,label,qty:e.qty??null,proceeds,cost,st,lt,gain:st+lt,tax,net:st+lt-tax,applyTax,adj:e.adj,extra:e===extra,eu,tg,left:r[5]?(ex[FY(e.date)]??EXEMPT):null})}
  return rows}
+const saleRows=()=>compute().filter(r=>r.k==='s');
 
-function renderNav(){$('nav').innerHTML=pages.map(p=>`<button data-p="${p}" onclick="go('${p}')">${names[p]}</button>`).join('')}
-const tabs=[['dashboard','&#8962;','Home'],['holdings','&#128188;','Holdings'],['realised','&#128200;','Gains'],['misc','&#43;','Misc']];
-function toggleMore(v){$('sheet').classList.toggle('show',v)}
-function renderBnav(p){$('bnav').innerHTML=tabs.map(([id,ic,l])=>`<button class="${id===p||(p==='sell'&&id==='holdings')?'on':''}" onclick="go('${id}')"><span>${ic}</span>${l}</button>`).join('')+
- `<button class="${['transactions','settings'].includes(p)?'on':''}" onclick="toggleMore(true)"><span>&#8943;</span>More</button>`}
-function go(p){renderBnav(p);document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===p));
- document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p||(p==='sell'&&b.dataset.p==='holdings')));
- ({dashboard:rDash,holdings:rHold,transactions:rTx,realised:rReal,misc:rMisc})[p]?.();scrollTo(0,0)}
-function signIn(){$('loginView').style.display='none';$('appView').style.display='block';go('dashboard')}
-function signOut(){$('appView').style.display='none';$('loginView').style.display='flex'}
-function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',1800)}
-
+/* dashboard */
 function rDash(){const rows=compute(),h=holdings();const g=rows.reduce((s,r)=>s+r.gain,0),t=rows.reduce((s,r)=>s+r.tax,0);
- $('kInv').textContent=inr(h.reduce((s,x)=>s+x.cost,0));$('kGain').textContent=inr(g);$('kTax').textContent=inr(t);$('kNet').textContent=inr(g-t);
+ $('kpis').innerHTML=kpi('Currently invested',inr(h.reduce((s,x)=>s+x.cost,0)),h.length+' holdings','brief')+kpi('Realised gain',inr(g),'Before tax','trend',cls(g))+kpi('Estimated tax',inr(t),'Incl. 4% cess','bank')+kpi('Post-tax gain',inr(g-t),'What you keep','wallet',cls(g-t));
  const by={};rows.forEach(r=>by[r.fy]=(by[r.fy]||0)+r.net);const max=Math.max(...Object.values(by).map(Math.abs),1);
- $('fyBars').innerHTML=Object.keys(by).sort().map(k=>`<div><span style="margin-bottom:4px">${inr(by[k])}</span><i style="height:${Math.abs(by[k])/max*150}px;background:${by[k]>=0?'var(--gain)':'var(--loss)'}"></i><span style="margin-top:4px">FY ${k}</span></div>`).join('')||'<p class="muted">No realised gains yet.</p>';
- const al={};h.forEach(x=>{const gname=T[assets[x.aid].type][1];al[gname]=(al[gname]||0)+x.cost});const am=Math.max(...Object.values(al),1);
- $('allocBars').innerHTML=Object.entries(al).map(([k,v])=>`<div class="hb"><span>${k}</span><i style="width:${v/am*100}%"></i><span class="r">${inr(v)}</span></div>`).join('')||'<p class="muted">No holdings yet.</p>'}
+ $('fyBars').innerHTML=Object.keys(by).sort().map(k=>`<div><span style="margin-bottom:4px" class="num">${inr(by[k])}</span><i style="height:${Math.max(4,Math.abs(by[k])/max*150)}px;background:${by[k]>=0?'var(--gain)':'var(--loss)'}"></i><span style="margin:6px 0">FY ${k}</span></div>`).join('')||'<p class="muted">No realised gains yet.</p>';
+ const al={};h.forEach(x=>{const n=T[assets[x.aid].type][1];al[n]=(al[n]||0)+x.cost});const am=Math.max(...Object.values(al),1);
+ $('allocBars').innerHTML=Object.entries(al).map(([k,v])=>`<div class="hb"><span>${k}</span><i style="width:${v/am*100}%"></i><span class="r num">${inr(v)}</span></div>`).join('')||'<p class="muted">No holdings yet.</p>'}
 
-function rHold(){$('holdTbl').innerHTML='<tr><th>Name</th><th>Type</th><th class="r">Quantity</th><th class="r">Avg cost</th><th class="r">Invested</th><th></th></tr>'+
- holdings().map(h=>`<tr><td><b>${assets[h.aid].name}</b></td><td class="muted">${T[assets[h.aid].type][0]}</td><td class="r">${h.qty}</td><td class="r">${inr(h.cost/h.qty)}</td><td class="r">${inr(h.cost)}</td><td class="r"><button class="btn acc sm" onclick="openSell('${h.aid}')">Sell</button></td></tr>`).join('')}
+/* holdings */
+function rHold(){const h=holdings();$('holdSub').textContent=h.length?`${h.length} holdings · ${inr(h.reduce((s,x)=>s+x.cost,0))} invested`:'Record what you own.';
+ $('holdTbl').innerHTML=h.length?'<thead><tr><th>Name</th><th>Type</th><th class="r">Quantity</th><th class="r">Avg cost</th><th class="r">Invested</th><th></th></tr></thead><tbody>'+
+ h.map(x=>`<tr><td><button class="lnk" onclick="go('detail','${x.aid}')">${assets[x.aid].name}</button></td><td class="muted">${T[assets[x.aid].type][0]}</td><td class="r">${+x.qty.toFixed(6)}</td><td class="r">${inr(x.cost/x.qty)}</td><td class="r"><b>${inr(x.cost)}</b></td><td><div class="actions"><button class="btn ghost sm" onclick="go('detail','${x.aid}')">Details</button><button class="btn soft sm" onclick="openSell('${x.aid}')">Sell</button></div></td></tr>`).join('')+'</tbody>':empty('brief','No holdings yet','Add your first investment using the form above.');
+ const held=new Set(h.map(x=>x.aid)),closed=Object.keys(assets).filter(a=>!held.has(a)&&lots.some(l=>l.aid===a));
+ $('closedCard').style.display=closed.length?'block':'none';
+ $('closedList').innerHTML=closed.map(a=>`<button class="lnk" style="display:flex;justify-content:space-between;width:100%;padding:12px 20px;border-top:1px solid var(--line)" onclick="go('detail','${a}')"><span>${assets[a].name}</span><span class="muted" style="font-weight:400">${T[assets[a].type][0]}</span></button>`).join('')}
 function typeHint(){const r=T[$('bType').value];$('bHint').textContent=r[2]?`Long term after ${r[2]} months.`:'No holding-period concept; taxed at a single rate.'}
 function addBuy(e){e.preventDefault();const type=$('bType').value,name=$('bName').value.trim();
  let aid=Object.keys(assets).find(k=>assets[k].type===type&&assets[k].name.toLowerCase()===name.toLowerCase());
- if(!aid){aid='a'+(Object.keys(assets).length+1);assets[aid]={name,type}}
- lots.push({id:lots.length+1,aid,date:$('bDate').value,qty:+$('bQty').value,price:+$('bPrice').value,fees:+$('bFees').value||0});
+ if(!aid){aid='a'+(++nextId);assets[aid]={name,type}}
+ lots.push({id:++nextId,aid,date:$('bDate').value,qty:+$('bQty').value,price:+$('bPrice').value,fees:+$('bFees').value||0});
  e.target.reset();$('bDate').value=today;rHold();toast('Investment saved')}
 
-function openSell(aid){sellAid=aid;const a=assets[aid],h=holdings().find(x=>x.aid===aid);
- $('sellTitle').textContent='Sell '+a.name;$('sellSub').textContent=`${T[a.type][0]} · you hold ${h.qty} units.`;
- $('sAvail').textContent='Available: '+h.qty;$('sDate').value=today;$('sQty').value='';$('sPrice').value='';$('prev').className='preview';$('sellErr').textContent='';go('sell')}
-function planSale(){const qty=+$('sQty').value,price=+$('sPrice').value,date=$('sDate').value;
- if(!(qty>0)||!(price>=0)||!$('sPrice').value){$('sellErr').textContent='Enter quantity and price.';return null}
+/* holding detail */
+function rDetail(){const a=assets[curAsset],h=holdings().find(x=>x.aid===curAsset),rows=saleRows();
+ $('dName').textContent=a.name;$('dType').textContent=T[a.type][0];$('dSell').style.display=h?'inline-flex':'none';
+ const mine=sales.filter(s=>s.aid===curAsset),mr=mine.map(s=>rows.find(r=>r.id===s.id)),gain=mr.reduce((s,r)=>s+r.gain,0),tax=mr.reduce((s,r)=>s+r.tax,0);
+ $('dKpis').innerHTML=kpi('Quantity held',h?+h.qty.toFixed(6):0)+kpi('Average cost',inr(h?h.cost/h.qty:0))+kpi('Invested',inr(h?h.cost:0))+kpi('Realised gain',inr(gain),'Estimated tax '+inr(tax),'',cls(gain));
+ $('eaName').value=a.name;$('eaType').innerHTML=Object.entries(T).map(([k,v])=>`<option value="${k}" ${k===a.type?'selected':''}>${v[0]}</option>`).join('');
+ const ml=lots.filter(l=>l.aid===curAsset).sort((x,y)=>x.date<y.date?1:-1);
+ $('dLots').innerHTML=ml.length?'<thead><tr><th>Date</th><th class="r">Quantity</th><th class="r">Price</th><th class="r">Fees</th><th class="r">Sold</th><th class="r">Remaining</th><th></th></tr></thead><tbody>'+ml.map(l=>{const s=soldQty(l);
+  return`<tr><td>${fmtD(l.date)}</td><td class="r">${l.qty}</td><td class="r">${inr(l.price)}</td><td class="r">${inr(l.fees)}</td><td class="r">${s}</td><td class="r"><b>${l.qty-s}</b></td><td><div class="actions"><button class="btn ghost sm" onclick="openEditLot(${l.id})">${svg('pencil',14)}Edit</button>${s>0?'<span class="muted" style="align-self:center;font-size:12px">Has sales</span>':`<button class="btn del sm" onclick="delLot(${l.id})">${svg('trash',14)}Delete</button>`}</div></td></tr>`}).join('')+'</tbody>':empty('swap','No purchases');
+ $('dSales').innerHTML=mine.length?'<thead><tr><th>Date</th><th class="r">Quantity</th><th class="r">Price</th><th class="r">Fees</th><th>Tax</th><th class="r">Gain</th><th class="r">Tax</th><th class="r">Net</th><th></th></tr></thead><tbody>'+mine.sort((x,y)=>x.date<y.date?1:-1).map(s=>{const r=rows.find(x=>x.id===s.id);
+  return`<tr><td>${fmtD(s.date)}</td><td class="r">${s.qty}</td><td class="r">${inr(s.price)}</td><td class="r">${inr(s.fees)}</td><td><span class="badge ${s.tax?'b-buy':'b-off'}">${s.tax?'Applied':'Not applied'}</span></td><td class="r ${cls(r.gain)}">${inr(r.gain)}</td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}"><b>${inr(r.net)}</b></td><td><div class="actions"><button class="btn ghost sm" onclick="openEditSale(${s.id})">${svg('pencil',14)}Edit</button><button class="btn del sm" onclick="delSale(${s.id})">${svg('trash',14)}Delete</button></div></td></tr>`}).join('')+'</tbody>':empty('swap','No sales yet','Sales you record for this holding appear here.')}
+function saveAsset(e){e.preventDefault();assets[curAsset]={name:$('eaName').value.trim(),type:$('eaType').value};rDetail();toast('Saved')}
+function afterDelete(){const still=lots.some(l=>l.aid===curAsset)||sales.some(s=>s.aid===curAsset);if(!still){delete assets[curAsset];go('holdings')}else go('detail',curAsset)}
+function delLot(id){if(!confirm('Delete this purchase? This cannot be undone.'))return;lots=lots.filter(l=>l.id!==id);toast('Purchase deleted');afterDelete()}
+function delSale(id){if(!confirm('Delete this sale? The units return to your holding.'))return;sales=sales.filter(s=>s.id!==id);toast('Sale deleted');go('detail',curAsset)}
+
+/* edit purchase */
+function openEditLot(id){editLot=id;const l=lots.find(x=>x.id===id),s=soldQty(l);curAsset=l.aid;
+ $('ebBack').textContent=assets[l.aid].name;$('ebSub').textContent=s>0?`${s} units from this purchase are already sold.`:'Update the details of this purchase.';
+ $('ebDate').value=l.date;$('ebQty').value=l.qty;$('ebPrice').value=l.price;$('ebFees').value=l.fees;$('ebQty').min=s||0;$('ebQtyHint').textContent=s>0?`At least ${s} (already sold)`:'';
+ $('ebDel').innerHTML=s>0?'':`<button class="btn del" onclick="delLot(${id})">${svg('trash',16)}Delete</button>`;$('ebErr').className='err';go('editbuy')}
+function saveLot(e){e.preventDefault();const l=lots.find(x=>x.id===editLot),s=soldQty(l),q=+$('ebQty').value,d=$('ebDate').value;
+ const first=sales.filter(x=>x.alloc.some(a=>a.lot===l.id)).map(x=>x.date).sort()[0];
+ const err=q<s?`${s} units from this purchase are already sold, so quantity can't go below that.`:first&&d>first?`Purchase date can't be after the first sale from it (${first}).`:'';
+ if(err){$('ebErr').textContent=err;$('ebErr').className='err show';return}
+ Object.assign(l,{date:d,qty:q,price:+$('ebPrice').value,fees:+$('ebFees').value||0});toast('Purchase updated');go('detail',l.aid)}
+
+/* sell / edit sale */
+function openSell(aid){curAsset=aid;editSale=null;const a=assets[aid],h=holdings().find(x=>x.aid===aid);
+ $('sBack').textContent=a.name;$('sellTitle').textContent='Sell '+a.name;$('sellSub').textContent=`${T[a.type][0]} · you hold ${+h.qty.toFixed(6)} units`;
+ $('sNote').textContent='Oldest purchases are sold first (FIFO). Tax shown is an estimate, not advice.';$('sDel').innerHTML='';$('sSave').textContent='Confirm sale';
+ $('sAvail').textContent='Available: '+h.qty;$('sDate').value=today;$('sQty').value='';$('sPrice').value='';$('sFees').value=0;document.querySelector('[name=tax][value=yes]').checked=true;
+ $('prev').className='preview';$('sellErr').className='err';go('sell')}
+function openEditSale(id){const s=sales.find(x=>x.id===id);curAsset=s.aid;editSale=id;const a=assets[s.aid];
+ const avail=lots.filter(l=>l.aid===s.aid).reduce((q,l)=>q+remaining(l,id),0);
+ $('sBack').textContent=a.name;$('sellTitle').textContent='Edit sale';$('sellSub').textContent='Changing a sale re-matches it against your purchases (oldest first) and recalculates tax.';
+ $('sNote').textContent=T[a.type][0]+' · '+a.name;$('sDel').innerHTML=`<button class="btn del" onclick="delSale(${id})">${svg('trash',16)}Delete</button>`;$('sSave').textContent='Save changes';
+ $('sAvail').textContent='Available: '+avail;$('sDate').value=s.date;$('sQty').value=s.qty;$('sPrice').value=s.price;$('sFees').value=s.fees;document.querySelector(`[name=tax][value=${s.tax?'yes':'no'}]`).checked=true;
+ $('prev').className='preview';$('sellErr').className='err';go('sell')}
+function planSale(){const qty=+$('sQty').value,price=+$('sPrice').value,date=$('sDate').value,E=$('sellErr');
+ const fail=m=>{E.textContent=m;E.className='err show';return null};
+ if(!(qty>0)||!$('sPrice').value)return fail('Enter quantity and price.');
  let need=qty;const alloc=[];
- lots.filter(l=>l.aid===sellAid&&l.date<=date&&remaining(l)>1e-9).sort((a,b)=>a.date<b.date?-1:1).forEach(l=>{if(need<=0)return;const t=Math.min(need,remaining(l));alloc.push({lot:l.id,qty:t});need-=t});
- if(need>1e-9){$('sellErr').textContent=`Only ${qty-need} units available to sell on or before ${date}.`;return null}
- $('sellErr').textContent='';
- return{k:'s',id:'new',aid:sellAid,date,qty,price,fees:+$('sFees').value||0,tax:document.querySelector('[name=tax]:checked').value==='yes',alloc}}
-function previewSale(){const s=planSale();if(!s)return;const r=compute(s).find(x=>x.extra);
- const p=$('prev');p.className='preview show';
- const cell=(l,v,c='')=>`<div><span class="lab">${l}</span><b class="${c}" style="font-size:16px">${v}</b></div>`;
- p.innerHTML=cell('Proceeds',inr(r.proceeds))+cell('Cost (FIFO)',inr(r.cost))+cell('Gain / loss',inr(r.gain),cls(r.gain))+cell(r.applyTax?'Estimated tax':'Tax (not applied)',inr(r.tax))+cell('Net gain',inr(r.net),cls(r.net))+
- `<div style="grid-column:1/-1" class="hint">${notes(r,s)}</div>`}
+ lots.filter(l=>l.aid===curAsset&&l.date<=date&&remaining(l,editSale)>1e-9).sort((a,b)=>a.date<b.date?-1:1).forEach(l=>{if(need<=0)return;const t=Math.min(need,remaining(l,editSale));alloc.push({lot:l.id,qty:t});need-=t});
+ if(need>1e-9)return fail(`Only ${+(qty-need).toFixed(6)} units available to sell on or before ${date}.`);
+ E.className='err';return{k:'s',id:editSale||'new',aid:curAsset,date,qty,price,fees:+$('sFees').value||0,tax:document.querySelector('[name=tax]:checked').value==='yes',alloc}}
+function previewSale(){const s=planSale();if(!s)return;const r=compute({...s,id:'new'},editSale).find(x=>x.extra),p=$('prev');p.className='preview show';
+ const st=(l,v,c='')=>`<div><small>${l}</small><b class="${c}">${v}</b></div>`;
+ p.innerHTML=`<div class="stats">${st('Proceeds',inr(r.proceeds))+st('Cost (FIFO)',inr(r.cost))+st('Gain / loss',inr(r.gain),cls(r.gain))+st(r.applyTax?'Estimated tax':'Tax (not applied)',inr(r.tax))+st('Net gain',inr(r.net),cls(r.net))}</div><ul>${notes(r,s).map(x=>`<li>${x}</li>`).join('')}</ul>`}
 function notes(r,s){const n=[`Short term ${inr(r.st)} · Long term ${inr(r.lt)}`];
- if(!r.applyTax){const w=compute({...s,tax:true}).find(x=>x.extra);n.push(`<b style="color:var(--accent-strong)">Tax effect is off. With tax included it would be ${inr(w.tax)}.</b>`)}
+ if(!r.applyTax){const w=compute({...s,tax:true,id:'new'},editSale).find(x=>x.extra);n.push(`<b style="color:var(--accent-strong)">Tax effect is off. With tax included it would be ${inr(w.tax)}.</b>`)}
  else if(r.gain<=0)n.push('No tax on a loss.');
  else{if(r.eu>0)n.push(`${inr(r.eu)} is covered by the ₹1.25L yearly equity LTCG exemption; taxable gain ${inr(r.tg)}.`);
   if(r.tax===0&&r.eu>0&&r.tg===0)n.push(`Tax is ₹0 because the whole gain is inside the exemption (${inr(r.left)} still left this year).`);
   else if(r.tax===0)n.push('No tax: this asset type is tax-free.');
   else if(r.eu===0)n.push(`Taxed on ${inr(r.tg)} (incl. 4% cess).`)}
- return n.join('<br>')}
-function confirmSale(){const s=planSale();if(!s)return;s.id=sales.length+2;sales.push(s);toast('Sale recorded');fy='all';go('realised')}
+ return n}
+function confirmSale(){const s=planSale();if(!s)return;
+ if(editSale){const i=sales.findIndex(x=>x.id===editSale);sales[i]={...s,id:editSale};toast('Sale updated');go('detail',curAsset)}
+ else{s.id=++nextId;sales.push(s);toast('Sale recorded');fy='all';go('realised')}}
 
-function rTx(){const t=[...lots.map(l=>({k:'Buy',date:l.date,a:assets[l.aid],qty:l.qty,price:l.price,fees:l.fees})),...sales.map(s=>({k:'Sell',date:s.date,a:assets[s.aid],qty:s.qty,price:s.price,fees:s.fees}))].sort((a,b)=>a.date<b.date?1:-1);
- $('txTbl').innerHTML='<tr><th>Date</th><th>Action</th><th>Asset</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Fees</th></tr>'+
- t.map(x=>`<tr><td>${x.date}</td><td><span class="pill ${x.k==='Buy'?'buy':'sell'}">${x.k}</span></td><td>${x.a.name} <span class="muted">${T[x.a.type][0]}</span></td><td class="r">${x.qty}</td><td class="r">${inr(x.price)}</td><td class="r">${inr(x.fees)}</td></tr>`).join('')}
+/* transactions */
+function rTx(){const t=[...lots.map(l=>({k:'Buy',id:l.id,aid:l.aid,date:l.date,qty:l.qty,price:l.price,fees:l.fees})),...sales.map(s=>({k:'Sell',id:s.id,aid:s.aid,date:s.date,qty:s.qty,price:s.price,fees:s.fees}))].sort((a,b)=>a.date<b.date?1:-1);
+ $('txTbl').innerHTML='<thead><tr><th>Date</th><th>Action</th><th>Asset</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Fees</th><th></th></tr></thead><tbody>'+
+ t.map(x=>`<tr><td>${fmtD(x.date)}</td><td><span class="badge ${x.k==='Buy'?'b-buy':'b-sell'}">${x.k}</span></td><td><button class="lnk" onclick="go('detail','${x.aid}')">${assets[x.aid].name}</button> <span class="muted" style="font-size:12px;margin-left:8px">${T[assets[x.aid].type][0]}</span></td><td class="r">${x.qty}</td><td class="r">${inr(x.price)}</td><td class="r">${inr(x.fees)}</td><td><div class="actions"><button class="btn ghost sm" onclick="${x.k==='Buy'?'openEditLot':'openEditSale'}(${x.id})">${svg('pencil',14)}Edit</button></div></td></tr>`).join('')+'</tbody>'}
 
+/* realised */
 function rReal(){const all=compute().sort((a,b)=>a.date<b.date?1:-1),years=[...new Set(all.map(r=>r.fy))].sort().reverse();
- $('fyChips').innerHTML=['all',...years].map(y=>`<button class="btn sm ${y===fy?'':'ghost'}" onclick="fy='${y}';rReal()" style="border-radius:99px">${y==='all'?'All years':'FY '+y}</button>`).join('');
+ $('fyChips').innerHTML=['all',...years].map(y=>`<button class="chip ${y===fy?'on':''}" onclick="fy='${y}';rReal()">${y==='all'?'All years':'FY '+y}</button>`).join('');
  const rows=all.filter(r=>fy==='all'||r.fy===fy),g=rows.reduce((s,r)=>s+r.gain,0),t=rows.reduce((s,r)=>s+r.tax,0);
- $('rGain').textContent=inr(g);$('rGain').className='big '+cls(g);$('rTax').textContent=inr(t);$('rNet').textContent=inr(g-t);$('rNet').className='big '+cls(g-t);
- $('realTbl').innerHTML='<tr><th>Date</th><th>Asset</th><th class="r">Qty</th><th class="r">Proceeds</th><th class="r">Cost</th><th class="r">Short term</th><th class="r">Long term</th><th class="r">Tax</th><th class="r">Net</th></tr>'+
- rows.map(r=>`<tr><td>${r.date}</td><td>${r.label}<div class="hint">${T[r.type][0]}${r.applyTax?'':' · no tax applied'}${r.adj?' · tax already adjusted':''}</div></td><td class="r">${r.qty??'–'}</td><td class="r">${r.proceeds==null?'–':inr(r.proceeds)}</td><td class="r">${r.cost==null?'–':inr(r.cost)}</td><td class="r ${cls(r.st)}">${inr(r.st)}</td><td class="r ${cls(r.lt)}">${inr(r.lt)}</td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}"><b>${inr(r.net)}</b></td></tr>`).join('')}
+ $('rKpis').innerHTML=kpi('Gross gain',inr(g),'',null,cls(g))+kpi('Estimated tax',inr(t),'Incl. 4% cess')+kpi('Post-tax gain',inr(g-t),'',null,cls(g-t));
+ const gr={};rows.forEach(r=>{const n=T[r.type][1];gr[n]=gr[n]||{g:0,t:0};gr[n].g+=r.gain;gr[n].t+=r.tax});
+ $('rGroups').innerHTML=Object.entries(gr).map(([k,v])=>`<div><div class="muted" style="font-size:13px;font-weight:500">${k}</div><div class="num ${cls(v.g)}" style="font-size:18px;font-weight:600;margin-top:4px">${inr(v.g)}</div><div class="muted num" style="font-size:12px;margin-top:2px">Tax ${inr(v.t)} · Net ${inr(v.g-v.t)}</div></div>`).join('')||'<span class="muted">Nothing to show.</span>';
+ $('realTbl').innerHTML=rows.length?'<thead><tr><th>Date</th><th>Asset</th><th class="r">Qty</th><th class="r">Proceeds</th><th class="r">Cost</th><th class="r">Short term</th><th class="r">Long term</th><th class="r">Tax</th><th class="r">Net</th></tr></thead><tbody>'+
+ rows.map(r=>`<tr><td>${fmtD(r.date)}</td><td><b style="font-weight:500">${r.label}</b><div class="muted" style="font-size:12px">${T[r.type][0]}${r.applyTax?'':' · no tax applied'}${r.adj?' · tax already adjusted':''}</div></td><td class="r">${r.qty??'–'}</td><td class="r">${r.proceeds==null?'–':inr(r.proceeds)}</td><td class="r">${r.cost==null?'–':inr(r.cost)}</td><td class="r ${cls(r.st)}">${inr(r.st)}</td><td class="r ${cls(r.lt)}">${inr(r.lt)}</td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}"><b>${inr(r.net)}</b></td></tr>`).join('')+'</tbody>':empty('chart','No realised gains yet','Sell a holding or add a misc profit/loss entry to see it here.')}
 
+/* misc */
 function rMisc(){const rows=compute().filter(r=>r.k==='m');
- $('miscTbl').innerHTML='<tr><th>Date</th><th>Type</th><th class="r">Amount</th><th>Tax adjusted</th><th class="r">Tax</th><th class="r">Net</th></tr>'+
- misc.map(m=>{const r=rows.find(x=>x.id===m.id);return`<tr><td>${m.date}</td><td>${T[m.type][0]}</td><td class="r ${cls(m.amt)}">${inr(m.amt)}</td><td>${m.adj?'Yes':'No'}</td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}">${inr(r.net)}</td></tr>`}).join('')}
-function addMisc(e){e.preventDefault();misc.push({id:misc.length+1,type:$('mType').value,date:$('mDate').value,amt:+$('mAmt').value*+$('mKind').value,adj:document.querySelector('[name=madj]:checked').value==='yes',term:$('mTerm').value});
+ $('miscTbl').innerHTML=misc.length?'<thead><tr><th>Date</th><th>Type</th><th class="r">Amount</th><th>Tax adjusted</th><th class="r">Tax</th><th class="r">Net</th><th></th></tr></thead><tbody>'+
+ misc.map(m=>{const r=rows.find(x=>x.id===m.id);return`<tr><td>${fmtD(m.date)}</td><td>${T[m.type][0]}</td><td class="r ${cls(m.amt)}"><b>${inr(m.amt)}</b></td><td><span class="badge ${m.adj?'b-buy':'b-off'}">${m.adj?'Yes':'No'}</span></td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}">${inr(r.net)}</td><td class="r"><button class="lnk" style="color:var(--loss)" onclick="if(confirm('Delete this entry?')){misc=misc.filter(x=>x.id!==${m.id});rMisc()}">Delete</button></td></tr>`}).join('')+'</tbody>':empty('wallet','No entries yet','Entries you add above appear here.')}
+function addMisc(e){e.preventDefault();misc.push({id:++nextId,type:$('mType').value,date:$('mDate').value,amt:+$('mAmt').value*+$('mKind').value,adj:document.querySelector('[name=madj]:checked').value==='yes',term:$('mTerm').value});
  e.target.reset();$('mDate').value=today;rMisc();toast('Entry saved')}
 
 const opts=Object.entries(T).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('');
-$('bType').innerHTML=opts;$('mType').innerHTML=opts;$('bDate').value=today;$('mDate').value=today;typeHint();renderNav();
+$('bType').innerHTML=opts;$('mType').innerHTML=opts;$('bDate').value=today;$('mDate').value=today;typeHint();paintIcons();
 </script>
 </body>
 </html>

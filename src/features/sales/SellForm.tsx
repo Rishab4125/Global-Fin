@@ -5,20 +5,34 @@ import { Field, FormError, YesNo } from "@/components/fields";
 import { useServerForm } from "@/components/useServerForm";
 import type { ActionState } from "@/features/portfolio/actionState";
 import { formatINR, gainClass } from "@/lib/format";
-import { previewSaleAction, recordSaleAction } from "./actions";
+import { previewSaleAction, recordSaleAction, updateSaleAction } from "./actions";
+
+export interface SaleInitial {
+  sellDate: string;
+  qty: number;
+  price: number;
+  fees: number;
+  applyTax: boolean;
+  exemptRedemption: boolean;
+}
 
 export function SellForm({
   assetId,
   isSgb,
   maxQty,
   today,
+  saleId,
+  initial,
 }: {
   assetId: string;
   isSgb: boolean;
   maxQty: number;
   today: string;
+  saleId?: string;
+  initial?: SaleInitial;
 }) {
-  const { formRef, state, pending, onSubmit } = useServerForm(recordSaleAction);
+  const editing = !!saleId;
+  const { formRef, state, pending, onSubmit } = useServerForm(editing ? updateSaleAction : recordSaleAction);
   const [preview, setPreview] = useState<ActionState>({});
   const [previewing, startPreview] = useTransition();
   const error = state.error ?? preview.error;
@@ -35,28 +49,43 @@ export function SellForm({
       ref={formRef}
       onSubmit={onSubmit}
       onChange={() => preview.preview && setPreview({})}
-      className="card space-y-4"
+      className="card space-y-5"
     >
       <input type="hidden" name="assetId" value={assetId} />
+      {saleId && <input type="hidden" name="saleId" value={saleId} />}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Sale date">
-          <input name="sellDate" type="date" required defaultValue={today} max={today} className="input" />
+          <input name="sellDate" type="date" required defaultValue={initial?.sellDate ?? today} max={today} className="input" />
         </Field>
         <Field label="Quantity" hint={`Available: ${maxQty}`}>
-          <input name="qty" type="number" step="any" min="0" max={maxQty} required className="input" />
+          <input
+            name="qty"
+            type="number"
+            step="any"
+            min="0"
+            max={maxQty}
+            required
+            defaultValue={initial?.qty}
+            className="input"
+          />
         </Field>
         <Field label="Sale price per unit (₹)">
-          <input name="price" type="number" step="any" min="0" required className="input" />
+          <input name="price" type="number" step="any" min="0" required defaultValue={initial?.price} className="input" />
         </Field>
         <Field label="Brokerage / fees (₹)">
-          <input name="fees" type="number" step="any" min="0" defaultValue={0} className="input" />
+          <input name="fees" type="number" step="any" min="0" defaultValue={initial?.fees ?? 0} className="input" />
         </Field>
         <Field label="Include tax effect?">
-          <YesNo name="applyTax" defaultValue="yes" />
+          <YesNo name="applyTax" defaultValue={initial && !initial.applyTax ? "no" : "yes"} />
         </Field>
         {isSgb && (
-          <label className="flex items-center gap-2 self-end pb-2 text-sm">
-            <input type="checkbox" name="exemptRedemption" className="accent-[var(--primary)]" />
+          <label className="flex items-center gap-2 self-end pb-2.5 text-sm">
+            <input
+              type="checkbox"
+              name="exemptRedemption"
+              defaultChecked={initial?.exemptRedemption}
+              className="size-4 accent-[var(--primary)]"
+            />
             Redeemed with RBI at maturity (tax-free)
           </label>
         )}
@@ -65,15 +94,15 @@ export function SellForm({
       <FormError message={error} />
 
       {p && (
-        <div className="space-y-3 rounded-xl bg-primary-soft p-4 text-sm">
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="space-y-3 rounded-xl border border-primary/20 bg-primary-soft p-4 text-sm">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             <Stat label="Proceeds" value={formatINR(p.proceeds ?? 0)} />
             <Stat label="Cost (FIFO)" value={formatINR(p.cost ?? 0)} />
             <Stat label="Gain / loss" value={formatINR(p.gain)} cls={gainClass(p.gain)} />
             <Stat label={p.taxApplied ? "Estimated tax" : "Tax (not applied)"} value={formatINR(p.tax)} />
             <Stat label="Net gain" value={formatINR(p.netGain)} cls={gainClass(p.netGain)} />
           </div>
-          <ul className="space-y-1 border-t border-line pt-3 text-xs text-muted">
+          <ul className="space-y-1 border-t border-primary/15 pt-3 text-xs text-muted">
             <li>
               Short term {formatINR(p.stcg)} · Long term {formatINR(p.ltcg)}
             </li>
@@ -107,7 +136,7 @@ export function SellForm({
           {previewing ? "Calculating…" : "Preview tax"}
         </button>
         <button className="btn-primary" disabled={pending}>
-          {pending ? "Saving…" : "Confirm sale"}
+          {pending ? "Saving…" : editing ? "Save changes" : "Confirm sale"}
         </button>
       </div>
     </form>
@@ -117,8 +146,8 @@ export function SellForm({
 function Stat({ label, value, cls = "" }: { label: string; value: string; cls?: string }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
-      <div className={`text-base font-semibold ${cls}`}>{value}</div>
+      <div className="text-xs text-muted">{label}</div>
+      <div className={`num text-base font-semibold ${cls}`}>{value}</div>
     </div>
   );
 }
