@@ -1,6 +1,7 @@
 import { Calculator, LineChart, ShieldCheck, TrendingUp } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const points = [
   { icon: LineChart, title: "Every asset in one place", text: "Stocks, funds, bonds, FDs, land, gold and crypto." },
@@ -45,7 +46,10 @@ export default async function LoginPage() {
         <p className="text-xs text-white/40">Estimates only. Not tax advice.</p>
       </div>
 
-      <div className="flex items-center justify-center bg-bg px-6 py-12">
+      <div className="relative flex items-center justify-center bg-bg px-6 py-12">
+        <div className="absolute right-4 top-4">
+          <ThemeToggle />
+        </div>
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             <span className="grid size-9 place-items-center rounded-lg bg-primary text-(--on-primary)">

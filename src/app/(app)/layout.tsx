@@ -1,6 +1,7 @@
 import { LogOut, TrendingUp } from "lucide-react";
 import { signOut } from "@/auth";
 import { BottomNav, SideNav } from "@/components/Nav";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { requireUser } from "@/features/auth/session";
 
 async function signOutAction() {
@@ -33,26 +34,32 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
           <SideNav />
         </div>
-        <form action={signOutAction} className="flex items-center gap-3 rounded-xl bg-white/6 p-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-600 text-sm font-semibold">
-            {initial}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{user.name || "Account"}</p>
-            <p className="truncate text-xs text-white/50">{user.email}</p>
-          </div>
-          <button aria-label="Sign out" title="Sign out" className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white">
-            <LogOut size={17} />
-          </button>
-        </form>
+        <div className="space-y-3">
+          <ThemeToggle variant="segmented" />
+          <form action={signOutAction} className="flex items-center gap-3 rounded-xl bg-white/6 p-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-600 text-sm font-semibold">
+              {initial}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{user.name || "Account"}</p>
+              <p className="truncate text-xs text-white/50">{user.email}</p>
+            </div>
+            <button aria-label="Sign out" title="Sign out" className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white">
+              <LogOut size={17} />
+            </button>
+          </form>
+        </div>
       </aside>
 
       <div className="min-w-0">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface/90 px-4 py-3 backdrop-blur lg:hidden">
           <Logo />
-          <span className="grid size-8 place-items-center rounded-full bg-primary-soft text-sm font-semibold text-primary-strong">
-            {initial}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <ThemeToggle />
+            <span className="grid size-8 place-items-center rounded-full bg-primary-soft text-sm font-semibold text-primary-strong">
+              {initial}
+            </span>
+          </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:py-9 lg:pb-12">
           {children}
