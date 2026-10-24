@@ -14,6 +14,7 @@ export interface SaleInitial {
   fees: number;
   applyTax: boolean;
   exemptRedemption: boolean;
+  isBuyback: boolean;
 }
 
 export function SellForm({
@@ -78,6 +79,22 @@ export function SellForm({
         <Field label="Include tax effect?">
           <YesNo name="applyTax" defaultValue={initial && !initial.applyTax ? "no" : "yes"} />
         </Field>
+        <label className="flex items-start gap-2 text-sm sm:col-span-2 lg:col-span-3">
+          <input
+            type="checkbox"
+            name="isBuyback"
+            defaultChecked={initial?.isBuyback}
+            className="mt-0.5 size-4 accent-[var(--primary)]"
+          />
+          <span>
+            This was a share buyback
+            <span className="mt-0.5 block text-xs text-muted">
+              Company buyback proceeds are taxed as dividend at your slab rate (sales from 1 Oct 2024; earlier
+              buybacks are tax-free for you). The cost of these shares counts as a capital loss that reduces your
+              other gains in the same financial year.
+            </span>
+          </span>
+        </label>
         {isSgb && (
           <label className="flex items-center gap-2 self-end pb-2.5 text-sm">
             <input
@@ -126,7 +143,22 @@ export function SellForm({
                 {p.exemptionLeft !== null && ` (${formatINR(p.exemptionLeft)} still left this year)`}.
               </li>
             )}
-            {p.gain <= 0 && <li>No tax on a loss.</li>}
+            {p.buyback && p.taxApplied && p.tax > 0 && (
+              <li>Buyback proceeds are taxed as dividend at your slab rate: {formatINR(p.tax)} including cess.</li>
+            )}
+            {p.lossUsed > 0 && (
+              <li className="font-medium text-gain">
+                This loss is set off against gains this financial year
+                {p.taxSaved > 0 ? `, saving about ${formatINR(p.taxSaved)} of tax` : ""}.
+              </li>
+            )}
+            {p.offsetByLosses > 0 && (
+              <li>{formatINR(p.offsetByLosses)} of this gain is cancelled out by losses this financial year.</li>
+            )}
+            {p.gain <= 0 && p.lossUsed === 0 && p.taxApplied && (
+              <li>No tax on a loss. It reduces gains in the same financial year, but there are none to reduce yet.</li>
+            )}
+            {p.gain <= 0 && !p.taxApplied && <li>Tax effect is off, so this loss won&apos;t reduce other gains.</li>}
           </ul>
         </div>
       )}

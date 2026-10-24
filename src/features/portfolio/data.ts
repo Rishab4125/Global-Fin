@@ -66,6 +66,7 @@ export async function loadPortfolio(userId: string): Promise<Portfolio> {
     qty: Number(l.qty),
     unitPrice: Number(l.unitPrice),
     fees: Number(l.fees),
+    source: l.source,
   }));
 
   const sold = new Map<string, number>();
@@ -85,6 +86,8 @@ export async function loadPortfolio(userId: string): Promise<Portfolio> {
       fees: Number(s.fees),
       applyTax: s.applyTax,
       exemptRedemption: s.exemptRedemption,
+      buyback: s.isBuyback,
+      source: s.source,
       allocations: allocRows
         .filter((a) => a.saleId === s.id)
         .map((a) => ({ lotId: a.lotId, qty: Number(a.qty) })),

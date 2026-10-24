@@ -1,10 +1,19 @@
 import { ArrowLeftRight, Pencil } from "lucide-react";
 import Link from "next/link";
+import { ListSearch } from "@/components/ListSearch";
+import { SortHeader } from "@/components/SortHeader";
 import { EmptyState, PageHeader, SectionCard } from "@/components/ui";
+import { todayIso } from "@/domain/dates";
+import { platformOf } from "@/domain/platform";
+import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
 import { ASSET_RULES, type AssetTypeId } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
+import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { loadPortfolio } from "@/features/portfolio/data";
 import { formatDate, formatINR, formatQty, gainClass } from "@/lib/format";
+import { parseSort, sortRows } from "@/lib/sort";
+
+const SORT_KEYS = ["date", "action", "asset", "platform", "qty", "price", "fees", "amount"] as const;
 
 type Kind = "buy" | "sell" | "misc" | "buyback";
 
@@ -16,6 +25,7 @@ interface Txn {
   assetId?: string;
   name: string;
   typeLabel: string;
+  platform: string;
   qty: number | null;
   price: number | null;
   fees: number;
@@ -31,7 +41,12 @@ const badge: Record<Kind, { label: string; className: string }> = {
   buyback: { label: "Buyback", className: "bg-accent/15 text-accent-strong" },
 };
 
-export default async function TransactionsPage() {
+export default async function TransactionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string }>;
+}) {
+  const query = await searchParams;
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);
   const assetMap = new Map(pf.assets.map((a) => [a.id, a]));
@@ -48,6 +63,7 @@ export default async function TransactionsPage() {
         assetId: l.assetId,
         name: a?.name ?? "Unknown",
         typeLabel: a ? typeLabel(a.type) : "",
+        platform: platformOf(l.source),
         qty: l.qty,
         price: l.unitPrice,
         fees: l.fees,
@@ -59,11 +75,12 @@ export default async function TransactionsPage() {
       return {
         key: `sell-${s.id}`,
         id: s.id,
-        kind: "sell",
+        kind: s.buyback ? "buyback" : "sell",
         date: s.date,
         assetId: s.assetId,
         name: a?.name ?? "Unknown",
         typeLabel: a ? typeLabel(a.type) : "",
+        platform: platformOf(s.source),
         qty: s.qty,
         price: s.price,
         fees: s.fees,
@@ -79,6 +96,7 @@ export default async function TransactionsPage() {
         date: m.date,
         name: buyback ? "Share buyback" : "Misc profit / loss",
         typeLabel: buyback ? `Cost ${formatINR(m.cost)}` : typeLabel(m.assetType),
+        platform: "–",
         qty: null,
         price: null,
         fees: m.brokerage,
@@ -88,31 +106,105 @@ export default async function TransactionsPage() {
     }),
   ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
+  const today = todayIso();
+  const earliest = txns.length ? txns[txns.length - 1].date : today;
+  const period = resolvePeriod({ ...query, period: query.period ?? "all" }, today);
+  const options = fyOptions(txns.length ? earliest : null, today).map((fy, i) => ({
+    value: `fy:${fy}`,
+    label: i === 0 ? `FY ${fy} (current)` : `FY ${fy}`,
+  }));
+  if (period.value.startsWith("fy:") && !options.some((o) => o.value === period.value)) {
+    options.push({ value: period.value, label: period.label });
+  }
+  const periodQuery =
+    period.value === "custom"
+      ? `period=custom&from=${period.from}&to=${period.to}`
+      : `period=${encodeURIComponent(period.value)}`;
+
+  const q = (query.q ?? "").trim();
+  const needle = q.toLowerCase();
+  const shown = txns.filter(
+    (t) =>
+      inPeriod(t.date, period) &&
+      (!needle ||
+        [t.name, t.typeLabel, t.platform, badge[t.kind].label, t.note ?? ""].some((s) => s.toLowerCase().includes(needle))),
+  );
+  const filtered = shown.length !== txns.length;
+
+  const sort = parseSort(query, SORT_KEYS, { key: "date", dir: "desc" });
+  const sortQuery = `sort=${sort.key}&dir=${sort.dir}`;
+  const withQ = q ? `&q=${encodeURIComponent(q)}` : "";
+  const getters: Record<(typeof SORT_KEYS)[number], (t: Txn) => string | number> = {
+    date: (t) => t.date,
+    action: (t) => badge[t.kind].label,
+    asset: (t) => t.name,
+    platform: (t) => t.platform,
+    qty: (t) => t.qty ?? Number.NEGATIVE_INFINITY,
+    price: (t) => t.price ?? Number.NEGATIVE_INFINITY,
+    fees: (t) => t.fees,
+    amount: (t) => t.amount,
+  };
+  const rows = sortRows(shown, getters[sort.key], sort.dir);
+  const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc") => (
+    <SortHeader label={label} col={col} sort={sort} basePath="/transactions" query={`${periodQuery}${withQ}`} align={align} firstDir={firstDir} />
+  );
+
   return (
     <div>
       <PageHeader
         title="Transactions"
         description="Every purchase, sale and misc entry. Open a holding to edit or delete its entries."
       />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <ListSearch
+          q={q}
+          basePath="/transactions"
+          query={`${periodQuery}&${sortQuery}`}
+          placeholder="Search name, type, platform or note"
+        />
+        <PeriodFilter
+          options={options}
+          value={period.value}
+          from={period.from ?? ""}
+          to={period.to ?? ""}
+          earliest={earliest}
+          today={today}
+          basePath="/transactions"
+          extraQuery={`${sortQuery}${withQ}`}
+        />
+      </div>
+      {txns.length > 0 && (
+        <p className="mb-3 text-sm text-muted">
+          {shown.length} transaction{shown.length === 1 ? "" : "s"}
+          {filtered ? ` of ${txns.length}` : ""}
+        </p>
+      )}
       <SectionCard flush>
         {txns.length === 0 ? (
           <EmptyState icon={ArrowLeftRight} title="No transactions yet" text="Add an investment to get started." />
+        ) : shown.length === 0 ? (
+          <EmptyState
+            icon={ArrowLeftRight}
+            title="No transactions match"
+            text="Try a different period or clear the search."
+          />
         ) : (
           <table className="w-full">
             <thead>
               <tr>
-                <th className="th">Date</th>
-                <th className="th">Action</th>
-                <th className="th">Asset</th>
-                <th className="th text-right">Qty</th>
-                <th className="th text-right">Price</th>
-                <th className="th text-right">Fees</th>
-                <th className="th text-right">Amount</th>
+                {head("Date", "date", "left", "desc")}
+                {head("Action", "action")}
+                {head("Asset", "asset")}
+                {head("Platform", "platform")}
+                {head("Qty", "qty", "right", "desc")}
+                {head("Price", "price", "right", "desc")}
+                {head("Fees", "fees", "right", "desc")}
+                {head("Amount", "amount", "right", "desc")}
                 <th className="th" />
               </tr>
             </thead>
             <tbody>
-              {txns.map((t) => (
+              {rows.map((t) => (
                 <tr key={t.key}>
                   <td className="td">{formatDate(t.date)}</td>
                   <td className="td">
@@ -128,6 +220,7 @@ export default async function TransactionsPage() {
                     )}
                     <span className="ml-2 text-xs text-muted">{t.typeLabel}</span>
                   </td>
+                  <td className="td text-muted">{t.platform}</td>
                   <td className="td text-right">{t.qty === null ? "–" : formatQty(t.qty)}</td>
                   <td className="td text-right">{t.price === null ? "–" : formatINR(t.price)}</td>
                   <td className="td text-right">{formatINR(t.fees)}</td>

@@ -22,7 +22,10 @@ export interface SaleEvent {
   fees: number;
   applyTax: boolean;
   exemptRedemption: boolean;
+  /** Sold back to the company in a share buyback: taxed as dividend, cost is a capital loss. */
+  buyback?: boolean;
   allocations: Allocation[];
+  source?: string;
 }
 
 export interface MiscEvent {
@@ -61,10 +64,17 @@ export interface RealisedRow {
   taxApplied: boolean;
   /** Part of the gain covered by the yearly equity LTCG exemption. */
   exemptionUsed: number;
-  /** Gain that actually attracted tax (after exemption). */
+  /** Gain that actually attracted tax (after losses and exemption). */
   taxableGain: number;
   /** Equity exemption still unused in this FY after this event. */
   exemptionLeft: number | null;
+  /** Part of this gain wiped out by losses in the same FY. */
+  offsetByLosses: number;
+  /** Part of this loss that reduced gains in the same FY. */
+  lossUsed: number;
+  /** Tax this loss saved across the FY. */
+  taxSaved: number;
+  buyback: boolean;
   note: string;
 }
 
@@ -72,10 +82,7 @@ const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
-interface Piece {
-  term: Term;
-  gain: number;
-}
+const EPS = 1e-9;
 
 function resolveRate(rate: Rate, slabRate: number): number {
   if (rate.kind === "exempt") return 0;
@@ -88,6 +95,8 @@ function salePieces(sale: SaleEvent, lots: Map<string, Lot>) {
   let stcg = 0;
   let ltcg = 0;
   let cost = 0;
+  let costStcg = 0;
+  let costLtcg = 0;
   for (const a of sale.allocations) {
     const lot = lots.get(a.lotId);
     if (!lot) continue;
@@ -97,16 +106,101 @@ function salePieces(sale: SaleEvent, lots: Map<string, Lot>) {
     cost += allocCost;
     const isLong =
       rule.longTermMonths !== null && heldLongerThan(lot.buyDate, sale.date, rule.longTermMonths);
-    if (isLong) ltcg += gain;
-    else stcg += gain;
+    if (isLong) {
+      ltcg += gain;
+      costLtcg += allocCost;
+    } else {
+      stcg += gain;
+      costStcg += allocCost;
+    }
   }
   const proceeds = sale.qty * sale.price - sale.fees;
-  return { stcg, ltcg, cost, proceeds };
+  return { stcg, ltcg, cost, costStcg, costLtcg, proceeds };
+}
+
+/** One taxable gain or loss: a short- or long-term part of an event. */
+interface Piece {
+  event: number;
+  term: Term;
+  gain: number;
+  rate: number;
+  date: string;
+  equityExempt: boolean;
+  /** Losses cannot reduce this gain and this loss cannot reduce others (crypto). */
+  isolated: boolean;
+}
+
+interface Settled {
+  offset: number[];
+  lossUsed: number[];
+  exempt: number[];
+  taxable: number[];
+  tax: number[];
+  totalTax: number;
 }
 
 /**
- * Compute realised gains and tax for every event. Events are processed in date order so the
- * yearly equity LTCG exemption is consumed chronologically within each financial year.
+ * Tax for one financial year. With `setOff` on, losses first reduce gains: a short-term loss can reduce
+ * any gain, a long-term loss only long-term gains, each applied to the highest-taxed gain first (equity
+ * long-term gains last, since part of them is exempt anyway). The yearly equity LTCG exemption then applies,
+ * oldest sale first, to what is left.
+ */
+function settleYear(pieces: Piece[], setOff: boolean): Settled {
+  const n = pieces.length;
+  const offset = new Array<number>(n).fill(0);
+  const lossUsed = new Array<number>(n).fill(0);
+  const exempt = new Array<number>(n).fill(0);
+  const taxable = new Array<number>(n).fill(0);
+  const tax = new Array<number>(n).fill(0);
+
+  if (setOff) {
+    const byRate = (a: number, b: number) =>
+      pieces[b].rate - pieces[a].rate || Number(pieces[a].equityExempt) - Number(pieces[b].equityExempt);
+    const idx = pieces.map((_, i) => i);
+    const gains = idx.filter((i) => pieces[i].gain > EPS && !pieces[i].isolated).sort(byRate);
+    const longGains = gains.filter((i) => pieces[i].term === "LTCG");
+    const lossesOf = (term: Term) => idx.filter((i) => pieces[i].gain < -EPS && !pieces[i].isolated && pieces[i].term === term);
+
+    const spend = (term: Term, targets: number[]) => {
+      const losses = lossesOf(term);
+      const total = losses.reduce((s, i) => s - pieces[i].gain, 0);
+      let left = total;
+      for (const g of targets) {
+        if (left <= EPS) break;
+        const use = Math.min(left, pieces[g].gain - offset[g]);
+        if (use <= EPS) continue;
+        offset[g] += use;
+        left -= use;
+      }
+      const used = total - left;
+      if (total > EPS) for (const i of losses) lossUsed[i] += (-pieces[i].gain / total) * used;
+    };
+    spend("LTCG", longGains);
+    spend("STCG", gains);
+  }
+
+  let exemptionLeft: number | null = null;
+  for (let i = 0; i < n; i++) {
+    const p = pieces[i];
+    if (p.gain <= EPS) continue;
+    let base = p.gain - offset[i];
+    if (p.equityExempt && p.term === "LTCG") {
+      exemptionLeft ??= equityRatesFor(p.date).exemption;
+      const used = Math.min(exemptionLeft, base);
+      exemptionLeft -= used;
+      exempt[i] = used;
+      base -= used;
+    }
+    taxable[i] = base;
+    tax[i] = base * p.rate * (1 + CESS);
+  }
+  return { offset, lossUsed, exempt, taxable, tax, totalTax: tax.reduce((s, x) => s + x, 0) };
+}
+
+/**
+ * Compute realised gains and tax for every event. Losses reduce gains within the same financial year
+ * before tax; the yearly equity LTCG exemption is then used oldest sale first. Losses are not carried
+ * forward to later years.
  */
 export function computeRealised(
   events: GainEvent[],
@@ -117,8 +211,25 @@ export function computeRealised(
   const indexed = events.map((e, i) => ({ e, i }));
   indexed.sort((a, b) => (a.e.date === b.e.date ? a.i - b.i : a.e.date < b.e.date ? -1 : 1));
 
-  const exemptionLeft = new Map<string, number>();
-  const rows: RealisedRow[] = [];
+  type Draft = {
+    e: GainEvent;
+    fy: string;
+    stcg: number;
+    ltcg: number;
+    taxApplied: boolean;
+    row: Omit<
+      RealisedRow,
+      | "gain" | "stcg" | "ltcg" | "tax" | "netGain" | "taxApplied" | "exemptionUsed" | "taxableGain"
+      | "exemptionLeft" | "offsetByLosses" | "lossUsed" | "taxSaved" | "buyback"
+    >;
+    tax: number;
+    taxableGain: number;
+    extraNote: string;
+    buyback: boolean;
+  };
+
+  const drafts: Draft[] = [];
+  const piecesByFy = new Map<string, Piece[]>();
 
   for (const { e } of indexed) {
     const fy = financialYear(e.date);
@@ -127,16 +238,21 @@ export function computeRealised(
     let stcg: number;
     let ltcg: number;
     let taxApplied: boolean;
-    let row: Omit<
-      RealisedRow,
-      "gain" | "stcg" | "ltcg" | "tax" | "netGain" | "taxApplied" | "exemptionUsed" | "taxableGain" | "exemptionLeft"
-    >;
+    let row: Draft["row"];
+    let buyback = false;
+    let dividend = 0;
+    let costS = 0;
+    let costL = 0;
 
     if (e.kind === "sale") {
       const p = salePieces(e, lotMap);
       stcg = p.stcg;
       ltcg = p.ltcg;
       taxApplied = e.applyTax && !e.exemptRedemption;
+      buyback = !!e.buyback;
+      dividend = e.qty * e.price;
+      costS = p.costStcg;
+      costL = p.costLtcg;
       row = {
         id: e.id,
         kind: "sale",
@@ -147,11 +263,18 @@ export function computeRealised(
         qty: e.qty,
         proceeds: round2(p.proceeds),
         cost: round2(p.cost),
-        note: e.exemptRedemption ? "Tax-free RBI redemption" : "",
+        note: [e.exemptRedemption ? "Tax-free RBI redemption" : "", e.buyback ? "Share buyback." : ""]
+          .filter(Boolean)
+          .join(" "),
       };
     } else {
       const isLong = e.term === "LTCG" && rule.longTermMonths !== null;
-      const buyback = e.entryType === "buyback";
+      buyback = e.entryType === "buyback";
+      dividend = e.amount;
+      if (buyback) {
+        if (isLong) costL = e.cost;
+        else costS = e.cost;
+      }
       const net = (buyback ? e.amount - e.cost : e.amount) - e.brokerage;
       stcg = isLong ? 0 : net;
       ltcg = isLong ? net : 0;
@@ -172,61 +295,113 @@ export function computeRealised(
       };
     }
 
-    let tax = 0;
-    let exemptionUsed = 0;
-    let taxableGain = 0;
-    let extraNote = "";
-    if (e.kind === "misc" && e.entryType === "buyback") {
+    const draft: Draft = { e, fy, stcg, ltcg, taxApplied, row, tax: 0, taxableGain: 0, extraNote: "", buyback };
+    const eventIndex = drafts.length;
+    drafts.push(draft);
+
+    if (buyback) {
       if (e.date < BUYBACK_DIVIDEND_FROM) {
-        extraNote = "Buyback before 1 Oct 2024: tax-free for the shareholder.";
+        draft.extraNote = "Buyback before 1 Oct 2024: tax-free for the shareholder.";
       } else {
-        extraNote = `Proceeds taxed as dividend at slab rate; cost ${inr(e.cost)} is a capital loss to set off against other capital gains (not modelled).`;
-        if (taxApplied && e.amount > 0) {
-          taxableGain = e.amount;
-          tax = e.amount * slabRate * (1 + CESS);
+        draft.extraNote = `Proceeds taxed as dividend at slab rate. The cost of ${inr(costS + costL)} is a capital loss that reduces gains in the same financial year.`;
+        if (taxApplied && dividend > 0) {
+          draft.taxableGain = dividend;
+          draft.tax = dividend * slabRate * (1 + CESS);
+        }
+        if (taxApplied) {
+          for (const [term, cost] of [["STCG", costS], ["LTCG", costL]] as const) {
+            if (cost <= EPS) continue;
+            const list = piecesByFy.get(fy) ?? [];
+            list.push({
+              event: eventIndex,
+              term,
+              gain: -cost,
+              rate: 0,
+              date: e.date,
+              equityExempt: false,
+              isolated: !!rule.noLossSetOff,
+            });
+            piecesByFy.set(fy, list);
+          }
         }
       }
     } else if (taxApplied) {
-      const pieces: Piece[] = [
-        { term: "STCG", gain: stcg },
-        { term: "LTCG", gain: ltcg },
-      ];
-      for (const piece of pieces) {
-        if (piece.gain <= 0) continue;
-        let rate: Rate = piece.term === "STCG" ? rule.stcg : rule.ltcg;
-        let exemptionTotal = 0;
+      for (const [term, gain] of [["STCG", stcg], ["LTCG", ltcg]] as const) {
+        if (Math.abs(gain) <= EPS) continue;
+        let rate: Rate = term === "STCG" ? rule.stcg : rule.ltcg;
         if (rule.usesEquityExemption) {
           const eq = equityRatesFor(e.date);
-          rate = { kind: "flat", rate: piece.term === "STCG" ? eq.stcg : eq.ltcg };
-          exemptionTotal = eq.exemption;
+          rate = { kind: "flat", rate: term === "STCG" ? eq.stcg : eq.ltcg };
         }
-        let taxable = piece.gain;
-        if (piece.term === "LTCG" && rule.usesEquityExemption) {
-          const left = exemptionLeft.get(fy) ?? exemptionTotal;
-          const used = Math.min(left, taxable);
-          exemptionLeft.set(fy, left - used);
-          taxable -= used;
-          exemptionUsed += used;
-        }
-        taxableGain += taxable;
-        tax += taxable * resolveRate(rate, slabRate) * (1 + CESS);
+        if (rate.kind === "exempt") continue;
+        const list = piecesByFy.get(fy) ?? [];
+        list.push({
+          event: eventIndex,
+          term,
+          gain,
+          rate: resolveRate(rate, slabRate),
+          date: e.date,
+          equityExempt: !!rule.usesEquityExemption,
+          isolated: !!rule.noLossSetOff,
+        });
+        piecesByFy.set(fy, list);
       }
     }
+  }
 
-    const gain = stcg + ltcg;
-    rows.push({
-      ...row,
-      note: [row.note, extraNote].filter(Boolean).join(" "),
-      gain: round2(gain),
-      stcg: round2(stcg),
-      ltcg: round2(ltcg),
-      tax: round2(tax),
-      netGain: round2(gain - tax),
-      taxApplied,
-      exemptionUsed: round2(exemptionUsed),
-      taxableGain: round2(taxableGain),
-      exemptionLeft: rule.usesEquityExemption ? round2(exemptionLeft.get(fy) ?? equityRatesFor(e.date).exemption) : null,
+  const offsetBy = new Array<number>(drafts.length).fill(0);
+  const lossUsedBy = new Array<number>(drafts.length).fill(0);
+  const exemptBy = new Array<number>(drafts.length).fill(0);
+  const savedBy = new Array<number>(drafts.length).fill(0);
+
+  for (const pieces of piecesByFy.values()) {
+    const withSetOff = settleYear(pieces, true);
+    const without = settleYear(pieces, false);
+    const saved = Math.max(0, without.totalTax - withSetOff.totalTax);
+    const totalLossUsed = withSetOff.lossUsed.reduce((s, x) => s + x, 0);
+    pieces.forEach((p, i) => {
+      const d = drafts[p.event];
+      d.tax += withSetOff.tax[i];
+      d.taxableGain += withSetOff.taxable[i];
+      offsetBy[p.event] += withSetOff.offset[i];
+      lossUsedBy[p.event] += withSetOff.lossUsed[i];
+      exemptBy[p.event] += withSetOff.exempt[i];
+      if (totalLossUsed > EPS) savedBy[p.event] += (saved * withSetOff.lossUsed[i]) / totalLossUsed;
     });
   }
-  return rows;
+
+  const exemptionUsedInFy = new Map<string, number>();
+  return drafts.map((d, i) => {
+    const rule = ASSET_RULES[d.e.assetType];
+    exemptionUsedInFy.set(d.fy, (exemptionUsedInFy.get(d.fy) ?? 0) + exemptBy[i]);
+    const gain = d.stcg + d.ltcg;
+
+    const notes = [d.row.note, d.extraNote];
+    if (lossUsedBy[i] > 0.005) {
+      notes.push(
+        `${inr(lossUsedBy[i])} of this loss is set off against gains in ${d.fy}${savedBy[i] > 0.005 ? `, saving about ${inr(savedBy[i])} of tax` : ""}.`,
+      );
+    }
+    if (offsetBy[i] > 0.005) notes.push(`${inr(offsetBy[i])} of this gain is set off by losses in ${d.fy}.`);
+
+    return {
+      ...d.row,
+      note: notes.filter(Boolean).join(" "),
+      gain: round2(gain),
+      stcg: round2(d.stcg),
+      ltcg: round2(d.ltcg),
+      tax: round2(d.tax),
+      netGain: round2(gain - d.tax),
+      taxApplied: d.taxApplied,
+      exemptionUsed: round2(exemptBy[i]),
+      taxableGain: round2(d.taxableGain),
+      exemptionLeft: rule.usesEquityExemption
+        ? round2(equityRatesFor(d.e.date).exemption - (exemptionUsedInFy.get(d.fy) ?? 0))
+        : null,
+      offsetByLosses: round2(offsetBy[i]),
+      lossUsed: round2(lossUsedBy[i]),
+      taxSaved: round2(savedBy[i]),
+      buyback: d.buyback,
+    };
+  });
 }

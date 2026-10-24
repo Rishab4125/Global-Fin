@@ -112,6 +112,7 @@ export async function executePlan(userId: string, source: string, plan: Plan): P
           sellDate: s.sellDate,
           qty: String(s.qty),
           price: String(s.price),
+          applyTax: true,
           source,
           brokerTradeId: s.tradeId,
         })),

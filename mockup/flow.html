@@ -98,6 +98,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 .gbtn{width:100%;height:44px;margin-top:32px;font-size:15px}
 
 /* mobile */
+.tbar{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-bottom:16px}.tbar:empty{display:none}.fb{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.fb select,.fb input{width:auto;height:36px}.fb .sq{width:260px;max-width:100%}.fb .cal{display:inline-flex;color:var(--muted)}.sortb{background:none;border:0;font:inherit;color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:0}.sortb:hover,.sortb.on{color:var(--ink)}.sortb span{font-size:11px;opacity:.5}.sortb.on span{opacity:1}
 .bnav,.sheet{display:none}
 @media(max-width:1023px){
  .shell{display:block}aside{display:none}
@@ -174,8 +175,8 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 
 <!-- HOLDINGS -->
 <section class="screen" id="holdings">
-  <div class="ph"><div><h1>Holdings</h1><p id="holdSub"></p></div><div style="display:flex;gap:8px"><button class="btn ghost" onclick="go('import')"><span data-i="upload"></span>Import trades</button><button class="btn ghost" onclick="go('sync')"><span data-i="sync"></span>Sync</button></div></div>
-  <form class="card" onsubmit="addBuy(event)">
+  <div class="ph"><div><h1>Holdings</h1><p id="holdSub"></p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="addBtn" onclick="toggleAdd()"></button><button class="btn ghost" onclick="go('import')"><span data-i="upload"></span>Import trades</button><button class="btn ghost" onclick="go('sync')"><span data-i="sync"></span>Sync</button></div></div>
+  <form class="card" id="addCard" style="display:none" onsubmit="addBuy(event)">
     <h2 style="font-size:16px;font-weight:600;margin-bottom:16px">Add investment</h2>
     <div class="grid f3">
       <div><label class="fl">Type</label><select id="bType" onchange="typeHint()"></select><div class="hint" id="bHint"></div></div>
@@ -187,6 +188,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
     </div>
     <button class="btn mt">Save investment</button>
   </form>
+  <div class="tbar" id="hBar"></div>
   <div class="card flush"><div class="ct"><h2>Current holdings</h2></div><div class="scroll"><table id="holdTbl"></table></div></div>
   <div class="card flush" id="closedCard" style="display:none"><div class="ct"><h2>Fully sold</h2><p>Past holdings you no longer own</p></div><div id="closedList"></div></div>
 </section>
@@ -229,6 +231,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
       <div><label class="fl">Sale price per unit (₹)</label><input id="sPrice" type="number" step="any" min="0"></div>
       <div><label class="fl">Brokerage / fees (₹)</label><input id="sFees" type="number" step="any" min="0" value="0"></div>
       <div><label class="fl">Include tax effect?</label><div class="yn"><label><input type="radio" name="tax" value="yes" checked> Yes</label><label><input type="radio" name="tax" value="no"> No</label></div></div>
+      <label class="note" style="grid-column:1/-1;margin:0;display:flex;gap:8px;align-items:flex-start;color:var(--ink)"><input type="checkbox" id="sBuy" style="margin-top:3px;flex:none"><span>This was a share buyback<span class="hint" style="display:block;margin-top:2px">Company buyback proceeds are taxed as dividend at your slab rate (sales from 1 Oct 2024; earlier buybacks are tax-free for you). The cost of these shares counts as a capital loss that reduces your other gains in the same financial year.</span></span></label>
     </div>
     <div class="err" id="sellErr"></div>
     <div class="preview" id="prev"></div>
@@ -239,6 +242,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 <!-- TRANSACTIONS -->
 <section class="screen" id="transactions">
   <div class="ph"><div><h1>Transactions</h1><p>Every purchase, sale and misc entry. Open a holding to edit or delete its entries.</p></div></div>
+  <div class="tbar" id="tBar"></div>
   <div class="card flush"><div class="scroll"><table id="txTbl"></table></div></div>
 </section>
 
@@ -402,21 +406,44 @@ const empty=(ic,t,m)=>`<div class="empty"><span class="ic">${svg(ic,20)}</span><
 const soldQty=(l,ex)=>sales.filter(s=>s.id!==ex).reduce((q,s)=>q+s.alloc.filter(a=>a.lot===l.id).reduce((x,a)=>x+a.qty,0),0);
 const remaining=(l,ex)=>l.qty-soldQty(l,ex);
 function holdings(){const h={};lots.forEach(l=>{const r=remaining(l);if(r<=1e-9)return;h[l.aid]=h[l.aid]||{aid:l.aid,qty:0,cost:0};h[l.aid].qty+=r;h[l.aid].cost+=r*(l.price+l.fees/l.qty)});return Object.values(h)}
+function settleFy(ps,on){const n=ps.length,off=Array(n).fill(0),lu=Array(n).fill(0),ex=Array(n).fill(0),tx=Array(n).fill(0),tax=Array(n).fill(0);
+ if(on){const byRate=(a,b)=>ps[b].rate-ps[a].rate||(+ps[a].eq)-(+ps[b].eq),idx=ps.map((_,i)=>i);
+  const gains=idx.filter(i=>ps[i].g>1e-9&&!ps[i].iso).sort(byRate),lg=gains.filter(i=>ps[i].t==='L');
+  const spend=(t,targets)=>{const ls=idx.filter(i=>ps[i].g<-1e-9&&!ps[i].iso&&ps[i].t===t),tot=ls.reduce((a,i)=>a-ps[i].g,0);let left=tot;
+   for(const g of targets){if(left<=1e-9)break;const u=Math.min(left,ps[g].g-off[g]);if(u<=1e-9)continue;off[g]+=u;left-=u}
+   const used=tot-left;if(tot>1e-9)ls.forEach(i=>lu[i]+=(-ps[i].g/tot)*used)};
+  spend('L',lg);spend('S',gains)}
+ let left=null;
+ for(let i=0;i<n;i++){const p=ps[i];if(p.g<=1e-9)continue;let base=p.g-off[i];
+  if(p.eq&&p.t==='L'){left??=EXEMPT;const u=Math.min(left,base);left-=u;ex[i]=u;base-=u}
+  tx[i]=base;tax[i]=base*p.rate*(1+CESS)}
+ return{off,lu,ex,tx,tax,total:tax.reduce((a,x)=>a+x,0)}}
+const plat=o=>(o.est||String(o.bid||'').startsWith('z'))?'Zerodha':'Manual';
 function compute(extra,exclude){
  const ev=[...sales.filter(s=>s.id!==exclude).map(s=>({k:'s',...s})),...misc.map(m=>({k:'m',...m}))];if(extra)ev.push(extra);
- ev.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);const ex={},rows=[];
- for(const e of ev){let st=0,lt=0,proceeds=null,cost=null,applyTax,type,label;
+ ev.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+ const D=[],byFy={};
+ ev.forEach((e,ix)=>{let st=0,lt=0,cs=0,cl=0,proceeds=null,cost=null,applyTax,type,label,bb=false,div=0,note='';
   if(e.k==='s'){const a=assets[e.aid];type=a.type;label=a.name;const r=T[type];cost=0;
-   e.alloc.forEach(al=>{const l=lots.find(x=>x.id===al.lot);const c=al.qty*(l.price+l.fees/l.qty);cost+=c;const g=al.qty*e.price-e.fees*al.qty/e.qty-c;const long=r[2]&&e.date>addM(l.date,r[2]);long?lt+=g:st+=g});
-   proceeds=e.qty*e.price-e.fees;applyTax=e.tax}
-  else{type=e.type;const bb=e.et==='buyback';label=bb?'Buyback':'Misc P/L';const long=e.term==='L'&&T[type][2];const net=(bb?e.amt-e.cost:e.amt)-(e.brk||0);long?lt=net:st=net;applyTax=!e.adj;if(bb){proceeds=e.amt;cost=e.cost}}
-  let tax=0,eu=0,tg=0,extra2='';const r=T[type];
-  if(e.k==='m'&&e.et==='buyback'){if(e.date<'2024-10-01')extra2='Buyback before 1 Oct 2024: tax-free for the shareholder.';else{extra2='Proceeds taxed as dividend at slab rate; cost '+inr(e.cost)+' is a capital loss to set off against other capital gains (not modelled).';if(applyTax&&e.amt>0){tg=e.amt;tax=e.amt*SLAB*(1+CESS)}}}
-  else if(applyTax)[['S',st,r[3]],['L',lt,r[4]]].forEach(([t,g,rate])=>{if(g<=0)return;let taxable=g;
-    if(t==='L'&&r[5]){const f=FY(e.date),left=ex[f]??EXEMPT,u=Math.min(left,g);ex[f]=left-u;taxable-=u;eu+=u}
-    tg+=taxable;tax+=taxable*(rate==='slab'?SLAB:rate)*(1+CESS)});
-  rows.push({id:e.id,k:e.k,aid:e.aid,date:e.date,fy:FY(e.date),type,label,qty:e.qty??null,proceeds,cost,st,lt,gain:st+lt,tax,net:st+lt-tax,applyTax,adj:e.adj,note:extra2,extra:e===extra,eu,tg,left:r[5]?(ex[FY(e.date)]??EXEMPT):null})}
- return rows}
+   e.alloc.forEach(al=>{const l=lots.find(x=>x.id===al.lot);const c=al.qty*(l.price+l.fees/l.qty);cost+=c;const g=al.qty*e.price-e.fees*al.qty/e.qty-c;const long=r[2]&&e.date>addM(l.date,r[2]);if(long){lt+=g;cl+=c}else{st+=g;cs+=c}});
+   proceeds=e.qty*e.price-e.fees;applyTax=e.tax;bb=!!e.bb;div=e.qty*e.price;if(bb)note='Share buyback.'}
+  else{type=e.type;bb=e.et==='buyback';label=bb?'Buyback':'Misc P/L';const long=e.term==='L'&&T[type][2];const net=(bb?e.amt-e.cost:e.amt)-(e.brk||0);long?lt=net:st=net;applyTax=!e.adj;div=e.amt;
+   if(bb){proceeds=e.amt;cost=e.cost;long?cl=e.cost:cs=e.cost}}
+  const r=T[type],d={e,st,lt,proceeds,cost,applyTax,type,label,tax:0,tg:0,note,bb},fk=FY(e.date);D.push(d);
+  const push=(t,g,rate,eq,iso)=>{(byFy[fk]=byFy[fk]||[]).push({ix,t,g,rate,eq,iso})};
+  const add=m=>{d.note=d.note?d.note+' '+m:m};
+  if(bb){if(e.date<'2024-10-01')add('Buyback before 1 Oct 2024: tax-free for the shareholder.');
+   else{add('Proceeds taxed as dividend at slab rate. The cost of '+inr(cs+cl)+' is a capital loss that reduces gains in the same financial year.');
+    if(applyTax){if(div>0){d.tg=div;d.tax=div*SLAB*(1+CESS)}[['S',cs],['L',cl]].forEach(([t,c])=>{if(c>1e-9)push(t,-c,0,false,type==='crypto')})}}}
+  else if(applyTax)[['S',st,r[3]],['L',lt,r[4]]].forEach(([t,g,rate])=>{if(Math.abs(g)<=1e-9||rate===0)return;push(t,g,rate==='slab'?SLAB:rate,!!r[5],type==='crypto')})});
+ const off=ev.map(()=>0),lu=ev.map(()=>0),eu=ev.map(()=>0),saved=ev.map(()=>0);
+ Object.values(byFy).forEach(ps=>{const w=settleFy(ps,true),wo=settleFy(ps,false),sv=Math.max(0,wo.total-w.total),tl=w.lu.reduce((a,x)=>a+x,0);
+  ps.forEach((p,i)=>{const d=D[p.ix];d.tax+=w.tax[i];d.tg+=w.tx[i];off[p.ix]+=w.off[i];lu[p.ix]+=w.lu[i];eu[p.ix]+=w.ex[i];if(tl>1e-9)saved[p.ix]+=sv*w.lu[i]/tl})});
+ const used={};
+ return D.map((d,i)=>{const e=d.e,r=T[d.type],f=FY(e.date);used[f]=(used[f]||0)+eu[i];let note=d.note;
+  if(lu[i]>.005)note+=(note?' ':'')+`${inr(lu[i])} of this loss is set off against gains in FY ${f}${saved[i]>.005?`, saving about ${inr(saved[i])} of tax`:''}.`;
+  if(off[i]>.005)note+=(note?' ':'')+`${inr(off[i])} of this gain is set off by losses in FY ${f}.`;
+  return{id:e.id,k:e.k,aid:e.aid,date:e.date,fy:f,type:d.type,label:d.label,qty:e.qty??null,proceeds:d.proceeds,cost:d.cost,st:d.st,lt:d.lt,gain:d.st+d.lt,tax:d.tax,net:d.st+d.lt-d.tax,applyTax:d.applyTax,adj:e.adj,note,extra:e===extra,eu:eu[i],tg:d.tg,left:r[5]?EXEMPT-used[f]:null,off:off[i],lu:lu[i],saved:saved[i],bb:d.bb}})}
 const saleRows=()=>compute().filter(r=>r.k==='s');
 
 /* dashboard */
@@ -428,10 +455,35 @@ function rDash(){renderPeriod();const rows=compute(),h=holdings(),pr=rows.filter
  $('allocBars').innerHTML=Object.entries(al).map(([k,v])=>`<div class="hb"><span>${k}</span><i style="width:${v/am*100}%"></i><span class="r num">${inr(v)}</span></div>`).join('')||'<p class="muted">No holdings yet.</p>'}
 
 /* holdings */
-function rHold(){const h=holdings();$('holdSub').textContent=h.length?`${h.length} holdings · ${inr(h.reduce((s,x)=>s+x.cost,0))} invested`:'Record what you own.';
- $('holdTbl').innerHTML=h.length?'<thead><tr><th>Name</th><th>Type</th><th class="r">Quantity</th><th class="r">Avg cost</th><th class="r">Invested</th><th></th></tr></thead><tbody>'+
- h.map(x=>`<tr><td><button class="lnk" onclick="go('detail','${x.aid}')">${assets[x.aid].name}</button></td><td class="muted">${T[assets[x.aid].type][0]}</td><td class="r">${+x.qty.toFixed(6)}</td><td class="r">${inr(x.cost/x.qty)}</td><td class="r"><b>${inr(x.cost)}</b></td><td><div class="actions"><button class="btn ghost sm" onclick="go('detail','${x.aid}')">Details</button><button class="btn soft sm" onclick="openSell('${x.aid}')">Sell</button></div></td></tr>`).join('')+'</tbody>':empty('brief','No holdings yet','Add your first investment using the form above.');
- const held=new Set(h.map(x=>x.aid)),closed=Object.keys(assets).filter(a=>!held.has(a)&&lots.some(l=>l.aid===a));
+const FB={h:{per:'all',from:'',to:'',q:''},t:{per:'all',from:'',to:'',q:''}},SORT={h:{key:'invested',dir:'desc'},t:{key:'date',dir:'desc'}};let addOpen=false;
+const fbBounds=f=>f.per==='custom'?[f.from,f.to]:fyRange(f.per.slice(3));
+const fbIn=(f,d)=>{if(f.per==='all')return true;const[a,b]=fbBounds(f);return d>=a&&d<=b};
+const sortBy=(arr,get,dir)=>arr.map((r,i)=>({r,i,v:get(r)})).sort((a,b)=>{const c=typeof a.v==='number'&&typeof b.v==='number'?a.v-b.v:String(a.v).localeCompare(String(b.v),undefined,{numeric:true,sensitivity:'base'});return c?c*(dir==='asc'?1:-1):a.i-b.i}).map(x=>x.r);
+const sth=(k,label,key,right=0,first='asc')=>{const st=SORT[k],on=st.key===key,ic=on?(st.dir==='asc'?'↑':'↓'):'↕';return`<th class="${right?'r':''}"><button class="sortb ${on?'on':''}" onclick="setSort('${k}','${key}','${first}')">${label}<span>${ic}</span></button></th>`};
+function setSort(k,key,first){const st=SORT[k];if(st.key===key)st.dir=st.dir==='asc'?'desc':'asc';else{st.key=key;st.dir=first}k==='h'?rHoldTable():rTxTable()}
+function fbHtml(k){const f=FB[k],o=fyList().map((y,i)=>`<option value="fy:${y}" ${f.per==='fy:'+y?'selected':''}>FY ${y}${i===0?' (current)':''}</option>`).join('');
+ const[a,b]=f.per==='all'?[earliest(),today]:fbBounds(f);
+ return`<input class="sq" type="search" placeholder="${k==='h'?'Search name, type or platform':'Search name, type, platform or action'}" value="${f.q.replace(/"/g,'&quot;')}" oninput="fbQ('${k}',this.value)" aria-label="Search">`+
+ `<span class="cal">${svg('cal',16)}</span><select onchange="fbPer('${k}',this.value)" aria-label="Period">${f.per==='custom'?'<option value="" selected disabled>Select period</option>':''}${o}<option value="all" ${f.per==='all'?'selected':''}>All time</option></select>`+
+ `<input type="date" value="${a||''}" aria-label="From" onchange="fbDate('${k}',this.value,null)"><span class="muted">to</span><input type="date" value="${b||''}" aria-label="To" onchange="fbDate('${k}',null,this.value)">`}
+const fbRender=k=>k==='h'?rHold():rTx();
+function fbPer(k,v){const f=FB[k];f.per=v;fbRender(k)}
+function fbDate(k,a,b){const f=FB[k];let[cf,ct]=f.per==='all'?[earliest(),today]:fbBounds(f);if(a!==null)cf=a;if(b!==null)ct=b;if(!cf||!ct)return;if(cf>ct)[cf,ct]=[ct,cf];
+ const m=fyList().find(y=>{const r=fyRange(y);return r[0]===cf&&r[1]===ct});if(m)f.per='fy:'+m;else if(cf===earliest()&&ct===today)f.per='all';else{f.per='custom';f.from=cf;f.to=ct}fbRender(k)}
+function fbQ(k,v){FB[k].q=v;k==='h'?rHoldTable():rTxTable()}
+function toggleAdd(){addOpen=!addOpen;$('addCard').style.display=addOpen?'':'none';rHold()}
+function rHold(){const b=$('addBtn');b.className='btn'+(addOpen?' ghost':'');b.innerHTML=`${svg(addOpen?'back':'plus2')}${addOpen?'Close':'Add investment'}`;
+ $('hBar').innerHTML=`<div class="fb">${fbHtml('h')}</div>`;paintIcons($('hBar'));rHoldTable()}
+function rHoldTable(){const f=FB.h,nd=f.q.trim().toLowerCase(),all=holdings().length,acc={};
+ lots.forEach(l=>{const r=remaining(l);if(r<=1e-9||!fbIn(f,l.date))return;const a=acc[l.aid]=acc[l.aid]||{aid:l.aid,qty:0,cost:0,pl:new Set()};a.qty+=r;a.cost+=r*(l.price+l.fees/l.qty);a.pl.add(plat(l))});
+ const hit=a=>!nd||a.some(x=>x.toLowerCase().includes(nd));
+ let h=Object.values(acc).map(x=>({...x,name:assets[x.aid].name,type:T[assets[x.aid].type][0],pf:[...x.pl].sort().join(', ')||'–',avg:x.cost/x.qty})).filter(x=>hit([x.name,x.type,x.pf]));
+ h=sortBy(h,{name:x=>x.name,type:x=>x.type,pf:x=>x.pf,qty:x=>x.qty,avg:x=>x.avg,invested:x=>x.cost}[SORT.h.key],SORT.h.dir);
+ $('holdSub').textContent=all?`${h.length} holding${h.length===1?'':'s'}${h.length!==all?' of '+all:''} · ${inr(h.reduce((s,x)=>s+x.cost,0))} invested`:'Record what you own.';
+ $('holdTbl').innerHTML=h.length?`<thead><tr>${sth('h','Name','name')}${sth('h','Type','type')}${sth('h','Platform','pf')}${sth('h','Quantity','qty',1,'desc')}${sth('h','Avg cost','avg',1,'desc')}${sth('h','Invested','invested',1,'desc')}<th></th></tr></thead><tbody>`+
+ h.map(x=>`<tr><td><button class="lnk" onclick="go('detail','${x.aid}')">${assets[x.aid].name}</button></td><td class="muted">${x.type}</td><td class="muted">${x.pf}</td><td class="r">${+x.qty.toFixed(6)}</td><td class="r">${inr(x.avg)}</td><td class="r"><b>${inr(x.cost)}</b></td><td><div class="actions"><button class="btn ghost sm" onclick="go('detail','${x.aid}')">Details</button><button class="btn soft sm" onclick="openSell('${x.aid}')">Sell</button></div></td></tr>`).join('')+'</tbody>'
+ :empty('brief',all?'No holdings match':'No holdings yet',all?'Try a different period or clear the search.':'Press Add investment to record your first one.');
+ const held=new Set(holdings().map(x=>x.aid)),closed=Object.keys(assets).filter(a=>!held.has(a)&&lots.some(l=>l.aid===a&&fbIn(f,l.date))&&hit([assets[a].name,T[assets[a].type][0]]));
  $('closedCard').style.display=closed.length?'block':'none';
  $('closedList').innerHTML=closed.map(a=>`<button class="lnk" style="display:flex;justify-content:space-between;width:100%;padding:12px 20px;border-top:1px solid var(--line)" onclick="go('detail','${a}')"><span>${assets[a].name}</span><span class="muted" style="font-weight:400">${T[assets[a].type][0]}</span></button>`).join('')}
 function typeHint(){const r=T[$('bType').value];$('bHint').textContent=r[2]?`Long term after ${r[2]} months.`:'No holding-period concept; taxed at a single rate.'}
@@ -472,13 +524,13 @@ function saveLot(e){e.preventDefault();const l=lots.find(x=>x.id===editLot),s=so
 function openSell(aid){curAsset=aid;editSale=null;const a=assets[aid],h=holdings().find(x=>x.aid===aid);
  $('sBack').textContent=a.name;$('sellTitle').textContent='Sell '+a.name;$('sellSub').textContent=`${T[a.type][0]} · you hold ${+h.qty.toFixed(6)} units`;
  $('sNote').textContent='Oldest purchases are sold first (FIFO). Tax shown is an estimate, not advice.';$('sDel').innerHTML='';$('sSave').textContent='Confirm sale';
- $('sAvail').textContent='Available: '+h.qty;$('sDate').value=today;$('sQty').value='';$('sPrice').value='';$('sFees').value=0;document.querySelector('[name=tax][value=yes]').checked=true;
+ $('sAvail').textContent='Available: '+h.qty;$('sDate').value=today;$('sQty').value='';$('sPrice').value='';$('sFees').value=0;document.querySelector('[name=tax][value=yes]').checked=true;$('sBuy').checked=false;
  $('prev').className='preview';$('sellErr').className='err';go('sell')}
 function openEditSale(id){const s=sales.find(x=>x.id===id);curAsset=s.aid;editSale=id;const a=assets[s.aid];
  const avail=lots.filter(l=>l.aid===s.aid).reduce((q,l)=>q+remaining(l,id),0);
  $('sBack').textContent=a.name;$('sellTitle').textContent='Edit sale';$('sellSub').textContent='Changing a sale re-matches it against your purchases (oldest first) and recalculates tax.';
  $('sNote').textContent=T[a.type][0]+' · '+a.name;$('sDel').innerHTML=`<button class="btn del" onclick="delSale(${id})">${svg('trash',16)}Delete</button>`;$('sSave').textContent='Save changes';
- $('sAvail').textContent='Available: '+avail;$('sDate').value=s.date;$('sQty').value=s.qty;$('sPrice').value=s.price;$('sFees').value=s.fees;document.querySelector(`[name=tax][value=${s.tax?'yes':'no'}]`).checked=true;
+ $('sAvail').textContent='Available: '+avail;$('sDate').value=s.date;$('sQty').value=s.qty;$('sPrice').value=s.price;$('sFees').value=s.fees;document.querySelector(`[name=tax][value=${s.tax?'yes':'no'}]`).checked=true;$('sBuy').checked=!!s.bb;
  $('prev').className='preview';$('sellErr').className='err';go('sell')}
 function planSale(){const qty=+$('sQty').value,price=+$('sPrice').value,date=$('sDate').value,E=$('sellErr');
  const fail=m=>{E.textContent=m;E.className='err show';return null};
@@ -486,34 +538,43 @@ function planSale(){const qty=+$('sQty').value,price=+$('sPrice').value,date=$('
  let need=qty;const alloc=[];
  lots.filter(l=>l.aid===curAsset&&l.date<=date&&remaining(l,editSale)>1e-9).sort((a,b)=>a.date<b.date?-1:1).forEach(l=>{if(need<=0)return;const t=Math.min(need,remaining(l,editSale));alloc.push({lot:l.id,qty:t});need-=t});
  if(need>1e-9)return fail(`Only ${+(qty-need).toFixed(6)} units available to sell on or before ${date}.`);
- E.className='err';return{k:'s',id:editSale||'new',aid:curAsset,date,qty,price,fees:+$('sFees').value||0,tax:document.querySelector('[name=tax]:checked').value==='yes',alloc}}
+ E.className='err';return{k:'s',id:editSale||'new',aid:curAsset,date,qty,price,fees:+$('sFees').value||0,tax:document.querySelector('[name=tax]:checked').value==='yes',bb:$('sBuy').checked,alloc}}
 function previewSale(){const s=planSale();if(!s)return;const r=compute({...s,id:'new'},editSale).find(x=>x.extra),p=$('prev');p.className='preview show';
  const st=(l,v,c='')=>`<div><small>${l}</small><b class="${c}">${v}</b></div>`;
  p.innerHTML=`<div class="stats">${st('Proceeds',inr(r.proceeds))+st('Cost (FIFO)',inr(r.cost))+st('Gain / loss',inr(r.gain),cls(r.gain))+st(r.applyTax?'Estimated tax':'Tax (not applied)',inr(r.tax))+st('Net gain',inr(r.net),cls(r.net))}</div><ul>${notes(r,s).map(x=>`<li>${x}</li>`).join('')}</ul>`}
 function notes(r,s){const n=[`Short term ${inr(r.st)} · Long term ${inr(r.lt)}`];
- if(!r.applyTax){const w=compute({...s,tax:true,id:'new'},editSale).find(x=>x.extra);n.push(`<b style="color:var(--accent-strong)">Tax effect is off. With tax included it would be ${inr(w.tax)}.</b>`)}
- else if(r.gain<=0)n.push('No tax on a loss.');
- else{if(r.eu>0)n.push(`${inr(r.eu)} is covered by the ₹1.25L yearly equity LTCG exemption; taxable gain ${inr(r.tg)}.`);
-  if(r.tax===0&&r.eu>0&&r.tg===0)n.push(`Tax is ₹0 because the whole gain is inside the exemption (${inr(r.left)} still left this year).`);
-  else if(r.tax===0)n.push('No tax: this asset type is tax-free.');
-  else if(r.eu===0)n.push(`Taxed on ${inr(r.tg)} (incl. 4% cess).`)}
+ if(!r.applyTax){const w=compute({...s,tax:true,id:'new'},editSale).find(x=>x.extra);n.push(`<b style="color:var(--accent-strong)">Tax effect is off. With tax included it would be ${inr(w.tax)}.</b>`);if(r.gain<=0)n.push("Tax effect is off, so this loss won't reduce other gains.")}
+ else{
+  if(r.bb&&r.tax>0)n.push(`Buyback proceeds are taxed as dividend at your slab rate: ${inr(r.tax)} including cess.`);
+  if(r.lu>.005)n.push(`<b style="color:var(--gain)">This loss is set off against gains this financial year${r.saved>.005?`, saving about ${inr(r.saved)} of tax`:''}.</b>`);
+  if(r.off>.005)n.push(`${inr(r.off)} of this gain is cancelled out by losses this financial year.`);
+  if(r.gain<=0&&r.lu<=.005&&!r.bb)n.push('No tax on a loss. It reduces gains in the same financial year, but there are none to reduce yet.');
+  else if(r.gain>0&&!r.bb){if(r.eu>0)n.push(`${inr(r.eu)} is covered by the ₹1.25L yearly equity LTCG exemption; taxable gain ${inr(r.tg)}.`);
+   if(r.tax===0&&r.eu>0&&r.tg===0)n.push(`Tax is ₹0 because the whole gain is inside the exemption (${inr(r.left)} still left this year).`);
+   else if(r.tax===0&&r.eu===0&&r.off<=.005)n.push('No tax: this asset type is tax-free.');
+   else if(r.eu===0&&r.tax>0)n.push(`Taxed on ${inr(r.tg)} (incl. 4% cess).`)}}
  return n}
 function confirmSale(){const s=planSale();if(!s)return;
  if(editSale){const i=sales.findIndex(x=>x.id===editSale);sales[i]={...s,id:editSale};toast('Sale updated');go('detail',curAsset)}
  else{s.id=++nextId;sales.push(s);toast('Sale recorded');fy='all';go('realised')}}
 
 /* transactions */
-function rTx(){const t=[
- ...lots.map(l=>({k:'Buy',id:l.id,aid:l.aid,date:l.date,qty:l.qty,price:l.price,fees:l.fees,amt:l.qty*l.price})),
- ...sales.map(s=>({k:'Sell',id:s.id,aid:s.aid,date:s.date,qty:s.qty,price:s.price,fees:s.fees,amt:s.qty*s.price})),
- ...misc.map(m=>({k:m.et==='buyback'?'Buyback':'Misc P/L',id:m.id,date:m.date,fees:m.brk||0,amt:m.amt,type:m.type,cost:m.cost}))
- ].sort((a,b)=>a.date<b.date?1:-1);
+function rTx(){$('tBar').innerHTML=`<div class="fb">${fbHtml('t')}</div>`;paintIcons($('tBar'));rTxTable()}
+function rTxTable(){const f=FB.t,nd=f.q.trim().toLowerCase();
+ let t=[
+ ...lots.map(l=>({k:'Buy',id:l.id,aid:l.aid,date:l.date,qty:l.qty,price:l.price,fees:l.fees,amt:l.qty*l.price,pf:plat(l)})),
+ ...sales.map(s=>({k:s.bb?'Buyback':'Sell',id:s.id,aid:s.aid,date:s.date,qty:s.qty,price:s.price,fees:s.fees,amt:s.qty*s.price,pf:plat(s)})),
+ ...misc.map(m=>({k:m.et==='buyback'?'Buyback':'Misc P/L',id:m.id,date:m.date,fees:m.brk||0,amt:m.amt,type:m.type,cost:m.cost,pf:'–'}))
+ ].map(x=>({...x,name:x.aid?assets[x.aid].name:(x.k==='Buyback'?'Share buyback':'Misc profit / loss'),tl:x.aid?T[assets[x.aid].type][0]:(x.k==='Buyback'?'Cost '+inr(x.cost):T[x.type][0])}));
+ t=t.filter(x=>fbIn(f,x.date)&&(!nd||[x.name,x.tl,x.pf,x.k].some(s=>s.toLowerCase().includes(nd))));
+ t=sortBy(t,{date:x=>x.date,k:x=>x.k,name:x=>x.name,pf:x=>x.pf,qty:x=>x.qty??-Infinity,price:x=>x.price??-Infinity,fees:x=>x.fees,amt:x=>x.amt}[SORT.t.key],SORT.t.dir);
  const bc={Buy:'b-buy',Sell:'b-sell',Buyback:'b-sell','Misc P/L':'b-off'};
- $('txTbl').innerHTML='<thead><tr><th>Date</th><th>Action</th><th>Asset</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Fees</th><th class="r">Amount</th><th></th></tr></thead><tbody>'+
+ $('txTbl').innerHTML=t.length?`<thead><tr>${sth('t','Date','date',0,'desc')}${sth('t','Action','k')}${sth('t','Asset','name')}${sth('t','Platform','pf')}${sth('t','Qty','qty',1,'desc')}${sth('t','Price','price',1,'desc')}${sth('t','Fees','fees',1,'desc')}${sth('t','Amount','amt',1,'desc')}<th></th></tr></thead><tbody>`+
  t.map(x=>{const m=!x.aid;
-  const asset=m?`<b style="font-weight:500">${x.k==='Buyback'?'Share buyback':'Misc profit / loss'}</b> <span class="muted" style="font-size:12px;margin-left:8px">${x.k==='Buyback'?'Cost '+inr(x.cost):T[x.type][0]}</span>`:`<button class="lnk" onclick="go('detail','${x.aid}')">${assets[x.aid].name}</button> <span class="muted" style="font-size:12px;margin-left:8px">${T[assets[x.aid].type][0]}</span>`;
+  const asset=m?`<b style="font-weight:500">${x.name}</b> <span class="muted" style="font-size:12px;margin-left:8px">${x.tl}</span>`:`<button class="lnk" onclick="go('detail','${x.aid}')">${x.name}</button> <span class="muted" style="font-size:12px;margin-left:8px">${x.tl}</span>`;
   const act=m?`<button class="btn ghost sm" onclick="go('misc')">Manage</button>`:`<button class="btn ghost sm" onclick="${x.k==='Buy'?'openEditLot':'openEditSale'}(${x.id})">${svg('pencil',14)}Edit</button>`;
-  return`<tr><td>${fmtD(x.date)}</td><td><span class="badge ${bc[x.k]}">${x.k}</span></td><td>${asset}</td><td class="r">${m?'–':x.qty}</td><td class="r">${m?'–':inr(x.price)}</td><td class="r">${inr(x.fees)}</td><td class="r ${x.k==='Misc P/L'?cls(x.amt):''}"><b>${inr(x.amt)}</b></td><td><div class="actions">${act}</div></td></tr>`}).join('')+'</tbody>'}
+  return`<tr><td>${fmtD(x.date)}</td><td><span class="badge ${bc[x.k]}">${x.k}</span></td><td>${asset}</td><td class="muted">${x.pf}</td><td class="r">${m?'–':x.qty}</td><td class="r">${m?'–':inr(x.price)}</td><td class="r">${inr(x.fees)}</td><td class="r ${x.k==='Misc P/L'?cls(x.amt):''}"><b>${inr(x.amt)}</b></td><td><div class="actions">${act}</div></td></tr>`}).join('')+'</tbody>'
+ :empty('swap','No transactions match','Try a different period or clear the search.')}
 
 /* realised */
 function rReal(){const all=compute().sort((a,b)=>a.date<b.date?1:-1),years=[...new Set(all.map(r=>r.fy))].sort().reverse();

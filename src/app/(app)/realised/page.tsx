@@ -27,7 +27,7 @@ export default async function RealisedPage({
     <div>
       <PageHeader
         title="Realised gains"
-        description="Profit and loss from sales and misc entries, with estimated tax."
+        description="Profit and loss from sales and misc entries, with estimated tax. Losses reduce gains in the same financial year."
         actions={
           <a href={`/realised/export?fy=${fy}`} className="btn-ghost">
             <Download size={16} />

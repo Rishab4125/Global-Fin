@@ -22,6 +22,7 @@ const saleSchema = z.object({
   fees: z.coerce.number().min(0).default(0),
   applyTax: z.boolean(),
   exemptRedemption: z.boolean(),
+  isBuyback: z.boolean(),
 });
 
 function parse(form: FormData) {
@@ -34,6 +35,7 @@ function parse(form: FormData) {
     fees: form.get("fees") || 0,
     applyTax: form.get("applyTax") === "yes",
     exemptRedemption: form.get("exemptRedemption") === "on",
+    isBuyback: form.get("isBuyback") === "on",
   });
 }
 
@@ -75,6 +77,7 @@ async function plan(userId: string, form: FormData) {
     fees: v.fees,
     applyTax: v.applyTax,
     exemptRedemption: asset.type === "sgb" && v.exemptRedemption,
+    buyback: v.isBuyback,
     allocations,
   };
   const others = pf.saleEvents.filter((s) => s.id !== v.saleId);
@@ -116,6 +119,7 @@ export async function recordSaleAction(_: ActionState, form: FormData): Promise<
       fees: String(p.v.fees),
       applyTax: p.v.applyTax,
       exemptRedemption: p.hypo.exemptRedemption,
+      isBuyback: p.v.isBuyback,
     }),
     db.insert(saleAllocations).values(
       p.hypo.allocations.map((a) => ({ saleId, lotId: a.lotId, qty: String(a.qty) })),
@@ -143,6 +147,7 @@ export async function updateSaleAction(_: ActionState, form: FormData): Promise<
         fees: String(p.v.fees),
         applyTax: p.v.applyTax,
         exemptRedemption: p.hypo.exemptRedemption,
+        isBuyback: p.v.isBuyback,
       })
       .where(and(eq(sales.id, saleId), eq(sales.userId, user.id))),
     db.delete(saleAllocations).where(eq(saleAllocations.saleId, saleId)),

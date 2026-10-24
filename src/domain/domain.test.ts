@@ -174,10 +174,12 @@ describe("realised gains and tax", () => {
       [],
       0.3,
     );
-    expect(a.tax).toBe(3120);
+    // The 500 loss in the same FY reduces the 10000 profit: 9500 * 30% * 1.04
+    expect(a.tax).toBe(2964);
     expect(b.tax).toBe(0);
     expect(c.tax).toBe(0);
     expect(c.gain).toBe(-500);
+    expect(c.lossUsed).toBe(500);
   });
 });
 
@@ -237,6 +239,166 @@ describe("misc brokerage and buyback", () => {
       [],
       0.3,
     );
+    expect(r.tax).toBe(0);
+  });
+});
+
+describe("loss set-off within a financial year", () => {
+  const L = (id: string, buyDate: string, qty: number, unitPrice: number): Lot => lot(id, buyDate, qty, unitPrice);
+  const S = (id: string, lotId: string, date: string, qty: number, price: number, extra: Partial<SaleEvent> = {}) =>
+    sale({ id, date, qty, price, allocations: [{ lotId, qty }], ...extra });
+  const byId = (rows: ReturnType<typeof computeRealised>, id: string) => rows.find((r) => r.id === id)!;
+
+  it("a loss reduces the taxable gain and shows the tax it saved", () => {
+    const lots = [L("a", "2025-01-01", 100, 100), L("b", "2025-01-01", 100, 100)];
+    const rows = computeRealised(
+      [S("gain", "a", "2025-06-01", 100, 150), S("loss", "b", "2025-07-01", 100, 80)],
+      lots,
+      0.3,
+    );
+    // gain 5000 - loss 2000 = 3000 taxable at 20% + cess
+    expect(byId(rows, "gain").tax).toBe(624);
+    expect(byId(rows, "gain").offsetByLosses).toBe(2000);
+    expect(byId(rows, "loss").lossUsed).toBe(2000);
+    expect(byId(rows, "loss").taxSaved).toBe(416);
+    expect(byId(rows, "loss").tax).toBe(0);
+  });
+
+  it("the order of the sales within the year does not matter", () => {
+    const lots = [L("a", "2025-01-01", 100, 100), L("b", "2025-01-01", 100, 100)];
+    const rows = computeRealised(
+      [S("loss", "b", "2025-05-01", 100, 80), S("gain", "a", "2025-09-01", 100, 150)],
+      lots,
+      0.3,
+    );
+    expect(byId(rows, "gain").tax).toBe(624);
+  });
+
+  it("the 1.25L exemption applies after losses, not before", () => {
+    const lots = [L("a", "2023-01-01", 1000, 100), L("b", "2025-05-01", 100, 1000)];
+    const rows = computeRealised(
+      [S("gain", "a", "2025-06-01", 1000, 300), S("loss", "b", "2025-06-10", 100, 0)],
+      lots,
+      0.3,
+    );
+    // LTCG 200000 less short-term loss 100000 = 100000, inside the 125000 exemption
+    expect(byId(rows, "gain").tax).toBe(0);
+    expect(byId(rows, "gain").exemptionUsed).toBe(100000);
+    // without the loss: (200000 - 125000) * 12.5% * 1.04
+    expect(byId(rows, "loss").taxSaved).toBe(9750);
+  });
+
+  it("a long-term loss cannot reduce a short-term gain", () => {
+    const lots = [L("lt", "2023-01-01", 100, 100), L("st", "2025-01-01", 100, 100)];
+    const rows = computeRealised(
+      [S("gain", "st", "2025-06-01", 100, 150), S("loss", "lt", "2025-06-02", 100, 50)],
+      lots,
+      0.3,
+    );
+    expect(byId(rows, "gain").tax).toBe(1040);
+    expect(byId(rows, "loss").lossUsed).toBe(0);
+  });
+
+  it("a short-term loss can reduce a long-term gain", () => {
+    const lots = [L("lt", "2023-01-01", 1000, 100), L("st", "2025-05-01", 100, 1000)];
+    const rows = computeRealised(
+      [S("gain", "lt", "2025-06-01", 1000, 400), S("loss", "st", "2025-06-02", 100, 0)],
+      lots,
+      0.3,
+    );
+    // LTCG 300000 - 100000 = 200000; exemption 125000; taxable 75000
+    expect(byId(rows, "gain").tax).toBe(9750);
+  });
+
+  it("losses do not carry across financial years", () => {
+    const lots = [L("a", "2025-01-01", 100, 100), L("b", "2025-01-01", 100, 100)];
+    const rows = computeRealised(
+      [S("loss", "b", "2025-02-01", 100, 80), S("gain", "a", "2025-06-01", 100, 150)],
+      lots,
+      0.3,
+    );
+    expect(byId(rows, "gain").tax).toBe(1040);
+    expect(byId(rows, "loss").lossUsed).toBe(0);
+  });
+
+  it("crypto losses and sales with the tax effect off take no part", () => {
+    const lots = [L("a", "2025-01-01", 100, 100), L("c", "2025-01-01", 1, 100000), L("d", "2025-01-01", 100, 100)];
+    const rows = computeRealised(
+      [
+        S("gain", "a", "2025-06-01", 100, 150),
+        S("crypto", "c", "2025-06-02", 1, 50000, { assetType: "crypto" }),
+        S("off", "d", "2025-06-03", 100, 50, { applyTax: false }),
+      ],
+      lots,
+      0.3,
+    );
+    expect(byId(rows, "gain").tax).toBe(1040);
+    expect(byId(rows, "crypto").lossUsed).toBe(0);
+    expect(byId(rows, "off").lossUsed).toBe(0);
+  });
+
+  it("applies the loss to the highest-taxed gain first", () => {
+    const lots = [L("land", "2025-01-01", 1, 100000), L("eq", "2025-01-01", 100, 100), L("l", "2025-01-01", 10, 100)];
+    const rows = computeRealised(
+      [
+        S("landGain", "land", "2025-06-01", 1, 110000, { assetType: "land" }),
+        S("eqGain", "eq", "2025-06-02", 100, 200),
+        S("loss", "l", "2025-06-03", 10, 0),
+      ],
+      lots,
+      0.3,
+    );
+    // loss 1000 reduces the slab-rate (30%) land gain, not the 20% equity gain
+    expect(byId(rows, "landGain").tax).toBe(2808);
+    expect(byId(rows, "eqGain").tax).toBe(2080);
+  });
+});
+
+describe("selling a holding in a share buyback", () => {
+  const lots = [lot("a", "2025-01-01", 100, 400), lot("g", "2025-01-01", 100, 100)];
+  const buyback = (extra: Partial<SaleEvent> = {}) =>
+    sale({ id: "bb", buyback: true, date: "2025-06-01", qty: 100, price: 1000, allocations: [{ lotId: "a", qty: 100 }], ...extra });
+
+  it("taxes the full proceeds as dividend at the slab rate", () => {
+    const [r] = computeRealised([buyback()], lots, 0.3);
+    expect(r.buyback).toBe(true);
+    expect(r.gain).toBe(60000); // proceeds - cost
+    expect(r.tax).toBe(31200); // 100000 * 30% * 1.04
+    expect(r.taxableGain).toBe(100000);
+  });
+
+  it("its cost is a capital loss that reduces other gains in the same year", () => {
+    const rows = computeRealised(
+      [
+        buyback(),
+        sale({ id: "gain", date: "2025-06-02", qty: 100, price: 150, allocations: [{ lotId: "g", qty: 100 }] }),
+      ],
+      lots,
+      0.3,
+    );
+    const gain = rows.find((r) => r.id === "gain")!;
+    const bb = rows.find((r) => r.id === "bb")!;
+    expect(gain.tax).toBe(0); // 5000 short-term gain wiped out by the 40000 loss
+    expect(bb.lossUsed).toBe(5000);
+    expect(bb.taxSaved).toBe(1040);
+    expect(bb.tax).toBe(31200);
+  });
+
+  it("is tax-free for the shareholder before 1 Oct 2024 and creates no loss", () => {
+    const rows = computeRealised(
+      [
+        buyback({ date: "2024-09-15" }),
+        sale({ id: "gain", date: "2024-09-16", qty: 100, price: 150, allocations: [{ lotId: "g", qty: 100 }] }),
+      ],
+      [lot("a", "2024-01-01", 100, 400), lot("g", "2024-01-01", 100, 100)],
+      0.3,
+    );
+    expect(rows.find((r) => r.id === "bb")!.tax).toBe(0);
+    expect(rows.find((r) => r.id === "gain")!.tax).toBe(1040); // 5000 * 20% * 1.04, taxed in full: the buyback creates no loss
+  });
+
+  it("does nothing special when tax effect is off", () => {
+    const [r] = computeRealised([buyback({ applyTax: false })], lots, 0.3);
     expect(r.tax).toBe(0);
   });
 });

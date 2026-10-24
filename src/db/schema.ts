@@ -69,6 +69,7 @@ export const sales = pgTable(
     fees: money("fees").notNull().default("0"),
     applyTax: boolean("apply_tax").notNull().default(true),
     exemptRedemption: boolean("exempt_redemption").notNull().default(false),
+    isBuyback: boolean("is_buyback").notNull().default(false),
     source: text("source").notNull().default("manual"),
     brokerTradeId: text("broker_trade_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

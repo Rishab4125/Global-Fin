@@ -11,7 +11,7 @@ interface Option {
 }
 
 /**
- * Period picker for the dashboard. Choosing a financial year (or All time) fills in the date fields;
+ * Period picker (dashboard, transactions). Choosing a financial year (or All time) fills in the date fields;
  * editing the dates directly analyses exactly that range.
  */
 export function PeriodFilter({
@@ -21,6 +21,8 @@ export function PeriodFilter({
   to,
   earliest,
   today,
+  basePath = "/dashboard",
+  extraQuery = "",
 }: {
   options: Option[];
   value: string;
@@ -28,6 +30,9 @@ export function PeriodFilter({
   to: string;
   earliest: string;
   today: string;
+  basePath?: string;
+  /** Other query params to keep when the period changes, e.g. "q=reliance". */
+  extraQuery?: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -38,7 +43,7 @@ export function PeriodFilter({
   const [f, setF] = useState(initialFrom);
   const [t, setT] = useState(initialTo);
 
-  const go = (qs: string) => start(() => router.push(`/dashboard?${qs}`));
+  const go = (qs: string) => start(() => router.push(`${basePath}?${qs}${extraQuery ? `&${extraQuery}` : ""}`));
 
   const choose = (v: string) => {
     setSelected(v);

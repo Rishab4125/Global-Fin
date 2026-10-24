@@ -5,6 +5,8 @@ export interface Lot {
   qty: number;
   unitPrice: number;
   fees: number;
+  /** Where the purchase came from, e.g. "manual" or "zerodha_pnl". */
+  source?: string;
 }
 
 export interface Allocation {
