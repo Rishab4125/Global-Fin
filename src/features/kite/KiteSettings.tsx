@@ -16,8 +16,8 @@ export function KiteSettings({ connected, lastSync }: { connected: boolean; last
             {lastSync ? <span className="text-muted">. Last synced {lastSync}.</span> : "."}
           </p>
           <p className="text-sm text-muted">
-            Disconnecting deletes the Zerodha access we store for you. Trades and holdings already in the app stay as
-            they are.
+            Disconnecting deletes your saved Zerodha API key, secret and access. Trades and holdings already in the app
+            stay as they are.
           </p>
           <button
             className="btn-ghost"

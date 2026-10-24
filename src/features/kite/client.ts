@@ -3,23 +3,20 @@ import type { KiteHolding } from "@/domain/brokerSync";
 
 const API = "https://api.kite.trade";
 
-function creds() {
-  const apiKey = process.env.KITE_API_KEY;
-  const apiSecret = process.env.KITE_API_SECRET;
-  if (!apiKey || !apiSecret) throw new Error("KITE_API_KEY / KITE_API_SECRET are not set");
-  return { apiKey, apiSecret };
+export interface KiteCreds {
+  apiKey: string;
+  apiSecret: string;
 }
 
-export const kiteConfigured = () => !!process.env.KITE_API_KEY && !!process.env.KITE_API_SECRET;
+/** Credentials and tokens are encrypted with this key, so it must be set on the server. */
+export const kiteConfigured = () => !!process.env.KITE_TOKEN_ENC_KEY;
 
-export function kiteLoginUrl(state: string): string {
-  const { apiKey } = creds();
+export function kiteLoginUrl(apiKey: string, state: string): string {
   const params = new URLSearchParams({ v: "3", api_key: apiKey, redirect_params: `state=${state}` });
   return `https://kite.zerodha.com/connect/login?${params}`;
 }
 
-export async function exchangeRequestToken(requestToken: string): Promise<string> {
-  const { apiKey, apiSecret } = creds();
+export async function exchangeRequestToken({ apiKey, apiSecret }: KiteCreds, requestToken: string): Promise<string> {
   const checksum = createHash("sha256").update(apiKey + requestToken + apiSecret).digest("hex");
   const res = await fetch(`${API}/session/token`, {
     method: "POST",
@@ -51,8 +48,7 @@ interface RawHolding {
   last_price: number;
 }
 
-export async function fetchHoldings(accessToken: string): Promise<KiteHolding[]> {
-  const { apiKey } = creds();
+export async function fetchHoldings({ apiKey }: KiteCreds, accessToken: string): Promise<KiteHolding[]> {
   const res = await fetch(`${API}/portfolio/holdings`, {
     headers: { "X-Kite-Version": "3", Authorization: `token ${apiKey}:${accessToken}` },
     cache: "no-store",

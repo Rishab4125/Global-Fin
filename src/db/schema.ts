@@ -119,8 +119,10 @@ export const brokerConnections = pgTable(
   {
     userId: text("user_id").notNull(),
     broker: text("broker").notNull(),
-    accessTokenEnc: text("access_token_enc").notNull(),
-    tokenExpiresAt: timestamp("token_expires_at").notNull(),
+    apiKey: text("api_key"),
+    apiSecretEnc: text("api_secret_enc"),
+    accessTokenEnc: text("access_token_enc"),
+    tokenExpiresAt: timestamp("token_expires_at"),
     lastSyncAt: timestamp("last_sync_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },

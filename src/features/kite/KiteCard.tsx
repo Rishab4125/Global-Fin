@@ -9,13 +9,11 @@ const RECONNECT_NOTE =
   "Zerodha signs you out every morning, so please reconnect. It takes one tap and your Zerodha login.";
 
 export function KiteCard({
-  configured,
   hasConnection,
   connected,
   lastSync,
   flash,
 }: {
-  configured: boolean;
   hasConnection: boolean;
   connected: boolean;
   lastSync: string | null;
@@ -35,7 +33,6 @@ export function KiteCard({
         </p>
       </div>
 
-      {!configured && <FormError message="Zerodha sync isn't set up on this server yet (missing API key)." />}
       {hasConnection && !connected && <FormError message={RECONNECT_NOTE} />}
       {flash === "connected" && <p className="rounded-lg bg-primary-soft px-3 py-2 text-sm">Zerodha connected.</p>}
       {flash === "error" && <FormError message="Couldn't connect to Zerodha. Please try again." />}
@@ -51,7 +48,7 @@ export function KiteCard({
       {preview && <PreviewPanel preview={preview} mode="sync" />}
 
       <div className="flex flex-wrap gap-2">
-        {configured && !connected && (
+        {!connected && (
           <a href="/api/kite/login" className="btn-primary">
             {hasConnection ? "Reconnect Zerodha" : "Connect Zerodha"}
           </a>

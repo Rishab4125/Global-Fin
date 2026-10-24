@@ -2,6 +2,8 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
 import { db } from "@/db/client";
 import { brokerConnections } from "@/db/schema";
 import { diffHoldings, type AppPosition } from "@/domain/brokerSync";
@@ -13,8 +15,9 @@ import { executePlan, loadUserState, type UserState } from "@/features/import/se
 import type { BrokerTrade } from "@/features/import/types";
 import { toPreview } from "@/features/import/view";
 import type { ActionState } from "@/features/portfolio/actionState";
-import { decryptToken } from "./crypto";
+import { decryptToken, encryptToken } from "./crypto";
 import { fetchHoldings, KiteAuthError } from "./client";
+import { credsOf, loadConnection, tokenValid } from "./connection";
 
 const SOURCE = "kite_sync";
 const RECONNECT = "Your Zerodha session has expired. Reconnect Zerodha and try again.";
@@ -34,16 +37,13 @@ function appQuantities(state: UserState) {
 }
 
 async function makePlan(userId: string, form: FormData) {
-  const [conn] = await db
-    .select()
-    .from(brokerConnections)
-    .where(and(eq(brokerConnections.userId, userId), eq(brokerConnections.broker, "kite")))
-    .limit(1);
-  if (!conn || conn.tokenExpiresAt <= new Date()) return { error: RECONNECT } as const;
+  const conn = await loadConnection(userId);
+  const creds = conn && credsOf(conn);
+  if (!conn || !creds || !tokenValid(conn)) return { error: RECONNECT } as const;
 
   let holdings;
   try {
-    holdings = await fetchHoldings(decryptToken(conn.accessTokenEnc));
+    holdings = await fetchHoldings(creds, decryptToken(conn.accessTokenEnc!));
   } catch (e) {
     return { error: e instanceof KiteAuthError ? RECONNECT : "Could not reach Zerodha. Try again in a moment." } as const;
   }
@@ -146,4 +146,33 @@ export async function disconnectKiteAction(): Promise<ActionState> {
     .where(and(eq(brokerConnections.userId, user.id), eq(brokerConnections.broker, "kite")));
   revalidatePath("/", "layout");
   return { ok: true, nonce: Date.now() };
+}
+
+const credsSchema = z.object({
+  apiKey: z.string().trim().regex(/^[A-Za-z0-9]{8,64}$/, "That doesn't look like a Kite API key"),
+  apiSecret: z.string().trim().regex(/^[A-Za-z0-9]{8,64}$/, "That doesn't look like a Kite API secret"),
+});
+
+export async function saveKiteCredentialsAction(_: ActionState, form: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const parsed = credsSchema.safeParse({ apiKey: form.get("apiKey"), apiSecret: form.get("apiSecret") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  let secretEnc: string;
+  try {
+    secretEnc = encryptToken(parsed.data.apiSecret);
+  } catch {
+    return { error: "Zerodha sync isn't set up on this server yet." };
+  }
+  const values = {
+    apiKey: parsed.data.apiKey,
+    apiSecretEnc: secretEnc,
+    accessTokenEnc: null,
+    tokenExpiresAt: null,
+  };
+  await db
+    .insert(brokerConnections)
+    .values({ userId: user.id, broker: "kite", ...values })
+    .onConflictDoUpdate({ target: [brokerConnections.userId, brokerConnections.broker], set: values });
+  redirect("/api/kite/login");
 }

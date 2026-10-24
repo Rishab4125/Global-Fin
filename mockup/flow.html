@@ -535,7 +535,7 @@ const SAMPLE=[
  {id:'z5',sym:'INFY',date:'2025-08-01',side:'sell',qty:10,price:1700},
  {id:'z6',sym:'NIPPONGOLD',date:'2025-05-05',side:'buy',qty:10,price:6600}];
 const BROKER=[{sym:'RELIANCE',qty:160,avg:2950,last:3020},{sym:'TCS',qty:5,avg:3800,last:3950},{sym:'INFY',qty:15,avg:1500,last:1650},{sym:'NIPPONGOLD',qty:30,avg:6500,last:6800},{sym:'WIPRO',qty:15,avg:480,last:495}];
-let up=null,imported=new Set(),kite={connected:false,expired:false,last:null,pv:null,done:''};
+let up=null,imported=new Set(),kite={creds:false,connected:false,expired:false,last:null,pv:null,done:''};
 function autoMatch(sym){const n=norm(sym),ents=Object.entries(assets);
  let e=ents.find(([,a])=>norm(a.name)===n);if(e)return{aid:e[0],kind:'name'};
  if(n.length>=3){e=ents.find(([,a])=>{const m=norm(a.name);return m.length>=3&&(m.includes(n)||n.includes(m))});if(e)return{aid:e[0],kind:'suggest'}}
@@ -576,7 +576,15 @@ function doImport(){const rows=upRows(),todo=rows.filter(r=>r.st==='new'||(r.st=
  up.dup={};toast('Import complete');rUp()}
 function syncDiff(){const h=holdings();return BROKER.map(b=>{const m=autoMatch(b.sym),have=m.aid?(h.find(x=>x.aid===m.aid)?.qty||0):0,d=b.qty-have;
  return d>1e-9?{...b,aid:m.aid,kind:'add',qty:d,price:b.avg}:d<-1e-9?{...b,aid:m.aid,kind:'reduce',qty:-d,price:b.last}:null}).filter(Boolean)}
-function rKite(){const o=$('kOut'),k=kite;let h='';
+function kSetupHtml(){return `<h3 style="font-size:15px;font-weight:600;margin:0 0 4px">Connect your Zerodha account</h3><p class="muted" style="margin:0 0 14px">Zerodha gives each person a free personal API key. Create yours once, then paste it here.</p>
+ <ol style="margin:0 0 16px;padding-left:20px;display:grid;gap:8px"><li>Log in at <b style="font-weight:500">developers.kite.trade</b> with your Zerodha account and create a new app of type <b style="font-weight:500">Personal</b> (free). The app name can be anything.</li>
+ <li>Set the <b style="font-weight:500">Redirect URL</b> to exactly:<code style="display:block;margin-top:4px;background:var(--surface2);border-radius:8px;padding:8px 12px;font-size:12px;word-break:break-all">https://your-site.vercel.app/api/kite/callback</code>Leave the Postback URL empty.</li>
+ <li>Copy the API key and API secret from the app and paste them below.</li></ol>
+ <div class="grid f3"><div><label class="fl">API key</label><input id="kKey" autocomplete="off"></div><div><label class="fl">API secret</label><input id="kSec" type="password" autocomplete="off"></div></div>
+ <div class="hint" style="margin:10px 0 14px">Your secret is stored encrypted and is only used to read your holdings. Disconnecting in Settings deletes it.</div>
+ <button class="btn" onclick="kSave()">Save and connect Zerodha</button>`}
+function kSave(){if(($('kKey').value||'').trim().length<8||($('kSec').value||'').trim().length<8){toast('Enter your API key and secret');return}kite.creds=true;kite.connected=true;kite.expired=false;kite.done='Zerodha connected.';rKite()}
+function rKite(){const o=$('kOut'),k=kite;let h='';if(!k.creds){o.innerHTML=kSetupHtml();return}
  if(k.done)h+=`<div class="note" style="color:var(--ink)">${k.done}</div>`;
  if(k.expired)h+=`<div class="err show" style="margin:0 0 14px">Zerodha signs you out every morning, so please reconnect. It takes one tap and your Zerodha login.</div>`;
  if(k.connected&&!k.expired&&k.last)h+=`<p class="hint" style="margin:0 0 12px">Last synced ${k.last}</p>`;
@@ -589,7 +597,7 @@ function rKite(){const o=$('kOut'),k=kite;let h='';
  if(k.pv&&k.pv.length)h+=`<button class="btn soft" onclick="kConfirm()">Confirm sync</button>`;
  if(k.connected&&!k.expired)h+=`<button class="btn ghost" onclick="kite.expired=true;kite.pv=null;kite.done='';rKite()" title="Mockup only">Simulate next-morning expiry</button>`;
  o.innerHTML=h+`</div>`}
-function kConnect(){kite.connected=true;kite.expired=false;kite.pv=null;kite.done='Zerodha connected.';rKite()}
+function kConnect(){kite.creds=true;kite.connected=true;kite.expired=false;kite.pv=null;kite.done='Zerodha connected.';rKite()}
 function kSync(){kite.done='';kite.pv=syncDiff();rKite()}
 function kConfirm(){let nb=0,ns=0;const made={};
  for(const r of kite.pv){let aid=r.aid||made[r.sym];if(!aid){aid='a'+(++nextId);assets[aid]={name:r.sym,type:'equity'};made[r.sym]=aid}
@@ -599,10 +607,10 @@ function kConfirm(){let nb=0,ns=0;const made={};
  kite.done=`Synced: added ${nb} buy${nb===1?'':'s'}, recorded ${ns} sale${ns===1?'':'s'}. Press Sync again and nothing changes.`;toast('Sync complete');rKite()}
 function rImport(){rUp()}
 function rSync(){rKite()}
-function rKSet(){const k=kite;$('kSet').innerHTML=k.connected
- ?`<p style="margin:0 0 8px">Zerodha is <b class="gain" style="font-weight:500">connected</b>${k.last?`<span class="muted">. Last synced ${k.last}.</span>`:'.'}</p><p class="muted" style="margin:0 0 14px">Disconnecting deletes the Zerodha access we store for you. Trades and holdings already in the app stay as they are.</p><button class="btn ghost" onclick="kDisconnect()">Disconnect Zerodha</button>`
+function rKSet(){const k=kite;$('kSet').innerHTML=k.creds
+ ?`<p style="margin:0 0 8px">Zerodha is <b class="gain" style="font-weight:500">connected</b>${k.last?`<span class="muted">. Last synced ${k.last}.</span>`:'.'}</p><p class="muted" style="margin:0 0 14px">Disconnecting deletes your saved Zerodha API key, secret and access. Trades and holdings already in the app stay as they are.</p><button class="btn ghost" onclick="kDisconnect()">Disconnect Zerodha</button>`
  :`<p class="muted" style="margin:0">Zerodha isn't connected. Connect it from <a href="#" onclick="go('sync');return false" style="color:var(--primary);font-weight:500">Sync on the Holdings page</a>.</p>`}
-function kDisconnect(){if(!confirm('Disconnect Zerodha? You can reconnect any time.'))return;kite={connected:false,expired:false,last:null,pv:null,done:''};toast('Zerodha disconnected');rKSet()}
+function kDisconnect(){if(!confirm('Disconnect Zerodha? You can reconnect any time.'))return;kite={creds:false,connected:false,expired:false,last:null,pv:null,done:''};toast('Zerodha disconnected');rKSet()}
 
 /* misc */
 function rMisc(){const rows=compute().filter(r=>r.k==='m');

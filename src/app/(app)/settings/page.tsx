@@ -62,7 +62,7 @@ export default async function SettingsPage() {
         </SectionCard>
 
         <SectionCard title="Connected brokers" description="Used by Sync on the Holdings page.">
-          <KiteSettings connected={!!conn} lastSync={lastSync} />
+          <KiteSettings connected={!!conn?.apiKey} lastSync={lastSync} />
         </SectionCard>
 
         <SectionCard title="Account" description="Your data is stored against this Google account ID.">
