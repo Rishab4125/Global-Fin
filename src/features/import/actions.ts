@@ -4,20 +4,20 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/features/auth/session";
 import type { ActionState } from "@/features/portfolio/actionState";
 import { buildPlan } from "./plan";
-import { parseZerodhaTradebook } from "./parsers/zerodha";
+import { parseBrokerFile } from "./parsers/detect";
 import { executePlan, loadUserState } from "./server";
-import type { ParseResult } from "./types";
+import type { ParsedFile } from "./types";
 import { toPreview } from "./view";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
-async function readFile(form: FormData): Promise<ParseResult> {
+async function readFile(form: FormData): Promise<ParsedFile> {
   const broker = form.get("broker");
   const file = form.get("file");
-  if (!(file instanceof File) || file.size === 0) return { trades: [], skipped: [], error: "Choose a file to upload." };
-  if (file.size > MAX_BYTES) return { trades: [], skipped: [], error: "File is larger than 5 MB." };
-  if (broker === "zerodha") return parseZerodhaTradebook(await file.text());
-  return { trades: [], skipped: [], error: "That broker isn't supported yet." };
+  const fail = (error: string): ParsedFile => ({ trades: [], skipped: [], source: "", error });
+  if (!(file instanceof File) || file.size === 0) return fail("Choose a file to upload.");
+  if (file.size > MAX_BYTES) return fail("File is larger than 5 MB.");
+  return parseBrokerFile(String(broker), file);
 }
 
 function readChoices(form: FormData) {
@@ -36,7 +36,7 @@ async function makePlan(userId: string, form: FormData) {
   if (parsed.error) return { error: parsed.error } as const;
   if (!parsed.trades.length) return { error: "No importable equity trades found in this file." } as const;
   const state = await loadUserState(userId);
-  const source = `${form.get("broker")}_csv`;
+  const source = parsed.source;
   const plan = buildPlan({ trades: parsed.trades, source, ...state, ...readChoices(form) });
   return { plan, state, source, skipped: parsed.skipped } as const;
 }

@@ -50,15 +50,21 @@ export type RowStatus = "new" | "imported" | "possible_duplicate";
 export const manualKey = (assetId: string, date: string, side: string, qty: number, price: number) =>
   `${assetId}|${date}|${side}|${qty.toFixed(4)}|${price.toFixed(4)}`;
 
-/** Already-imported id wins; otherwise a matching hand-entered trade is flagged for the user to decide. */
+/** Same stock, day, side and quantity, ignoring price. Used to spot trades already imported from another report. */
+export const looseKey = (assetId: string, date: string, side: string, qty: number) =>
+  `${assetId}|${date}|${side}|${qty.toFixed(4)}`;
+
+/** Already-imported id wins; otherwise a matching existing trade is flagged for the user to decide. */
 export function classifyTrade(
   tradeKey: string,
   assetId: string | null,
   t: { date: string; side: string; qty: number; price: number },
   importedKeys: Set<string>,
   manualKeys: Set<string>,
+  looseKeys: Set<string> = new Set(),
 ): RowStatus {
   if (importedKeys.has(tradeKey)) return "imported";
   if (assetId && manualKeys.has(manualKey(assetId, t.date, t.side, t.qty, t.price))) return "possible_duplicate";
+  if (assetId && looseKeys.has(looseKey(assetId, t.date, t.side, t.qty))) return "possible_duplicate";
   return "new";
 }

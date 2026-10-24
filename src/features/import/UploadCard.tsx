@@ -1,12 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { FormError, Field } from "@/components/fields";
 import { useServerForm } from "@/components/useServerForm";
 import { commitImportAction, previewImportAction } from "./actions";
 import { PreviewPanel } from "./PreviewPanel";
 
+const HELP: Record<string, string> = {
+  zerodha:
+    "Upload your Tradebook (Console, Reports, Tradebook) or your P&L report that lists each trade with its entry and exit date.",
+  groww:
+    "Upload your stock Order history or your stock Profit & Loss report that lists each trade with its buy and sell date.",
+};
+
 export function UploadCard() {
   const { formRef, state, pending, onSubmit, run } = useServerForm(previewImportAction);
+  const [broker, setBroker] = useState("zerodha");
   const preview = state.importPreview;
   const importable = preview ? preview.counts.new : 0;
 
@@ -15,18 +24,26 @@ export function UploadCard() {
       <div>
         <h2 className="text-base font-semibold">Upload trades</h2>
         <p className="mt-1 text-sm text-muted">
-          Download the <strong>Tradebook</strong> CSV from Zerodha Console (Reports, Tradebook) and upload it here.
-          Uploading the same file again, or an overlapping date range, never adds a trade twice.
+          {HELP[broker]} CSV and Excel (.xlsx) files both work. Uploading the same file again, or an overlapping date
+          range, never adds a trade twice. Importing both a tradebook and a P&amp;L report for the same period will
+          flag the trades that match.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-[12rem_1fr]">
         <Field label="Broker">
-          <select name="broker" className="input" defaultValue="zerodha">
-            <option value="zerodha">Zerodha (Tradebook CSV)</option>
+          <select name="broker" className="input" value={broker} onChange={(e) => setBroker(e.target.value)}>
+            <option value="zerodha">Zerodha</option>
+            <option value="groww">Groww</option>
           </select>
         </Field>
         <Field label="File">
-          <input name="file" type="file" accept=".csv,text/csv" required className="input" />
+          <input
+            name="file"
+            type="file"
+            accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            required
+            className="input"
+          />
         </Field>
       </div>
 
@@ -47,12 +64,7 @@ export function UploadCard() {
           {pending ? "Working…" : preview ? "Refresh preview" : "Preview"}
         </button>
         {preview && (
-          <button
-            type="button"
-            className="btn-accent"
-            disabled={pending}
-            onClick={() => run(commitImportAction)}
-          >
+          <button type="button" className="btn-accent" disabled={pending} onClick={() => run(commitImportAction)}>
             Import
           </button>
         )}

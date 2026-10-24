@@ -277,9 +277,9 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
   <div class="ph"><div><h1>Import trades</h1><p>Bring in your broker's trade history instead of typing it. Nothing is ever added twice.</p></div></div>
   <div class="card">
     <h2 style="font-size:16px;font-weight:600;margin-bottom:4px">Upload trades</h2>
-    <p class="muted" style="margin:0 0 16px">Download the <b style="color:var(--ink);font-weight:500">Tradebook</b> CSV from Zerodha Console (Reports, Tradebook) and upload it here. Uploading the same file again, or an overlapping date range, never adds a trade twice.</p>
+    <p class="muted" style="margin:0 0 16px">Upload your <b style="color:var(--ink);font-weight:500">Tradebook</b> or your <b style="color:var(--ink);font-weight:500">P&amp;L report</b> (the one that lists each trade with its entry and exit date). CSV and Excel files both work. Uploading the same file again, or an overlapping date range, never adds a trade twice.</p>
     <div class="grid f3">
-      <div><label class="fl">Broker</label><select><option>Zerodha (Tradebook CSV)</option><option disabled>Groww (coming soon)</option></select></div>
+      <div><label class="fl">Broker</label><select><option>Zerodha (Tradebook or P&amp;L)</option><option>Groww (Order history or P&amp;L)</option></select></div>
       <div><label class="fl">File</label><button type="button" class="btn ghost" style="width:100%" onclick="loadSample()"><span data-i="upload"></span><span id="upFile">Choose sample tradebook.csv</span></button><div class="hint">Mockup: loads a made-up tradebook with 6 trades</div></div>
     </div>
     <div id="upOut"></div>

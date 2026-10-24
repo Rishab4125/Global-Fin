@@ -19,3 +19,8 @@ export interface ParseResult {
   skipped: string[];
   error?: string;
 }
+
+export interface ParsedFile extends ParseResult {
+  /** Identifies the report type, e.g. "zerodha_csv" or "groww_pnl". Stored with each imported trade. */
+  source: string;
+}

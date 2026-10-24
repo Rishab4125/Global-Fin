@@ -43,6 +43,8 @@ export interface PlanInput {
   sales: ExistingSale[];
   importedKeys: Set<string>;
   manualKeys: Set<string>;
+  /** Existing trades from any report, matched without price. Optional. */
+  looseKeys?: Set<string>;
   /** assetKey -> existing asset id, or "new". Overrides automatic matching. */
   mapping: Map<string, string>;
   /** Trade keys of possible duplicates the user chose to import anyway. */
@@ -193,7 +195,7 @@ export function buildPlan(input: PlanInput): Plan {
     const assetKey = assetKeyOf(trade);
     const tradeKey = tradeKeyOf(source, trade);
     const existingId = matchByKey.get(assetKey)?.assetId ?? null;
-    let status: RowStatus = tradeKey ? classifyTrade(tradeKey, existingId, trade, importedKeys, manualKeys) : "new";
+    let status: RowStatus = tradeKey ? classifyTrade(tradeKey, existingId, trade, importedKeys, manualKeys, input.looseKeys) : "new";
     if (tradeKey && status === "new") {
       if (seen.has(tradeKey)) status = "imported";
       seen.add(tradeKey);

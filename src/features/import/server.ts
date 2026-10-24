@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { db } from "@/db/client";
 import { assets, buyLots, saleAllocations, sales } from "@/db/schema";
-import { manualKey } from "@/domain/brokerSync";
+import { looseKey, manualKey } from "@/domain/brokerSync";
 import type { ExistingLot, ExistingSale, Plan, PlanAsset } from "./plan";
 
 export interface UserState {
@@ -11,6 +11,7 @@ export interface UserState {
   sales: ExistingSale[];
   importedKeys: Set<string>;
   manualKeys: Set<string>;
+  looseKeys: Set<string>;
 }
 
 export async function loadUserState(userId: string): Promise<UserState> {
@@ -26,13 +27,16 @@ export async function loadUserState(userId: string): Promise<UserState> {
 
   const importedKeys = new Set<string>();
   const manualKeys = new Set<string>();
+  const looseKeys = new Set<string>();
   for (const l of lotRows) {
+    if (l.source !== "kite_sync") looseKeys.add(looseKey(l.assetId, l.buyDate, "buy", Number(l.qty)));
     if (l.brokerTradeId) importedKeys.add(`${l.source}:${l.brokerTradeId}`);
     else if (l.source === "manual") {
       manualKeys.add(manualKey(l.assetId, l.buyDate, "buy", Number(l.qty), Number(l.unitPrice)));
     }
   }
   for (const s of saleRows) {
+    if (s.source !== "kite_sync") looseKeys.add(looseKey(s.assetId, s.sellDate, "sell", Number(s.qty)));
     if (s.brokerTradeId) importedKeys.add(`${s.source}:${s.brokerTradeId}`);
     else if (s.source === "manual") {
       manualKeys.add(manualKey(s.assetId, s.sellDate, "sell", Number(s.qty), Number(s.price)));
@@ -58,6 +62,7 @@ export async function loadUserState(userId: string): Promise<UserState> {
     })),
     importedKeys,
     manualKeys,
+    looseKeys,
   };
 }
 

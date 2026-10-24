@@ -1,27 +1,14 @@
 import { parseCsv, toRecords } from "../csv";
 import type { BrokerTrade, ParseResult } from "../types";
+import { toIsoDate } from "./common";
 
-const ISO = /^\d{4}-\d{2}-\d{2}/;
-
-function toIso(raw: string): string | null {
-  if (ISO.test(raw)) return raw.slice(0, 10);
-  const m = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
-  return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : null;
-}
-
-/** Zerodha Console > Reports > Tradebook CSV. */
-export function parseZerodhaTradebook(text: string): ParseResult {
-  const records = toRecords(parseCsv(text), (c) => {
+/** Zerodha Console > Reports > Tradebook. Returns null when the sheet has a different layout. */
+export function parseZerodhaTradebookRows(rows: string[][]): ParseResult | null {
+  const records = toRecords(rows, (c) => {
     const h = c.map((x) => x.trim().toLowerCase());
     return h.includes("symbol") && h.includes("trade_id") && h.includes("trade_type");
   });
-  if (!records) {
-    return {
-      trades: [],
-      skipped: [],
-      error: "This doesn't look like a Zerodha Tradebook CSV (expected symbol, trade_id, trade_type columns).",
-    };
-  }
+  if (!records) return null;
 
   const trades: BrokerTrade[] = [];
   const skipped: string[] = [];
@@ -34,7 +21,7 @@ export function parseZerodhaTradebook(text: string): ParseResult {
       continue;
     }
     const side = (r["trade_type"] ?? "").toLowerCase();
-    const date = toIso(r["trade_date"] ?? "");
+    const date = toIsoDate(r["trade_date"] ?? "");
     const qty = Number(r["quantity"]);
     const price = Number(r["price"]);
     const tradeId = r["trade_id"];
@@ -42,16 +29,17 @@ export function parseZerodhaTradebook(text: string): ParseResult {
       skipped.push(`${symbol}: unreadable row`);
       continue;
     }
-    trades.push({
-      isin: r["isin"] || null,
-      symbol,
-      name: symbol,
-      date,
-      side,
-      qty,
-      price,
-      tradeId,
-    });
+    trades.push({ isin: r["isin"] || null, symbol, name: symbol, date, side, qty, price, tradeId });
   }
   return { trades, skipped };
+}
+
+export function parseZerodhaTradebook(text: string): ParseResult {
+  return (
+    parseZerodhaTradebookRows(parseCsv(text)) ?? {
+      trades: [],
+      skipped: [],
+      error: "This doesn't look like a Zerodha Tradebook CSV (expected symbol, trade_id, trade_type columns).",
+    }
+  );
 }
