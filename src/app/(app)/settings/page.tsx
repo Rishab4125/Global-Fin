@@ -1,7 +1,11 @@
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { brokerConnections } from "@/db/schema";
 import { PageHeader, SectionCard } from "@/components/ui";
 import { ASSET_RULES, ASSET_TYPE_IDS, type Rate } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { loadPortfolio } from "@/features/portfolio/data";
+import { KiteSettings } from "@/features/kite/KiteSettings";
 import { SlabForm } from "@/features/settings/SlabForm";
 
 const rateText = (r: Rate) =>
@@ -10,6 +14,14 @@ const rateText = (r: Rate) =>
 export default async function SettingsPage() {
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);
+  const [conn] = await db
+    .select()
+    .from(brokerConnections)
+    .where(and(eq(brokerConnections.userId, user.id), eq(brokerConnections.broker, "kite")))
+    .limit(1);
+  const lastSync = conn?.lastSyncAt
+    ? conn.lastSyncAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })
+    : null;
 
   return (
     <div>
@@ -47,6 +59,10 @@ export default async function SettingsPage() {
               })}
             </tbody>
           </table>
+        </SectionCard>
+
+        <SectionCard title="Connected brokers" description="Used by Sync on the Holdings page.">
+          <KiteSettings connected={!!conn} lastSync={lastSync} />
         </SectionCard>
 
         <SectionCard title="Account" description="Your data is stored against this Google account ID.">

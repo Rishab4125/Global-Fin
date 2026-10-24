@@ -15,6 +15,7 @@ export interface AssetView {
   id: string;
   type: AssetTypeId;
   name: string;
+  isin: string | null;
 }
 
 export interface HoldingView extends AssetView {
@@ -54,6 +55,7 @@ export async function loadPortfolio(userId: string): Promise<Portfolio> {
     id: a.id,
     type: asType(a.type),
     name: a.name,
+    isin: a.isin,
   }));
   const assetMap = new Map(assetViews.map((a) => [a.id, a]));
 

@@ -1,4 +1,4 @@
-import { BriefcaseBusiness } from "lucide-react";
+import { BriefcaseBusiness, RefreshCw, Upload } from "lucide-react";
 import Link from "next/link";
 import { EmptyState, PageHeader, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
@@ -21,6 +21,18 @@ export default async function HoldingsPage() {
         title="Holdings"
         description={
           pf.holdings.length ? `${pf.holdings.length} holdings · ${formatINR(totalCost)} invested` : "Record what you own."
+        }
+        actions={
+          <div className="flex gap-2">
+            <Link href="/holdings/import" className="btn-ghost">
+              <Upload size={16} />
+              Import trades
+            </Link>
+            <Link href="/holdings/sync" className="btn-ghost">
+              <RefreshCw size={16} />
+              Sync
+            </Link>
+          </div>
         }
       />
       <div className="space-y-5">

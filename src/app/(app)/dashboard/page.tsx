@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Coins, Landmark, PiggyBank, Plus, TrendingUp } from "lucide-react";
+import { BriefcaseBusiness, Coins, Landmark, PiggyBank, Plus, RefreshCw, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { EmptyState, Kpi, PageHeader, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
@@ -63,10 +63,16 @@ export default async function DashboardPage({
         title={first ? `Welcome back, ${first}` : "Dashboard"}
         description="Your portfolio and realised gains at a glance."
         actions={
-          <Link href="/holdings" className="btn-primary">
-            <Plus size={16} />
-            Add investment
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/holdings/sync" className="btn-ghost" title="Sync holdings from Zerodha">
+              <RefreshCw size={16} />
+              Sync
+            </Link>
+            <Link href="/holdings" className="btn-primary">
+              <Plus size={16} />
+              Add investment
+            </Link>
+          </div>
         }
       />
 

@@ -163,7 +163,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 <!-- DASHBOARD -->
 <section class="screen" id="dashboard">
   <div class="ph"><div><h1>Welcome back, Rishab</h1><p>Your portfolio and realised gains at a glance.</p></div>
-    <button class="btn" onclick="go('holdings')"><span data-i="plus2"></span>Add investment</button></div>
+    <div class="row" style="display:flex;gap:8px"><button class="btn ghost" onclick="go('sync')" title="Sync holdings from Zerodha"><span data-i="sync"></span>Sync</button><button class="btn" onclick="go('holdings')"><span data-i="plus2"></span>Add investment</button></div></div>
   <div class="pbar" id="periodBar"></div>
   <div class="grid k4" style="margin-bottom:24px" id="kpis"></div>
   <div class="grid c2">
@@ -174,7 +174,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 
 <!-- HOLDINGS -->
 <section class="screen" id="holdings">
-  <div class="ph"><div><h1>Holdings</h1><p id="holdSub"></p></div></div>
+  <div class="ph"><div><h1>Holdings</h1><p id="holdSub"></p></div><div style="display:flex;gap:8px"><button class="btn ghost" onclick="go('import')"><span data-i="upload"></span>Import trades</button><button class="btn ghost" onclick="go('sync')"><span data-i="sync"></span>Sync</button></div></div>
   <form class="card" onsubmit="addBuy(event)">
     <h2 style="font-size:16px;font-weight:600;margin-bottom:16px">Add investment</h2>
     <div class="grid f3">
@@ -271,6 +271,32 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
   <div class="card flush"><div class="ct"><h2>Entries</h2></div><div class="scroll"><table id="miscTbl"></table></div></div>
 </section>
 
+<!-- IMPORT -->
+<section class="screen" id="import">
+  <button class="back" onclick="go('holdings')"><span data-i="back"></span><span>Holdings</span></button>
+  <div class="ph"><div><h1>Import trades</h1><p>Bring in your broker's trade history instead of typing it. Nothing is ever added twice.</p></div></div>
+  <div class="card">
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:4px">Upload trades</h2>
+    <p class="muted" style="margin:0 0 16px">Download the <b style="color:var(--ink);font-weight:500">Tradebook</b> CSV from Zerodha Console (Reports, Tradebook) and upload it here. Uploading the same file again, or an overlapping date range, never adds a trade twice.</p>
+    <div class="grid f3">
+      <div><label class="fl">Broker</label><select><option>Zerodha (Tradebook CSV)</option><option disabled>Groww (coming soon)</option></select></div>
+      <div><label class="fl">File</label><button type="button" class="btn ghost" style="width:100%" onclick="loadSample()"><span data-i="upload"></span><span id="upFile">Choose sample tradebook.csv</span></button><div class="hint">Mockup: loads a made-up tradebook with 6 trades</div></div>
+    </div>
+    <div id="upOut"></div>
+  </div>
+</section>
+
+<!-- SYNC -->
+<section class="screen" id="sync">
+  <button class="back" onclick="go('holdings')"><span data-i="back"></span><span>Holdings</span></button>
+  <div class="ph"><div><h1>Sync holdings</h1><p>Update your holdings from your Zerodha account.</p></div></div>
+  <div class="card">
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:4px">Zerodha</h2>
+    <p class="muted" style="margin:0 0 16px">Compares your Zerodha holdings with this app and fills in the difference: extra shares become a buy at Zerodha's average price, missing shares become a sale at the last price. Both are marked estimated. To disconnect Zerodha, go to Settings.</p>
+    <div id="kOut"></div>
+  </div>
+</section>
+
 <!-- SETTINGS -->
 <section class="screen" id="settings">
   <div class="ph"><div><h1>Settings</h1><p>Your tax assumptions and the rules this app applies.</p></div></div>
@@ -285,6 +311,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
     <tr><td><b>FD / RD / debt MF / unlisted bonds</b></td><td>n/a</td><td>Slab rate</td><td>Slab rate</td></tr>
     <tr><td><b>PPF / EPF</b></td><td>n/a</td><td>Exempt</td><td>Exempt</td></tr>
     <tr><td><b>Crypto</b></td><td>n/a</td><td>30%</td><td>30%</td></tr></tbody></table></div></div>
+  <div class="card flush"><div class="ct"><h2>Connected brokers</h2><p>Used by Sync on the Holdings page.</p></div><div style="padding:20px" id="kSet"></div></div>
   <div class="card flush"><div class="ct"><h2>About</h2></div><p class="muted" style="margin:0;padding:20px">Global Fin is created by <b style="color:var(--ink);font-weight:500">Rishab Gupta</b>. Tax figures are estimates, not tax advice.</p></div>
 </section>
 
@@ -307,7 +334,7 @@ const IC={
  plus:'<circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/>',plus2:'<path d="M5 12h14M12 5v14"/>',settings:'<path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.8l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.8v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
  more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
  pencil:'<path d="M21.2 5.8a2.1 2.1 0 0 0-3-3L3 18l-1 4 4-1z"/><path d="m15 5 4 4"/>',trash:'<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
- back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+ sync:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
  chart:'<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/>',calc:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>',
  shield:'<path d="M20 13c0 5-3.5 7.5-7.7 8.9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/>',
  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.1-14.1 1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',monitor:'<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/>',cal:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',coins:'<circle cx="8" cy="8" r="6"/><path d="M18.1 10.4A6 6 0 1 1 10.4 18"/>',wallet:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',bank:'<path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>'};
@@ -359,12 +386,12 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(!lo
 /* navigation */
 const NAV=[['Overview',[['dashboard','Dashboard','dash']]],['Portfolio',[['holdings','Holdings','brief'],['misc','Misc P/L','plus'],['transactions','Transactions','swap']]],['Reports',[['realised','Realised gains','trend']]],['Account',[['settings','Settings','settings']]]];
 const BTABS=[['dashboard','Home','dash'],['holdings','Holdings','brief'],['realised','Gains','trend'],['misc','Misc','plus']];
-const group=p=>['detail','editbuy','sell'].includes(p)?'holdings':p;
+const group=p=>['detail','editbuy','sell','import','sync'].includes(p)?'holdings':p;
 function renderSide(p){$('side').innerHTML=NAV.map(([t,ls])=>`<div class="sec"><p>${t}</p>${ls.map(([id,l,ic])=>`<button class="sidelink ${group(p)===id?'on':''}" onclick="go('${id}')">${svg(ic)}${l}</button>`).join('')}</div>`).join('')}
 function renderBnav(p){const g=group(p);$('bnav').innerHTML=BTABS.map(([id,l,ic])=>`<button class="${g===id?'on':''}" onclick="go('${id}')"><span>${svg(ic,20)}</span>${l}</button>`).join('')+`<button class="${['transactions','settings'].includes(g)?'on':''}" onclick="toggleMore(true)"><span>${svg('more',20)}</span>More</button>`}
 function toggleMore(v){$('sheet').classList.toggle('show',v)}
 function go(p,arg){if(p==='detail'&&arg)curAsset=arg;document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===p));renderSide(p);renderBnav(p);
- ({dashboard:rDash,holdings:rHold,detail:rDetail,transactions:rTx,realised:rReal,misc:rMisc})[p]?.();paintIcons();scrollTo(0,0)}
+ ({dashboard:rDash,holdings:rHold,detail:rDetail,transactions:rTx,realised:rReal,misc:rMisc,import:rImport,sync:rSync,settings:rKSet})[p]?.();paintIcons();scrollTo(0,0)}
 function signIn(){$('loginView').style.display='none';$('appView').style.display='block';go('dashboard')}
 function signOut(){$('appView').style.display='none';$('loginView').style.display='grid'}
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2000)}
@@ -497,6 +524,85 @@ function rReal(){const all=compute().sort((a,b)=>a.date<b.date?1:-1),years=[...n
  $('rGroups').innerHTML=Object.entries(gr).map(([k,v])=>`<div><div class="muted" style="font-size:13px;font-weight:500">${k}</div><div class="num ${cls(v.g)}" style="font-size:18px;font-weight:600;margin-top:4px">${inr(v.g)}</div><div class="muted num" style="font-size:12px;margin-top:2px">Tax ${inr(v.t)} · Net ${inr(v.g-v.t)}</div></div>`).join('')||'<span class="muted">Nothing to show.</span>';
  $('realTbl').innerHTML=rows.length?'<thead><tr><th>Date</th><th>Asset</th><th class="r">Qty</th><th class="r">Proceeds</th><th class="r">Cost</th><th class="r">Short term</th><th class="r">Long term</th><th class="r">Tax</th><th class="r">Net</th></tr></thead><tbody>'+
  rows.map(r=>`<tr><td>${fmtD(r.date)}</td><td><b style="font-weight:500">${r.label}</b><div class="muted" style="font-size:12px">${T[r.type][0]}${r.applyTax?'':' · no tax applied'}${r.adj?' · tax already adjusted':''}${r.note?' · '+r.note:''}</div></td><td class="r">${r.qty??'–'}</td><td class="r">${r.proceeds==null?'–':inr(r.proceeds)}</td><td class="r">${r.cost==null?'–':inr(r.cost)}</td><td class="r ${cls(r.st)}">${inr(r.st)}</td><td class="r ${cls(r.lt)}">${inr(r.lt)}</td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}"><b>${inr(r.net)}</b></td></tr>`).join('')+'</tbody>':empty('chart','No realised gains yet','Sell a holding or add a misc profit/loss entry to see it here.')}
+
+/* import & sync */
+const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
+const SAMPLE=[
+ {id:'z1',sym:'RELIANCE',date:'2025-03-10',side:'buy',qty:20,price:2850},
+ {id:'z2',sym:'RELIANCE',date:'2025-01-20',side:'buy',qty:50,price:2900},
+ {id:'z3',sym:'TCS',date:'2025-02-12',side:'buy',qty:5,price:3800},
+ {id:'z4',sym:'INFY',date:'2025-04-02',side:'buy',qty:30,price:1500},
+ {id:'z5',sym:'INFY',date:'2025-08-01',side:'sell',qty:10,price:1700},
+ {id:'z6',sym:'NIPPONGOLD',date:'2025-05-05',side:'buy',qty:10,price:6600}];
+const BROKER=[{sym:'RELIANCE',qty:160,avg:2950,last:3020},{sym:'TCS',qty:5,avg:3800,last:3950},{sym:'INFY',qty:15,avg:1500,last:1650},{sym:'NIPPONGOLD',qty:30,avg:6500,last:6800},{sym:'WIPRO',qty:15,avg:480,last:495}];
+let up=null,imported=new Set(),kite={connected:false,expired:false,last:null,pv:null,done:''};
+function autoMatch(sym){const n=norm(sym),ents=Object.entries(assets);
+ let e=ents.find(([,a])=>norm(a.name)===n);if(e)return{aid:e[0],kind:'name'};
+ if(n.length>=3){e=ents.find(([,a])=>{const m=norm(a.name);return m.length>=3&&(m.includes(n)||n.includes(m))});if(e)return{aid:e[0],kind:'suggest'}}
+ return{aid:null,kind:'none'}}
+const KIND={name:'Matched by name',suggest:'Suggested match: please check',none:'New holding'};
+const chosen=sym=>{const v=up.map[sym];return v===undefined?autoMatch(sym).aid:v==='new'?null:v};
+function fifo(aid,qty,date){let need=qty;const al=[];lots.filter(l=>l.aid===aid&&l.date<=date&&remaining(l)>1e-9).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0).forEach(l=>{if(need<=1e-9)return;const t=Math.min(need,remaining(l));al.push({lot:l.id,qty:t});need-=t});return{al,short:need}}
+function loadSample(){up={trades:SAMPLE,map:{},dup:{},rep:true,done:''};$('upFile').textContent='tradebook.csv';rUp()}
+function upRows(){return up.trades.map(t=>{const aid=chosen(t.sym);let st='new';
+ if(imported.has(t.id))st='imported';
+ else if(aid&&lots.some(l=>l.aid===aid&&!l.bid&&!l.est&&t.side==='buy'&&l.date===t.date&&l.qty===t.qty&&l.price===t.price))st='dup';
+ return{...t,aid,st}})}
+const stBadge=r=>r.st==='new'?'<span class="badge b-buy">New</span>':r.st==='imported'?'<span class="badge b-off">Already imported</span>':'<span class="badge b-sell">Possible duplicate</span>';
+function rUp(){const o=$('upOut');if(!up){o.innerHTML='';return}
+ const rows=upRows(),c=s=>rows.filter(r=>r.st===s).length;
+ const syms=[...new Set(up.trades.map(t=>t.sym))];
+ const est=new Set(rows.filter(r=>r.st==='new'&&r.aid).map(r=>r.aid));
+ const estN=lots.filter(l=>l.est&&est.has(l.aid)).length+sales.filter(x=>x.est&&est.has(x.aid)).length;
+ const opts=sym=>`<option value="new" ${chosen(sym)===null?'selected':''}>Create new holding "${sym}"</option>`+Object.entries(assets).map(([id,a])=>`<option value="${id}" ${chosen(sym)===id?'selected':''}>${a.name}</option>`).join('');
+ o.innerHTML=`<div style="margin-top:20px">`+
+  (up.done?`<div class="note" style="color:var(--ink)">${up.done}</div>`:'')+
+  `<p class="muted" style="margin:0 0 14px">${c('new')} new, ${c('imported')} already imported, ${c('dup')} possible duplicate${c('dup')===1?'':'s'}.</p>`+
+  `<div class="note" style="margin-bottom:14px"><b style="color:var(--ink);font-weight:500">Which holding does each stock belong to?</b><div class="hint" style="margin:4px 0 12px">This stops the same stock from being added twice. Pick an existing holding if one already covers it.</div>`+
+  syms.map(sym=>`<div class="grid" style="grid-template-columns:minmax(120px,1fr) 1.6fr;align-items:center;margin-bottom:8px"><div><b>${sym}</b> <span class="muted" style="font-size:12px">${KIND[autoMatch(sym).kind]}</span></div><select onchange="up.map['${sym}']=this.value;rUp()">${opts(sym)}</select></div>`).join('')+`</div>`+
+  (estN?`<label class="note" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:14px"><input type="checkbox" ${up.rep?'checked':''} onchange="up.rep=this.checked" style="margin-top:3px;flex:none"><span>Replace ${estN} estimated entr${estN===1?'y':'ies'} created by Zerodha sync for these stocks with the real trades from this file. Keeping them would count the same shares twice.</span></label>`:'')+
+  `<div class="scroll" style="border:1px solid var(--line);border-radius:8px"><table><thead><tr><th>Stock</th><th>Date</th><th>Type</th><th class="r">Qty</th><th class="r">Price</th><th>Status</th></tr></thead><tbody>`+
+  rows.map(r=>`<tr><td><b>${r.sym}</b></td><td>${fmtD(r.date)}</td><td>${r.side==='buy'?'Buy':'Sell'}</td><td class="r num">${r.qty}</td><td class="r num">${inr(r.price)}</td><td>${r.st==='dup'?`<label style="display:flex;gap:8px;align-items:center">${stBadge(r)}<input type="checkbox" ${up.dup[r.id]?'checked':''} onchange="up.dup['${r.id}']=this.checked"><span class="muted" style="font-size:12px">Matches a trade you entered. Import anyway</span></label>`:stBadge(r)}</td></tr>`).join('')+
+  `</tbody></table></div><div style="margin-top:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" onclick="doImport()">Import</button><span class="muted" style="font-size:13px">Try importing, then choose the file again: the same trades show as already imported.</span></div></div>`;paintIcons(o)}
+function doImport(){const rows=upRows(),todo=rows.filter(r=>r.st==='new'||(r.st==='dup'&&up.dup[r.id]));
+ if(!todo.length){toast('Nothing new to import');return}
+ if(up.rep){const t=new Set(todo.map(r=>r.aid).filter(Boolean));sales=sales.filter(x=>!(x.est&&t.has(x.aid)));lots=lots.filter(l=>!(l.est&&t.has(l.aid)&&soldQty(l)<=1e-9))}
+ todo.sort((a,b)=>a.date===b.date?(a.side===b.side?0:a.side==='buy'?-1:1):a.date<b.date?-1:1);
+ const made={};let nb=0,ns=0,fail=0;
+ for(const r of todo){let aid=r.aid||made[r.sym];if(!aid){aid='a'+(++nextId);assets[aid]={name:r.sym,type:'equity'};made[r.sym]=aid}
+  if(r.side==='buy'){lots.push({id:++nextId,aid,date:r.date,qty:r.qty,price:r.price,fees:0,bid:r.id});nb++;imported.add(r.id)}
+  else{const f=fifo(aid,r.qty,r.date);if(f.short>1e-9){fail++;continue}sales.push({id:++nextId,aid,date:r.date,qty:r.qty,price:r.price,fees:0,tax:true,alloc:f.al,bid:r.id});ns++;imported.add(r.id)}}
+ up.done=`Imported ${nb} buy${nb===1?'':'s'} and ${ns} sell${ns===1?'':'s'}. Skipped ${rows.length-todo.length} already-known trade${rows.length-todo.length===1?'':'s'}${fail?`; ${fail} could not be imported`:''}.`;
+ up.dup={};toast('Import complete');rUp()}
+function syncDiff(){const h=holdings();return BROKER.map(b=>{const m=autoMatch(b.sym),have=m.aid?(h.find(x=>x.aid===m.aid)?.qty||0):0,d=b.qty-have;
+ return d>1e-9?{...b,aid:m.aid,kind:'add',qty:d,price:b.avg}:d<-1e-9?{...b,aid:m.aid,kind:'reduce',qty:-d,price:b.last}:null}).filter(Boolean)}
+function rKite(){const o=$('kOut'),k=kite;let h='';
+ if(k.done)h+=`<div class="note" style="color:var(--ink)">${k.done}</div>`;
+ if(k.expired)h+=`<div class="err show" style="margin:0 0 14px">Zerodha signs you out every morning, so please reconnect. It takes one tap and your Zerodha login.</div>`;
+ if(k.connected&&!k.expired&&k.last)h+=`<p class="hint" style="margin:0 0 12px">Last synced ${k.last}</p>`;
+ if(k.pv){h+=k.pv.length?`<p class="muted" style="margin:0 0 14px">${k.pv.length} change${k.pv.length===1?'':'s'} to bring the app in line with Zerodha.</p><div class="scroll" style="border:1px solid var(--line);border-radius:8px;margin-bottom:16px"><table><thead><tr><th>Stock</th><th>Action</th><th class="r">Qty</th><th class="r">Price</th><th>Holding</th><th>Status</th></tr></thead><tbody>`+
+   k.pv.map(r=>`<tr><td><b>${r.sym}</b></td><td>${r.kind==='add'?'Add buy':'Record sale'}</td><td class="r num">${r.qty}</td><td class="r num">${inr(r.price)}</td><td class="muted">${r.aid?assets[r.aid].name:'New holding'}</td><td><span class="badge b-off">Estimated</span></td></tr>`).join('')+`</tbody></table></div>`
+   :`<p class="muted" style="margin:0 0 14px">Your holdings already match Zerodha. Nothing to change.</p>`}
+ h+=`<div style="display:flex;gap:8px;flex-wrap:wrap">`;
+ if(!k.connected||k.expired)h+=`<button class="btn" onclick="kConnect()">${k.connected?'Reconnect Zerodha':'Connect Zerodha'}</button>`;
+ if(k.connected&&!k.expired)h+=`<button class="btn" onclick="kSync()">${k.pv?'Refresh':'Sync holdings'}</button>`;
+ if(k.pv&&k.pv.length)h+=`<button class="btn soft" onclick="kConfirm()">Confirm sync</button>`;
+ if(k.connected&&!k.expired)h+=`<button class="btn ghost" onclick="kite.expired=true;kite.pv=null;kite.done='';rKite()" title="Mockup only">Simulate next-morning expiry</button>`;
+ o.innerHTML=h+`</div>`}
+function kConnect(){kite.connected=true;kite.expired=false;kite.pv=null;kite.done='Zerodha connected.';rKite()}
+function kSync(){kite.done='';kite.pv=syncDiff();rKite()}
+function kConfirm(){let nb=0,ns=0;const made={};
+ for(const r of kite.pv){let aid=r.aid||made[r.sym];if(!aid){aid='a'+(++nextId);assets[aid]={name:r.sym,type:'equity'};made[r.sym]=aid}
+  if(r.kind==='add'){lots.push({id:++nextId,aid,date:today,qty:r.qty,price:r.price,fees:0,est:true});nb++}
+  else{const f=fifo(aid,r.qty,today);sales.push({id:++nextId,aid,date:today,qty:r.qty,price:r.price,fees:0,tax:true,alloc:f.al,est:true});ns++}}
+ kite.last=new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});kite.pv=null;
+ kite.done=`Synced: added ${nb} buy${nb===1?'':'s'}, recorded ${ns} sale${ns===1?'':'s'}. Press Sync again and nothing changes.`;toast('Sync complete');rKite()}
+function rImport(){rUp()}
+function rSync(){rKite()}
+function rKSet(){const k=kite;$('kSet').innerHTML=k.connected
+ ?`<p style="margin:0 0 8px">Zerodha is <b class="gain" style="font-weight:500">connected</b>${k.last?`<span class="muted">. Last synced ${k.last}.</span>`:'.'}</p><p class="muted" style="margin:0 0 14px">Disconnecting deletes the Zerodha access we store for you. Trades and holdings already in the app stay as they are.</p><button class="btn ghost" onclick="kDisconnect()">Disconnect Zerodha</button>`
+ :`<p class="muted" style="margin:0">Zerodha isn't connected. Connect it from <a href="#" onclick="go('sync');return false" style="color:var(--primary);font-weight:500">Sync on the Holdings page</a>.</p>`}
+function kDisconnect(){if(!confirm('Disconnect Zerodha? You can reconnect any time.'))return;kite={connected:false,expired:false,last:null,pv:null,done:''};toast('Zerodha disconnected');rKSet()}
 
 /* misc */
 function rMisc(){const rows=compute().filter(r=>r.k==='m');

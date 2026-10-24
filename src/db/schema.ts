@@ -1,11 +1,14 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
   index,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -18,9 +21,13 @@ export const assets = pgTable(
     userId: text("user_id").notNull(),
     type: text("type").notNull(),
     name: text("name").notNull(),
+    isin: text("isin"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (t) => [index("assets_user_idx").on(t.userId)],
+  (t) => [
+    index("assets_user_idx").on(t.userId),
+    uniqueIndex("assets_user_isin_uq").on(t.userId, t.isin).where(sql`${t.isin} is not null`),
+  ],
 );
 
 export const buyLots = pgTable(
@@ -35,9 +42,17 @@ export const buyLots = pgTable(
     qty: money("qty").notNull(),
     unitPrice: money("unit_price").notNull(),
     fees: money("fees").notNull().default("0"),
+    source: text("source").notNull().default("manual"),
+    brokerTradeId: text("broker_trade_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (t) => [index("lots_user_idx").on(t.userId), index("lots_asset_idx").on(t.assetId)],
+  (t) => [
+    index("lots_user_idx").on(t.userId),
+    index("lots_asset_idx").on(t.assetId),
+    uniqueIndex("lots_broker_trade_uq")
+      .on(t.userId, t.source, t.brokerTradeId)
+      .where(sql`${t.brokerTradeId} is not null`),
+  ],
 );
 
 export const sales = pgTable(
@@ -54,9 +69,16 @@ export const sales = pgTable(
     fees: money("fees").notNull().default("0"),
     applyTax: boolean("apply_tax").notNull().default(true),
     exemptRedemption: boolean("exempt_redemption").notNull().default(false),
+    source: text("source").notNull().default("manual"),
+    brokerTradeId: text("broker_trade_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (t) => [index("sales_user_idx").on(t.userId)],
+  (t) => [
+    index("sales_user_idx").on(t.userId),
+    uniqueIndex("sales_broker_trade_uq")
+      .on(t.userId, t.source, t.brokerTradeId)
+      .where(sql`${t.brokerTradeId} is not null`),
+  ],
 );
 
 export const saleAllocations = pgTable(
@@ -90,6 +112,19 @@ export const miscEntries = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("misc_user_idx").on(t.userId)],
+);
+
+export const brokerConnections = pgTable(
+  "broker_connections",
+  {
+    userId: text("user_id").notNull(),
+    broker: text("broker").notNull(),
+    accessTokenEnc: text("access_token_enc").notNull(),
+    tokenExpiresAt: timestamp("token_expires_at").notNull(),
+    lastSyncAt: timestamp("last_sync_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.broker] })],
 );
 
 export const userSettings = pgTable("user_settings", {

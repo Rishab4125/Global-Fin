@@ -1,4 +1,5 @@
 import type { RealisedRow } from "@/domain/gains";
+import type { ImportDone, ImportPreview } from "@/features/import/view";
 
 export interface ActionState {
   error?: string;
@@ -8,4 +9,6 @@ export interface ActionState {
   taxIfApplied?: number;
   /** Bumped on each success so forms can reset. */
   nonce?: number;
+  importPreview?: ImportPreview;
+  importDone?: ImportDone;
 }
