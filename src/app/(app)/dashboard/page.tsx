@@ -64,13 +64,23 @@ export default async function DashboardPage({
         description="Your portfolio and realised gains at a glance."
         actions={
           <div className="flex gap-2">
-            <Link href="/holdings/sync" className="btn-ghost" title="Sync holdings from Zerodha">
+            <Link
+              href="/holdings/sync"
+              aria-label="Sync"
+              title="Sync holdings from Zerodha"
+              className="btn-ghost shrink-0 max-sm:!w-10 max-sm:!min-w-10 max-sm:!px-0"
+            >
               <RefreshCw size={16} />
-              Sync
+              <span className="hidden sm:inline">Sync</span>
             </Link>
-            <Link href="/holdings" className="btn-primary">
+            <Link
+              href="/holdings"
+              aria-label="Add investment"
+              title="Add investment"
+              className="btn-primary shrink-0 max-sm:!w-10 max-sm:!min-w-10 max-sm:!px-0"
+            >
               <Plus size={16} />
-              Add investment
+              <span className="hidden sm:inline">Add investment</span>
             </Link>
           </div>
         }
