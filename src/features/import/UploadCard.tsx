@@ -7,10 +7,8 @@ import { commitImportAction, previewImportAction } from "./actions";
 import { PreviewPanel } from "./PreviewPanel";
 
 const HELP: Record<string, string> = {
-  zerodha:
-    "Upload your Tradebook (Console, Reports, Tradebook) or your P&L report that lists each trade with its entry and exit date.",
-  groww:
-    "Upload your stock Order history or your stock Profit & Loss report that lists each trade with its buy and sell date.",
+  zerodha: "Upload the P&L report from Console (Reports > P&L). The Tax P&L is not accepted.",
+  groww: "Upload your stock Order history or your stock Profit & Loss report.",
 };
 
 export function UploadCard() {
@@ -25,8 +23,8 @@ export function UploadCard() {
         <h2 className="text-base font-semibold">Upload trades</h2>
         <p className="mt-1 text-sm text-muted">
           {HELP[broker]} CSV and Excel (.xlsx) files both work. Uploading the same file again, or an overlapping date
-          range, never adds a trade twice. Importing both a tradebook and a P&amp;L report for the same period will
-          flag the trades that match.
+          range, never adds a trade twice. For Groww, importing both the Order history and the P&amp;L report for the same
+          period will flag the trades that match.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-[12rem_1fr]">

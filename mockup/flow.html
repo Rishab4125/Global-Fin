@@ -289,12 +289,20 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 <section class="screen" id="import">
   <button class="back" onclick="go('holdings')"><span data-i="back"></span><span>Holdings</span></button>
   <div class="ph"><div><h1>Import trades</h1><p>Bring in your broker's trade history instead of typing it. Nothing is ever added twice.</p></div></div>
+  <div class="card" style="padding:16px">
+    <h2 style="font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px"><span style="display:inline-flex;color:var(--primary)" data-i="chart"></span>What to import</h2>
+    <p class="muted" style="margin:2px 0 0">CSV or Excel (.xlsx) only. Equity trades only.</p>
+    <div class="grid c2" style="margin-top:12px;gap:8px 16px">
+      <p style="margin:0"><b style="font-weight:500">Zerodha:</b> <span class="muted">P&amp;L report (Console, Reports, P&amp;L). Not the Tax P&amp;L or Tradebook.</span></p>
+      <p style="margin:0"><b style="font-weight:500">Groww:</b> <span class="muted">Stocks P&amp;L report or Stocks order history (Reports). Either one is enough.</span></p>
+    </div>
+  </div>
   <div class="card">
     <h2 style="font-size:16px;font-weight:600;margin-bottom:4px">Upload trades</h2>
-    <p class="muted" style="margin:0 0 16px">Upload your <b style="color:var(--ink);font-weight:500">Tradebook</b> or your <b style="color:var(--ink);font-weight:500">P&amp;L report</b> (the one that lists each trade with its entry and exit date). CSV and Excel files both work. Uploading the same file again, or an overlapping date range, never adds a trade twice.</p>
+    <p class="muted" style="margin:0 0 16px">Choose the broker and upload its report. CSV and Excel files both work. Uploading the same file again, or an overlapping date range, never adds a trade twice. For Groww, importing both the Order history and the P&amp;L report for the same period will flag the trades that match.</p>
     <div class="grid f3">
-      <div><label class="fl">Broker</label><select><option>Zerodha (Tradebook or P&amp;L)</option><option>Groww (Order history or P&amp;L)</option></select></div>
-      <div><label class="fl">File</label><button type="button" class="btn ghost" style="width:100%" onclick="loadSample()"><span data-i="upload"></span><span id="upFile">Choose sample tradebook.csv</span></button><div class="hint">Mockup: loads a made-up tradebook with 6 trades</div></div>
+      <div><label class="fl">Broker</label><select><option>Zerodha (P&amp;L)</option><option>Groww (Stock P&amp;L or Order history)</option></select></div>
+      <div><label class="fl">File</label><button type="button" class="btn ghost" style="width:100%" onclick="loadSample()"><span data-i="upload"></span><span id="upFile">Choose sample pnl.csv</span></button><div class="hint">Mockup: loads a made-up P&amp;L report with 6 trades</div></div>
     </div>
     <div id="upOut"></div>
   </div>
@@ -628,7 +636,7 @@ function autoMatch(sym){const n=norm(sym),ents=Object.entries(assets);
 const KIND={name:'Matched by name',suggest:'Suggested match: please check',none:'New holding'};
 const chosen=sym=>{const v=up.map[sym];return v===undefined?autoMatch(sym).aid:v==='new'?null:v};
 function fifo(aid,qty,date){let need=qty;const al=[];lots.filter(l=>l.aid===aid&&l.date<=date&&remaining(l)>1e-9).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0).forEach(l=>{if(need<=1e-9)return;const t=Math.min(need,remaining(l));al.push({lot:l.id,qty:t});need-=t});return{al,short:need}}
-function loadSample(){up={trades:SAMPLE,map:{},dup:{},rep:true,done:''};$('upFile').textContent='tradebook.csv';rUp()}
+function loadSample(){up={trades:SAMPLE,map:{},dup:{},rep:true,done:''};$('upFile').textContent='pnl.csv';rUp()}
 function upRows(){return up.trades.map(t=>{const aid=chosen(t.sym);let st='new';
  if(imported.has(t.id))st='imported';
  else if(aid&&lots.some(l=>l.aid===aid&&!l.bid&&!l.est&&t.side==='buy'&&l.date===t.date&&l.qty===t.qty&&l.price===t.price))st='dup';

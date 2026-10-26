@@ -125,7 +125,7 @@ describe("parseSheets", () => {
     expect(out.trades.length).toBe(4);
   });
 
-  it("recognises the Zerodha tradebook by its own source name", () => {
+  it("no longer accepts the Zerodha tradebook", () => {
     const out = parseSheets("zerodha", [
       {
         name: "x.csv",
@@ -135,12 +135,24 @@ describe("parseSheets", () => {
         ],
       },
     ]);
-    expect(out.source).toBe("zerodha_csv");
+    expect(out.trades).toHaveLength(0);
+    expect(out.error).toMatch(/P&L/);
   });
 
   it("explains what to upload when nothing matches", () => {
     expect(parseSheets("groww", [{ name: "x", rows: [["a", "b"]] }]).error).toMatch(/Order history/);
-    expect(parseSheets("zerodha", [{ name: "x", rows: [["a"]] }]).error).toMatch(/Tradebook/);
+    expect(parseSheets("zerodha", [{ name: "x", rows: [["a"]] }]).error).toMatch(/Reports > P&L/);
+  });
+
+  it("rejects the Zerodha Tax P&L with a pointer to the plain P&L", () => {
+    const out = parseSheets("zerodha", [
+      {
+        name: "Tradewise Exits",
+        rows: [["Symbol", "ISIN", "Entry Date", "Exit Date", "Quantity", "Buy Value", "Sell Value", "Profit", "Taxable Profit"]],
+      },
+    ]);
+    expect(out.trades).toHaveLength(0);
+    expect(out.error).toMatch(/Tax P&L/);
   });
 });
 
