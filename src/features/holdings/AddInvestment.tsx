@@ -26,10 +26,16 @@ export function AddInvestment({
         title={title}
         description={description}
         actions={
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={open ? "btn-ghost" : "btn-primary"} onClick={() => setOpen((o) => !o)}>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              aria-label={open ? "Close" : "Add investment"}
+              title={open ? "Close" : "Add investment"}
+              className={`${open ? "btn-ghost" : "btn-primary"} shrink-0 max-sm:!w-10 max-sm:!min-w-10 max-sm:!px-0`}
+              onClick={() => setOpen((o) => !o)}
+            >
               {open ? <X size={16} /> : <Plus size={16} />}
-              {open ? "Close" : "Add investment"}
+              <span className="hidden sm:inline">{open ? "Close" : "Add investment"}</span>
             </button>
             {actions}
           </div>

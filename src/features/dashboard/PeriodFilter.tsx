@@ -3,6 +3,7 @@
 import { CalendarRange } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { DateRangeField } from "@/components/DateRangeField";
 import { fyRange } from "@/domain/period";
 
 interface Option {
@@ -82,14 +83,14 @@ export function PeriodFilter({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="flex items-center gap-2 text-sm text-muted">
+    <div className="flex w-full items-center gap-2 sm:w-auto">
+      <span className="hidden items-center gap-2 text-sm text-muted sm:flex">
         <CalendarRange size={16} />
-        <span className="sr-only sm:not-sr-only">Period</span>
+        <span>Period</span>
       </span>
       <select
         aria-label="Analysis period"
-        className="input !h-9 !w-auto min-w-44"
+        className="input !h-9 !w-auto min-w-0 flex-1 sm:min-w-44 sm:flex-none"
         value={selected}
         disabled={pending}
         onChange={(e) => choose(e.target.value)}
@@ -106,23 +107,7 @@ export function PeriodFilter({
         ))}
         <option value="all">All time</option>
       </select>
-      <input
-        type="date"
-        aria-label="From"
-        className="input !h-9 !w-auto"
-        value={f}
-        disabled={pending}
-        onChange={(e) => changeDates(e.target.value, t)}
-      />
-      <span className="text-sm text-muted">to</span>
-      <input
-        type="date"
-        aria-label="To"
-        className="input !h-9 !w-auto"
-        value={t}
-        disabled={pending}
-        onChange={(e) => changeDates(f, e.target.value)}
-      />
+      <DateRangeField from={f} to={t} today={today} disabled={pending} onChange={changeDates} />
     </div>
   );
 }

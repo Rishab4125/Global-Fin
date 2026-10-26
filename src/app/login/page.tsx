@@ -14,9 +14,9 @@ export default async function LoginPage() {
   if (session?.user?.id) redirect("/dashboard");
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
+    <div className="grid min-h-screen grid-rows-[3fr_2fr] lg:grid-cols-[1.1fr_1fr] lg:grid-rows-none">
       <div
-        className="relative hidden flex-col justify-between overflow-hidden p-12 text-white lg:flex"
+        className="relative flex flex-col overflow-hidden px-6 py-6 text-white sm:p-10 lg:flex-none lg:justify-between lg:p-12"
         style={{ background: "var(--sunset)" }}
       >
         <div className="flex items-center gap-2.5">
@@ -25,11 +25,18 @@ export default async function LoginPage() {
           </span>
           <span className="text-lg font-semibold tracking-tight">Global Fin</span>
         </div>
+        <div className="absolute right-4 top-4 lg:hidden">
+          <ThemeToggle />
+        </div>
+        <div className="mb-5 mt-6 max-w-md lg:hidden">
+          <h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
+          <p className="mt-2 text-sm text-white/70">Sign in to track your investments and realised gains.</p>
+        </div>
         <div className="max-w-md">
-          <h2 className="text-4xl font-semibold leading-tight tracking-tight">
+          <h2 className="text-[22px] font-semibold leading-tight tracking-tight sm:text-3xl lg:text-4xl">
             Know what you really earned, after tax.
           </h2>
-          <ul className="mt-10 space-y-6">
+          <ul className="mt-4 space-y-3 lg:mt-10 lg:space-y-6">
             {points.map((p) => (
               <li key={p.title} className="flex gap-4">
                 <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white/10">
@@ -43,24 +50,18 @@ export default async function LoginPage() {
             ))}
           </ul>
         </div>
-        <p className="text-xs text-white/40">Estimates only. Not tax advice.</p>
+        <p className="mt-auto pt-5 text-xs text-white/40 lg:mt-0 lg:pt-0">Estimates only. Not tax advice.</p>
       </div>
 
-      <div className="relative flex items-center justify-center bg-bg px-6 py-12">
-        <div className="absolute right-4 top-4">
+      <div className="relative flex items-center justify-center bg-bg px-6 py-5 lg:py-12">
+        <div className="absolute right-4 top-4 hidden lg:block">
           <ThemeToggle />
         </div>
         <div className="w-full max-w-sm">
-          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <span className="grid size-9 place-items-center rounded-lg bg-primary text-(--on-primary)">
-              <TrendingUp size={19} strokeWidth={2.5} />
-            </span>
-            <span className="text-lg font-semibold tracking-tight">Global Fin</span>
-          </div>
-          <h1 className="text-2xl font-semibold">Welcome back</h1>
-          <p className="mt-1.5 text-sm text-muted">Sign in to track your investments and realised gains.</p>
+          <h1 className="hidden text-2xl font-semibold lg:block">Welcome back</h1>
+          <p className="mt-1.5 hidden text-sm text-muted lg:block">Sign in to track your investments and realised gains.</p>
           <form
-            className="mt-8"
+            className="lg:mt-8"
             action={async () => {
               "use server";
               await signIn("google", { redirectTo: "/dashboard" });
@@ -76,10 +77,10 @@ export default async function LoginPage() {
               Continue with Google
             </button>
           </form>
-          <p className="mt-6 text-center text-xs text-muted">
+          <p className="mt-3 text-center text-xs text-muted lg:mt-6">
             By continuing you agree that tax figures are estimates, not advice.
           </p>
-          <p className="mt-10 text-center text-xs text-muted">
+          <p className="mt-2 text-center text-xs text-muted lg:mt-10">
             Created by <span className="font-medium text-ink">Rishab Gupta</span>
           </p>
         </div>

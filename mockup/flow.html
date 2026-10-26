@@ -15,7 +15,7 @@
 .seg button{flex:1;display:flex;gap:6px;align-items:center;justify-content:center;border:0;background:none;color:rgba(255,255,255,.55);font:inherit;font-size:12px;font-weight:500;padding:6px 0;border-radius:6px;cursor:pointer}.seg button:hover{color:#fff}.seg button.on{background:rgba(255,255,255,.15);color:#fff}
 .tbtn{width:36px;height:36px;border:0;background:none;color:var(--muted);border-radius:8px;display:grid;place-items:center;cursor:pointer}.tbtn:hover{background:var(--surface2);color:var(--ink)}
 .topbar .right{display:flex;align-items:center;gap:6px}
-.lthemes{position:absolute;top:16px;right:16px}.login .form{position:relative}
+.lthemes{position:absolute;top:16px;right:16px}.login .mw,.bt3{display:none}.login .form{position:relative}
 *{box-sizing:border-box}
 html,body{margin:0;max-width:100%;overflow-x:clip}
 body{background:var(--bg);color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;letter-spacing:-.006em;font-feature-settings:"cv11","ss03";-webkit-font-smoothing:antialiased}
@@ -38,7 +38,7 @@ aside{position:sticky;top:0;height:100vh;background:var(--sidebar);color:#fff;pa
 main{max-width:1152px;margin:0 auto;padding:36px 40px 48px}
 
 /* type + layout atoms */
-.ph{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:24px}
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:24px}.ph>:first-child{min-width:0}.ph>:not(:first-child){flex:none}.ph .row{display:flex;gap:8px}
 .ph h1{font-size:24px;font-weight:600}.ph p{margin:4px 0 0;color:var(--muted)}
 .back{display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;color:var(--muted);font-weight:500;font-size:14px;background:none;border:0;cursor:pointer;padding:0;font-family:inherit}.back:hover{color:var(--ink)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:0 1px 2px rgba(15,26,20,.04);margin-bottom:20px;min-width:0}
@@ -99,7 +99,13 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 
 /* mobile */
 .tbar{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-bottom:16px}.tbar:empty{display:none}.fb{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.fb select,.fb input{width:auto;height:36px}.fb .sq{width:260px;max-width:100%}.fb .cal{display:inline-flex;color:var(--muted)}.sortb{background:none;border:0;font:inherit;color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:0}.sortb:hover,.sortb.on{color:var(--ink)}.sortb span{font-size:11px;opacity:.5}.sortb.on span{opacity:1}
-.bnav,.sheet{display:none}
+.bnav,.sheet{display:none}.pbar .brk{display:none}
+.rng{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;white-space:nowrap;transition:.15s}.rng:hover{border-color:color-mix(in srgb,var(--muted) 50%,var(--line))}.rng:focus-visible{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 20%,transparent)}.rng em{font-style:normal;color:var(--muted)}.rng svg{color:var(--muted);flex:none}
+.rpop{position:fixed;z-index:90;width:288px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.22);display:none}.rpop.show{display:block}
+.rph{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.rph b{font-weight:600}.rph button{width:32px;height:32px;border:0;border-radius:8px;background:none;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}.rph button:hover{background:var(--surface2);color:var(--ink)}
+.rhint{font-size:12px;color:var(--muted);margin-bottom:8px;min-height:18px}.rhint b{color:var(--primary-strong);font-weight:500}
+.rg{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px;text-align:center}.rg span{font-size:11px;color:var(--muted);padding:4px 0}.rg button{height:34px;border:0;background:none;color:var(--ink);font:inherit;font-size:13px;border-radius:8px;cursor:pointer}.rg button:hover{background:var(--surface2)}.rg button.in{background:var(--soft);border-radius:0}.rg button.ed{background:var(--primary);color:var(--on-primary);border-radius:8px}.rg button.tdy{box-shadow:inset 0 0 0 1px var(--primary)}.fb .brk{display:none}.nt{max-width:160px;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:639px){.rng{flex:none;padding:0 8px;gap:6px;font-size:13px}.pbar select,.fb select{flex:1;min-width:0}.pbar>span:first-child,.fb .cal{display:none}.btn .lbl{display:none}.btn.ib{width:40px;min-width:40px;flex:none;padding:0}.btn.sm.ib{width:32px;padding:0}.hm{display:none!important}.ph{margin-bottom:20px}.ph h1{font-size:20px}.ph p{font-size:13px}.fb{width:100%}.fb .sq{width:100%;flex:none}.fb select{flex:1;min-width:0}.fb input[type=date]{flex:1;min-width:0}}
 @media(max-width:1023px){
  .shell{display:block}aside{display:none}
  .topbar{display:flex;position:sticky;top:0;z-index:30;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px)}
@@ -113,7 +119,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
  .sheet button{display:flex;gap:12px;align-items:center;width:100%;background:none;border:0;color:var(--ink);font:inherit;font-size:15px;font-weight:500;padding:12px 16px;border-radius:12px;cursor:pointer}.sheet button:hover{background:var(--surface2)}
  .sheet .so{color:var(--loss);border-top:1px solid var(--line);border-radius:0 0 12px 12px;margin-top:4px}
  .k4{grid-template-columns:repeat(2,1fr)}.k3,.c2{grid-template-columns:1fr}.k4,.k3{gap:12px}.kpi{padding:16px}.kpi .v{font-size:22px}
- .login{display:block}.login .brand{display:none}.ph h1{font-size:22px}
+ .login{display:grid;grid-template-columns:1fr;grid-template-rows:3fr 2fr}.login .brand{padding:28px 24px;position:relative}.login .brand h2{font-size:22px}.login .pt{margin-top:12px}.login .brand>small{margin-top:auto;padding-top:20px}.login .brand .mw{display:block!important;margin:24px 0 20px}.login .brand .mw h1{font-size:30px;font-weight:600;color:#fff}.login .brand .mw p{margin:8px 0 0;color:rgba(255,255,255,.7);font-size:14px}.login .brand .bt3{display:grid;color:rgba(255,255,255,.7)}.login .brand .bt3:hover{background:rgba(255,255,255,.1);color:#fff}.login .form{padding:20px 24px}.login .form .gbtn{margin-top:0}.login .form .hint{margin-top:12px!important}.login .form h1,.login .form>div>p.muted,.login .form .lthemes{display:none}.ph h1{font-size:22px}
  .toast{bottom:80px!important;left:16px;right:16px;text-align:center}
 }
 .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;display:none;z-index:100;font-weight:500}
@@ -127,6 +133,8 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 <div id="loginView" class="login">
   <div class="brand">
     <div class="logo"><span class="mark" data-i="trend"></span><b>Global Fin</b></div>
+    <button class="tbtn lthemes bt3" id="tbtn3" onclick="cycleTheme()"></button>
+    <div class="mw"><h1>Welcome back</h1><p>Sign in to track your investments and realised gains.</p></div>
     <div>
       <h2>Know what you really earned, after tax.</h2>
       <div class="pt"><span class="ic" data-i="chart"></span><div><p><b>Every asset in one place</b></p><small>Stocks, funds, bonds, FDs, land, gold and crypto.</small></div></div>
@@ -164,7 +172,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 <!-- DASHBOARD -->
 <section class="screen" id="dashboard">
   <div class="ph"><div><h1>Welcome back, Rishab</h1><p>Your portfolio and realised gains at a glance.</p></div>
-    <div class="row" style="display:flex;gap:8px"><button class="btn ghost" onclick="go('sync')" title="Sync holdings from Zerodha"><span data-i="sync"></span>Sync</button><button class="btn" onclick="go('holdings')"><span data-i="plus2"></span>Add investment</button></div></div>
+    <div class="row" style="display:flex;gap:8px"><button class="btn ghost ib" onclick="go('sync')" title="Sync holdings from Zerodha" aria-label="Sync"><span data-i="sync"></span><span class="lbl">Sync</span></button><button class="btn ib" onclick="go('holdings')" title="Add investment" aria-label="Add investment"><span data-i="plus2"></span><span class="lbl">Add investment</span></button></div></div>
   <div class="pbar" id="periodBar"></div>
   <div class="grid k4" style="margin-bottom:24px" id="kpis"></div>
   <div class="grid c2">
@@ -175,7 +183,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 
 <!-- HOLDINGS -->
 <section class="screen" id="holdings">
-  <div class="ph"><div><h1>Holdings</h1><p id="holdSub"></p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="addBtn" onclick="toggleAdd()"></button><button class="btn ghost" onclick="go('import')"><span data-i="upload"></span>Import trades</button><button class="btn ghost" onclick="go('sync')"><span data-i="sync"></span>Sync</button></div></div>
+  <div class="ph"><div><h1>Holdings</h1><p id="holdSub"></p></div><div style="display:flex;gap:8px"><button class="btn ib" id="addBtn" onclick="toggleAdd()"></button><button class="btn ghost ib" title="Import trades" aria-label="Import trades" onclick="go('import')"><span data-i="upload"></span><span class="lbl">Import trades</span></button><button class="btn ghost ib" title="Sync" aria-label="Sync" onclick="go('sync')"><span data-i="sync"></span><span class="lbl">Sync</span></button></div></div>
   <form class="card" id="addCard" style="display:none" onsubmit="addBuy(event)">
     <h2 style="font-size:16px;font-weight:600;margin-bottom:16px">Add investment</h2>
     <div class="grid f3">
@@ -248,7 +256,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 
 <!-- REALISED -->
 <section class="screen" id="realised">
-  <div class="ph"><div><h1>Realised gains</h1><p>Profit and loss from sales and misc entries, with estimated tax.</p></div><button class="btn ghost" onclick="toast('CSV export is in the real app')"><span data-i="download"></span>Export CSV</button></div>
+  <div class="ph"><div><h1>Realised gains</h1><p>Profit and loss from sales and misc entries, with estimated tax.</p></div><button class="btn ghost ib" title="Export CSV" aria-label="Export CSV" onclick="toast('CSV export is in the real app')"><span data-i="download"></span><span class="lbl">Export CSV</span></button></div>
   <div class="chips" id="fyChips"></div>
   <div class="grid k3" style="margin-bottom:24px" id="rKpis"></div>
   <div class="card flush"><div class="ct"><h2>By asset class</h2></div><div style="padding:20px" class="assets" id="rGroups"></div></div>
@@ -257,8 +265,8 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 
 <!-- MISC -->
 <section class="screen" id="misc">
-  <div class="ph"><div><h1>Misc profit / loss</h1><p>Record a one-off gain or loss without a buy and sell, such as dividends or F&amp;O.</p></div></div>
-  <form class="card" onsubmit="addMisc(event)">
+  <div class="ph"><div><h1>Misc profit / loss</h1><p>Record a one-off gain or loss without a buy and sell, such as dividends or F&amp;O.</p></div><button class="btn ib" id="mAddBtn" onclick="toggleMisc()"></button></div>
+  <form class="card" id="miscCard" style="display:none" onsubmit="addMisc(event)">
     <h2 style="font-size:16px;font-weight:600;margin-bottom:16px">Add miscellaneous profit / loss</h2>
     <div class="grid f3">
       <div><label class="fl">Investment type</label><select id="mType" onchange="miscMode()"></select><div class="hint" id="mEntryHint"></div></div>
@@ -269,10 +277,12 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
       <div><label class="fl">Brokerage / charges (₹)</label><input id="mBrk" type="number" step="any" min="0" value="0"><div class="hint">Reduces a profit or adds to a loss</div></div>
       <div><label class="fl">Tax already adjusted?</label><div class="yn"><label><input type="radio" name="madj" value="yes"> Yes</label><label><input type="radio" name="madj" value="no" checked> No</label></div><div class="hint">Yes: amount is final. No: tax is added on a profit.</div></div>
       <div><label class="fl">Holding period</label><select id="mTerm"><option value="S">Short term</option><option value="L">Long term</option></select></div>
+      <div style="grid-column:1/-1"><label class="fl">Note (optional)</label><input id="mNote" maxlength="200"></div>
     </div>
     <button class="btn mt">Save entry</button>
   </form>
-  <div class="card flush"><div class="ct"><h2>Entries</h2></div><div class="scroll"><table id="miscTbl"></table></div></div>
+  <div class="tbar" id="mBar"></div>
+  <div class="card flush"><div class="ct"><h2>Entries</h2><p id="miscSub"></p></div><div class="scroll"><table id="miscTbl"></table></div></div>
 </section>
 
 <!-- IMPORT -->
@@ -328,7 +338,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
   <button onclick="toggleMore(false);go('transactions')"><span data-i="swap" style="color:var(--primary)"></span>Transactions</button>
   <button onclick="toggleMore(false);go('settings')"><span data-i="settings" style="color:var(--primary)"></span>Settings</button>
   <button class="so" onclick="toggleMore(false);signOut()"><span data-i="logout"></span>Sign out</button></div></div>
-<div class="bnav" id="bnav"></div>
+<div class="bnav" id="bnav" style="display:none"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -352,7 +362,7 @@ const ago=d=>new Date(Date.now()-d*864e5).toISOString().slice(0,10);
 let lots=[{id:1,aid:'a1',date:'2023-06-12',qty:100,price:2400,fees:0},{id:2,aid:'a1',date:'2025-01-20',qty:50,price:2900,fees:0},{id:3,aid:'a2',date:'2022-03-01',qty:1,price:4500000,fees:0},{id:4,aid:'a3',date:'2024-05-10',qty:20,price:6300,fees:0},{id:5,aid:'a4',date:'2024-02-01',qty:10,price:1500,fees:0}];
 let assets={a1:{name:'RELIANCE',type:'equity'},a2:{name:'Plot 12, Pune',type:'land'},a3:{name:'Nippon Gold ETF',type:'gold_etf'},a4:{name:'TCS',type:'equity'}};
 let sales=[{id:1,aid:'a1',date:ago(60),qty:30,price:3100,fees:0,tax:true,alloc:[{lot:1,qty:30}]},{id:2,aid:'a4',date:ago(200),qty:10,price:3900,fees:0,tax:true,alloc:[{lot:5,qty:10}]}];
-let misc=[{id:1,type:'fd',date:ago(30),amt:12000,adj:false,term:'S',et:'general',cost:0,brk:0},{id:2,type:'equity',date:ago(400),amt:60000,adj:false,term:'L',et:'buyback',cost:25000,brk:150}];
+let misc=[{id:1,type:'fd',date:ago(30),amt:12000,adj:false,term:'S',et:'general',cost:0,brk:0,note:'Quarterly FD interest credited by the bank, TDS already deducted at source'},{id:2,type:'equity',date:ago(400),amt:60000,adj:false,term:'L',et:'buyback',cost:25000,brk:150}];
 let curAsset=null,editLot=null,editSale=null,fy='all',nextId=100;
 const $=id=>document.getElementById(id);
 const inr=n=>(n<0?'-':'')+'₹'+Math.abs(Math.round(n)).toLocaleString('en-IN'),cls=n=>n>0?'gain':n<0?'loss':'muted';
@@ -370,9 +380,9 @@ const earliest=()=>[...lots.map(l=>l.date),...sales.map(s=>s.date),...misc.map(m
 function renderPeriod(){const o=fyList().map((f,i)=>`<option value="fy:${f}" ${per==='fy:'+f?'selected':''}>FY ${f}${i===0?' (current)':''}</option>`).join('');
  const[a,b]=per==='all'?[earliest(),today]:bounds();
  $('periodBar').innerHTML=`<span style="display:inline-flex">${svg('cal',16)}</span><select onchange="setPeriod(this.value)" aria-label="Analysis period">${per==='custom'?'<option value="" selected disabled>Select period</option>':''}${o}<option value="all" ${per==='all'?'selected':''}>All time</option></select>`+
- `<input type="date" id="pf" value="${a||''}" aria-label="From" onchange="dateChange()"><span>to</span><input type="date" id="pt" value="${b||''}" aria-label="To" onchange="dateChange()">`}
+ `<i class="brk"></i>${rngBtn('dash',a,b)}`}
 function setPeriod(v){per=v;rDash()}
-function dateChange(){let a=$('pf').value,b=$('pt').value;if(!a||!b)return;if(a>b)[a,b]=[b,a];
+function dateSet(a,b){if(!a||!b)return;if(a>b)[a,b]=[b,a];
  const fy=fyList().find(f=>{const r=fyRange(f);return r[0]===a&&r[1]===b});
  if(fy)per='fy:'+fy;else if(a===earliest()&&b===today)per='all';else{per='custom';perFrom=a;perTo=b}rDash()}
 
@@ -382,7 +392,7 @@ const sysDark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
 function theme(){const t=localStorage.getItem('theme');return t==='light'||t==='dark'?t:(sysDark()?'dark':'light')}
 function applyTheme(){const t=theme();document.documentElement.classList.toggle('dark',t==='dark');
  $('seg').innerHTML=TH.map(([v,l,ic])=>`<button class="${t===v?'on':''}" onclick="setTheme('${v}')">${svg(ic,14)}${l}</button>`).join('');
- const ic=t==='dark'?'moon':'sun';['tbtn','tbtn2'].forEach(id=>{$(id).innerHTML=svg(ic,18);$(id).title='Switch to '+(t==='dark'?'light':'dark')+' mode'})}
+ const ic=t==='dark'?'moon':'sun';['tbtn','tbtn2','tbtn3'].forEach(id=>{$(id).innerHTML=svg(ic,18);$(id).title='Switch to '+(t==='dark'?'light':'dark')+' mode'})}
 function setTheme(v){localStorage.setItem('theme',v);applyTheme()}
 function cycleTheme(){setTheme(theme()==='dark'?'light':'dark')}
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(!localStorage.getItem('theme'))applyTheme()});
@@ -396,8 +406,8 @@ function renderBnav(p){const g=group(p);$('bnav').innerHTML=BTABS.map(([id,l,ic]
 function toggleMore(v){$('sheet').classList.toggle('show',v)}
 function go(p,arg){if(p==='detail'&&arg)curAsset=arg;document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===p));renderSide(p);renderBnav(p);
  ({dashboard:rDash,holdings:rHold,detail:rDetail,transactions:rTx,realised:rReal,misc:rMisc,import:rImport,sync:rSync,settings:rKSet})[p]?.();paintIcons();scrollTo(0,0)}
-function signIn(){$('loginView').style.display='none';$('appView').style.display='block';go('dashboard')}
-function signOut(){$('appView').style.display='none';$('loginView').style.display='grid'}
+function signIn(){$('loginView').style.display='none';$('appView').style.display='block';$('bnav').style.display='';go('dashboard')}
+function signOut(){$('appView').style.display='none';$('bnav').style.display='none';toggleMore(false);$('loginView').style.display=''}
 function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2000)}
 const kpi=(l,v,h,ic,c='')=>`<div class="card kpi"><div class="top"><span class="l">${l}</span>${ic?`<span class="ic">${svg(ic,16)}</span>`:''}</div><div class="v ${c}">${v}</div>${h?`<div class="h">${h}</div>`:''}</div>`;
 const empty=(ic,t,m)=>`<div class="empty"><span class="ic">${svg(ic,20)}</span><p><b>${t}</b></p>${m?`<p class="m">${m}</p>`:''}</div>`;
@@ -455,24 +465,38 @@ function rDash(){renderPeriod();const rows=compute(),h=holdings(),pr=rows.filter
  $('allocBars').innerHTML=Object.entries(al).map(([k,v])=>`<div class="hb"><span>${k}</span><i style="width:${v/am*100}%"></i><span class="r num">${inr(v)}</span></div>`).join('')||'<p class="muted">No holdings yet.</p>'}
 
 /* holdings */
-const FB={h:{per:'all',from:'',to:'',q:''},t:{per:'all',from:'',to:'',q:''}},SORT={h:{key:'invested',dir:'desc'},t:{key:'date',dir:'desc'}};let addOpen=false;
+const FB={h:{per:'all',from:'',to:'',q:''},t:{per:'all',from:'',to:'',q:''},m:{per:'all',from:'',to:'',q:''}},SORT={h:{key:'invested',dir:'desc'},t:{key:'date',dir:'desc'},m:{key:'date',dir:'desc'}};let addOpen=false;
 const fbBounds=f=>f.per==='custom'?[f.from,f.to]:fyRange(f.per.slice(3));
 const fbIn=(f,d)=>{if(f.per==='all')return true;const[a,b]=fbBounds(f);return d>=a&&d<=b};
 const sortBy=(arr,get,dir)=>arr.map((r,i)=>({r,i,v:get(r)})).sort((a,b)=>{const c=typeof a.v==='number'&&typeof b.v==='number'?a.v-b.v:String(a.v).localeCompare(String(b.v),undefined,{numeric:true,sensitivity:'base'});return c?c*(dir==='asc'?1:-1):a.i-b.i}).map(x=>x.r);
 const sth=(k,label,key,right=0,first='asc')=>{const st=SORT[k],on=st.key===key,ic=on?(st.dir==='asc'?'↑':'↓'):'↕';return`<th class="${right?'r':''}"><button class="sortb ${on?'on':''}" onclick="setSort('${k}','${key}','${first}')">${label}<span>${ic}</span></button></th>`};
-function setSort(k,key,first){const st=SORT[k];if(st.key===key)st.dir=st.dir==='asc'?'desc':'asc';else{st.key=key;st.dir=first}k==='h'?rHoldTable():rTxTable()}
+function setSort(k,key,first){const st=SORT[k];if(st.key===key)st.dir=st.dir==='asc'?'desc':'asc';else{st.key=key;st.dir=first}k==='h'?rHoldTable():k==='m'?rMiscTable():rTxTable()}
+/* single-field date range picker: click start, then end */
+const dmy=d=>d?d.split('-').reverse().join('-'):'',rp={open:false,key:'',a:'',b:'',step:0,view:''};
+const rngBtn=(key,a,b)=>`<button type="button" class="rng" aria-haspopup="dialog" aria-label="Select date range" onclick="rpOpen(event,'${key}','${a||''}','${b||''}')">${svg('cal',16)}<span>${dmy(a)} <em>to</em> ${dmy(b)}</span></button>`;
+(()=>{const d=document.createElement('div');d.id='rpop';d.className='rpop';d.setAttribute('role','dialog');d.setAttribute('aria-label','Choose dates');d.addEventListener('click',e=>e.stopPropagation());document.body.appendChild(d);
+ document.addEventListener('click',e=>{if(rp.open&&!e.target.closest('#rpop,.rng'))rpClose()});document.addEventListener('keydown',e=>{if(e.key==='Escape')rpClose()});addEventListener('resize',rpClose)})();
+function rpOpen(ev,key,a,b){if(rp.open){rpClose();return}Object.assign(rp,{open:true,key,a,b,step:0,view:(a||today).slice(0,7)});const p=$('rpop'),r=ev.currentTarget.getBoundingClientRect();rpDraw();p.classList.add('show');
+ p.style.top=Math.min(r.bottom+6,innerHeight-p.offsetHeight-8)+'px';p.style.left=Math.max(8,Math.min(r.left,innerWidth-p.offsetWidth-8))+'px'}
+function rpClose(){rp.open=false;$('rpop').classList.remove('show')}
+function rpNav(n){const[y,m]=rp.view.split('-').map(Number),d=new Date(Date.UTC(y,m-1+n,1));rp.view=d.toISOString().slice(0,7);rpDraw()}
+function rpDraw(){const[y,m]=rp.view.split('-').map(Number),first=new Date(Date.UTC(y,m-1,1)),lead=(first.getUTCDay()+6)%7,days=new Date(Date.UTC(y,m,0)).getUTCDate(),lo=rp.b&&rp.a>rp.b?rp.b:rp.a,hi=rp.b&&rp.a>rp.b?rp.a:rp.b;
+ let g=['Mo','Tu','We','Th','Fr','Sa','Su'].map(x=>`<span>${x}</span>`).join('')+'<i></i>'.repeat(lead);
+ for(let d=1;d<=days;d++){const iso=`${rp.view}-${String(d).padStart(2,'0')}`,ed=iso===lo||iso===hi,inn=lo&&hi&&iso>lo&&iso<hi;g+=`<button type="button" class="${ed?'ed':inn?'in':''}${iso===today?' tdy':''}" onclick="rpPick('${iso}')">${d}</button>`}
+ $('rpop').innerHTML=`<div class="rph"><button type="button" aria-label="Previous month" onclick="rpNav(-1)">‹</button><b>${first.toLocaleDateString('en-IN',{month:'long',year:'numeric',timeZone:'UTC'})}</b><button type="button" aria-label="Next month" onclick="rpNav(1)">›</button></div><div class="rhint">${rp.step===0?'Select the <b>start date</b>':'Now select the <b>end date</b>'}</div><div class="rg">${g}</div>`}
+function rpPick(d){if(rp.step===0){rp.a=d;rp.b='';rp.step=1;rpDraw();return}let a=rp.a,b=d;if(a>b)[a,b]=[b,a];const k=rp.key;rpClose();k==='dash'?dateSet(a,b):fbDate(k,a,b)}
 function fbHtml(k){const f=FB[k],o=fyList().map((y,i)=>`<option value="fy:${y}" ${f.per==='fy:'+y?'selected':''}>FY ${y}${i===0?' (current)':''}</option>`).join('');
  const[a,b]=f.per==='all'?[earliest(),today]:fbBounds(f);
- return`<input class="sq" type="search" placeholder="${k==='h'?'Search name, type or platform':'Search name, type, platform or action'}" value="${f.q.replace(/"/g,'&quot;')}" oninput="fbQ('${k}',this.value)" aria-label="Search">`+
+ return`<input class="sq" type="search" placeholder="${k==='h'?'Search name, type or platform':k==='m'?'Search type or note':'Search name, type, platform or action'}" value="${f.q.replace(/"/g,'&quot;')}" oninput="fbQ('${k}',this.value)" aria-label="Search">`+
  `<span class="cal">${svg('cal',16)}</span><select onchange="fbPer('${k}',this.value)" aria-label="Period">${f.per==='custom'?'<option value="" selected disabled>Select period</option>':''}${o}<option value="all" ${f.per==='all'?'selected':''}>All time</option></select>`+
- `<input type="date" value="${a||''}" aria-label="From" onchange="fbDate('${k}',this.value,null)"><span class="muted">to</span><input type="date" value="${b||''}" aria-label="To" onchange="fbDate('${k}',null,this.value)">`}
-const fbRender=k=>k==='h'?rHold():rTx();
+ `<i class="brk"></i>${rngBtn(k,a,b)}`}
+const fbRender=k=>k==='h'?rHold():k==='m'?rMisc():rTx();
 function fbPer(k,v){const f=FB[k];f.per=v;fbRender(k)}
 function fbDate(k,a,b){const f=FB[k];let[cf,ct]=f.per==='all'?[earliest(),today]:fbBounds(f);if(a!==null)cf=a;if(b!==null)ct=b;if(!cf||!ct)return;if(cf>ct)[cf,ct]=[ct,cf];
  const m=fyList().find(y=>{const r=fyRange(y);return r[0]===cf&&r[1]===ct});if(m)f.per='fy:'+m;else if(cf===earliest()&&ct===today)f.per='all';else{f.per='custom';f.from=cf;f.to=ct}fbRender(k)}
-function fbQ(k,v){FB[k].q=v;k==='h'?rHoldTable():rTxTable()}
+function fbQ(k,v){FB[k].q=v;k==='h'?rHoldTable():k==='m'?rMiscTable():rTxTable()}
 function toggleAdd(){addOpen=!addOpen;$('addCard').style.display=addOpen?'':'none';rHold()}
-function rHold(){const b=$('addBtn');b.className='btn'+(addOpen?' ghost':'');b.innerHTML=`${svg(addOpen?'back':'plus2')}${addOpen?'Close':'Add investment'}`;
+function rHold(){const b=$('addBtn');b.className='btn ib'+(addOpen?' ghost':'');b.title=addOpen?'Close':'Add investment';b.setAttribute('aria-label',b.title);b.innerHTML=`${svg(addOpen?'back':'plus2')}<span class="lbl">${addOpen?'Close':'Add investment'}</span>`;
  $('hBar').innerHTML=`<div class="fb">${fbHtml('h')}</div>`;paintIcons($('hBar'));rHoldTable()}
 function rHoldTable(){const f=FB.h,nd=f.q.trim().toLowerCase(),all=holdings().length,acc={};
  lots.forEach(l=>{const r=remaining(l);if(r<=1e-9||!fbIn(f,l.date))return;const a=acc[l.aid]=acc[l.aid]||{aid:l.aid,qty:0,cost:0,pl:new Set()};a.qty+=r;a.cost+=r*(l.price+l.fees/l.qty);a.pl.add(plat(l))});
@@ -481,7 +505,7 @@ function rHoldTable(){const f=FB.h,nd=f.q.trim().toLowerCase(),all=holdings().le
  h=sortBy(h,{name:x=>x.name,type:x=>x.type,pf:x=>x.pf,qty:x=>x.qty,avg:x=>x.avg,invested:x=>x.cost}[SORT.h.key],SORT.h.dir);
  $('holdSub').textContent=all?`${h.length} holding${h.length===1?'':'s'}${h.length!==all?' of '+all:''} · ${inr(h.reduce((s,x)=>s+x.cost,0))} invested`:'Record what you own.';
  $('holdTbl').innerHTML=h.length?`<thead><tr>${sth('h','Name','name')}${sth('h','Type','type')}${sth('h','Platform','pf')}${sth('h','Quantity','qty',1,'desc')}${sth('h','Avg cost','avg',1,'desc')}${sth('h','Invested','invested',1,'desc')}<th></th></tr></thead><tbody>`+
- h.map(x=>`<tr><td><button class="lnk" onclick="go('detail','${x.aid}')">${assets[x.aid].name}</button></td><td class="muted">${x.type}</td><td class="muted">${x.pf}</td><td class="r">${+x.qty.toFixed(6)}</td><td class="r">${inr(x.avg)}</td><td class="r"><b>${inr(x.cost)}</b></td><td><div class="actions"><button class="btn ghost sm" onclick="go('detail','${x.aid}')">Details</button><button class="btn soft sm" onclick="openSell('${x.aid}')">Sell</button></div></td></tr>`).join('')+'</tbody>'
+ h.map(x=>`<tr><td><button class="lnk" onclick="go('detail','${x.aid}')">${assets[x.aid].name}</button></td><td class="muted">${x.type}</td><td class="muted">${x.pf}</td><td class="r">${+x.qty.toFixed(6)}</td><td class="r">${inr(x.avg)}</td><td class="r"><b>${inr(x.cost)}</b></td><td><div class="actions"><button class="btn ghost sm hm" onclick="go('detail','${x.aid}')">Details</button><button class="btn soft sm" onclick="openSell('${x.aid}')">Sell</button></div></td></tr>`).join('')+'</tbody>'
  :empty('brief',all?'No holdings match':'No holdings yet',all?'Try a different period or clear the search.':'Press Add investment to record your first one.');
  const held=new Set(holdings().map(x=>x.aid)),closed=Object.keys(assets).filter(a=>!held.has(a)&&lots.some(l=>l.aid===a&&fbIn(f,l.date))&&hit([assets[a].name,T[assets[a].type][0]]));
  $('closedCard').style.display=closed.length?'block':'none';
@@ -501,9 +525,9 @@ function rDetail(){const a=assets[curAsset],h=holdings().find(x=>x.aid===curAsse
  $('eaName').value=a.name;$('eaType').innerHTML=Object.entries(T).map(([k,v])=>`<option value="${k}" ${k===a.type?'selected':''}>${v[0]}</option>`).join('');
  const ml=lots.filter(l=>l.aid===curAsset).sort((x,y)=>x.date<y.date?1:-1);
  $('dLots').innerHTML=ml.length?'<thead><tr><th>Date</th><th class="r">Quantity</th><th class="r">Price</th><th class="r">Fees</th><th class="r">Sold</th><th class="r">Remaining</th><th></th></tr></thead><tbody>'+ml.map(l=>{const s=soldQty(l);
-  return`<tr><td>${fmtD(l.date)}</td><td class="r">${l.qty}</td><td class="r">${inr(l.price)}</td><td class="r">${inr(l.fees)}</td><td class="r">${s}</td><td class="r"><b>${l.qty-s}</b></td><td><div class="actions"><button class="btn ghost sm" onclick="openEditLot(${l.id})">${svg('pencil',14)}Edit</button>${s>0?'<span class="muted" style="align-self:center;font-size:12px">Has sales</span>':`<button class="btn del sm" onclick="delLot(${l.id})">${svg('trash',14)}Delete</button>`}</div></td></tr>`}).join('')+'</tbody>':empty('swap','No purchases');
+  return`<tr><td>${fmtD(l.date)}</td><td class="r">${l.qty}</td><td class="r">${inr(l.price)}</td><td class="r">${inr(l.fees)}</td><td class="r">${s}</td><td class="r"><b>${l.qty-s}</b></td><td><div class="actions"><button class="btn ghost sm ib" title="Edit" aria-label="Edit" onclick="openEditLot(${l.id})">${svg('pencil',14)}<span class="lbl">Edit</span></button>${s>0?'<span class="muted" style="align-self:center;font-size:12px">Has sales</span>':`<button class="btn del sm" onclick="delLot(${l.id})">${svg('trash',14)}Delete</button>`}</div></td></tr>`}).join('')+'</tbody>':empty('swap','No purchases');
  $('dSales').innerHTML=mine.length?'<thead><tr><th>Date</th><th class="r">Quantity</th><th class="r">Price</th><th class="r">Fees</th><th>Tax</th><th class="r">Gain</th><th class="r">Tax</th><th class="r">Net</th><th></th></tr></thead><tbody>'+mine.sort((x,y)=>x.date<y.date?1:-1).map(s=>{const r=rows.find(x=>x.id===s.id);
-  return`<tr><td>${fmtD(s.date)}</td><td class="r">${s.qty}</td><td class="r">${inr(s.price)}</td><td class="r">${inr(s.fees)}</td><td><span class="badge ${s.tax?'b-buy':'b-off'}">${s.tax?'Applied':'Not applied'}</span></td><td class="r ${cls(r.gain)}">${inr(r.gain)}</td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}"><b>${inr(r.net)}</b></td><td><div class="actions"><button class="btn ghost sm" onclick="openEditSale(${s.id})">${svg('pencil',14)}Edit</button><button class="btn del sm" onclick="delSale(${s.id})">${svg('trash',14)}Delete</button></div></td></tr>`}).join('')+'</tbody>':empty('swap','No sales yet','Sales you record for this holding appear here.')}
+  return`<tr><td>${fmtD(s.date)}</td><td class="r">${s.qty}</td><td class="r">${inr(s.price)}</td><td class="r">${inr(s.fees)}</td><td><span class="badge ${s.tax?'b-buy':'b-off'}">${s.tax?'Applied':'Not applied'}</span></td><td class="r ${cls(r.gain)}">${inr(r.gain)}</td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}"><b>${inr(r.net)}</b></td><td><div class="actions"><button class="btn ghost sm ib" title="Edit" aria-label="Edit" onclick="openEditSale(${s.id})">${svg('pencil',14)}<span class="lbl">Edit</span></button><button class="btn del sm" onclick="delSale(${s.id})">${svg('trash',14)}Delete</button></div></td></tr>`}).join('')+'</tbody>':empty('swap','No sales yet','Sales you record for this holding appear here.')}
 function saveAsset(e){e.preventDefault();assets[curAsset]={name:$('eaName').value.trim(),type:$('eaType').value};rDetail();toast('Saved')}
 function afterDelete(){const still=lots.some(l=>l.aid===curAsset)||sales.some(s=>s.aid===curAsset);if(!still){delete assets[curAsset];go('holdings')}else go('detail',curAsset)}
 function delLot(id){if(!confirm('Delete this purchase? This cannot be undone.'))return;lots=lots.filter(l=>l.id!==id);toast('Purchase deleted');afterDelete()}
@@ -572,7 +596,7 @@ function rTxTable(){const f=FB.t,nd=f.q.trim().toLowerCase();
  $('txTbl').innerHTML=t.length?`<thead><tr>${sth('t','Date','date',0,'desc')}${sth('t','Action','k')}${sth('t','Asset','name')}${sth('t','Platform','pf')}${sth('t','Qty','qty',1,'desc')}${sth('t','Price','price',1,'desc')}${sth('t','Fees','fees',1,'desc')}${sth('t','Amount','amt',1,'desc')}<th></th></tr></thead><tbody>`+
  t.map(x=>{const m=!x.aid;
   const asset=m?`<b style="font-weight:500">${x.name}</b> <span class="muted" style="font-size:12px;margin-left:8px">${x.tl}</span>`:`<button class="lnk" onclick="go('detail','${x.aid}')">${x.name}</button> <span class="muted" style="font-size:12px;margin-left:8px">${x.tl}</span>`;
-  const act=m?`<button class="btn ghost sm" onclick="go('misc')">Manage</button>`:`<button class="btn ghost sm" onclick="${x.k==='Buy'?'openEditLot':'openEditSale'}(${x.id})">${svg('pencil',14)}Edit</button>`;
+  const act=m?`<button class="btn ghost sm" onclick="go('misc')">Manage</button>`:`<button class="btn ghost sm ib" title="Edit" aria-label="Edit" onclick="${x.k==='Buy'?'openEditLot':'openEditSale'}(${x.id})">${svg('pencil',14)}<span class="lbl">Edit</span></button>`;
   return`<tr><td>${fmtD(x.date)}</td><td><span class="badge ${bc[x.k]}">${x.k}</span></td><td>${asset}</td><td class="muted">${x.pf}</td><td class="r">${m?'–':x.qty}</td><td class="r">${m?'–':inr(x.price)}</td><td class="r">${inr(x.fees)}</td><td class="r ${x.k==='Misc P/L'?cls(x.amt):''}"><b>${inr(x.amt)}</b></td><td><div class="actions">${act}</div></td></tr>`}).join('')+'</tbody>'
  :empty('swap','No transactions match','Try a different period or clear the search.')}
 
@@ -584,7 +608,7 @@ function rReal(){const all=compute().sort((a,b)=>a.date<b.date?1:-1),years=[...n
  const gr={};rows.forEach(r=>{const n=T[r.type][1];gr[n]=gr[n]||{g:0,t:0};gr[n].g+=r.gain;gr[n].t+=r.tax});
  $('rGroups').innerHTML=Object.entries(gr).map(([k,v])=>`<div><div class="muted" style="font-size:13px;font-weight:500">${k}</div><div class="num ${cls(v.g)}" style="font-size:18px;font-weight:600;margin-top:4px">${inr(v.g)}</div><div class="muted num" style="font-size:12px;margin-top:2px">Tax ${inr(v.t)} · Net ${inr(v.g-v.t)}</div></div>`).join('')||'<span class="muted">Nothing to show.</span>';
  $('realTbl').innerHTML=rows.length?'<thead><tr><th>Date</th><th>Asset</th><th class="r">Qty</th><th class="r">Proceeds</th><th class="r">Cost</th><th class="r">Short term</th><th class="r">Long term</th><th class="r">Tax</th><th class="r">Net</th></tr></thead><tbody>'+
- rows.map(r=>`<tr><td>${fmtD(r.date)}</td><td><b style="font-weight:500">${r.label}</b><div class="muted" style="font-size:12px">${T[r.type][0]}${r.applyTax?'':' · no tax applied'}${r.adj?' · tax already adjusted':''}${r.note?' · '+r.note:''}</div></td><td class="r">${r.qty??'–'}</td><td class="r">${r.proceeds==null?'–':inr(r.proceeds)}</td><td class="r">${r.cost==null?'–':inr(r.cost)}</td><td class="r ${cls(r.st)}">${inr(r.st)}</td><td class="r ${cls(r.lt)}">${inr(r.lt)}</td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}"><b>${inr(r.net)}</b></td></tr>`).join('')+'</tbody>':empty('chart','No realised gains yet','Sell a holding or add a misc profit/loss entry to see it here.')}
+ rows.map(r=>`<tr><td>${fmtD(r.date)}</td><td><b style="font-weight:500">${r.label}</b><div class="muted nt" style="font-size:12px;max-width:224px" title="${(r.note||'').replace(/"/g,'&quot;')}">${T[r.type][0]}${r.applyTax?'':' · no tax applied'}${r.adj?' · tax already adjusted':''}${r.note?' · '+r.note:''}</div></td><td class="r">${r.qty??'–'}</td><td class="r">${r.proceeds==null?'–':inr(r.proceeds)}</td><td class="r">${r.cost==null?'–':inr(r.cost)}</td><td class="r ${cls(r.st)}">${inr(r.st)}</td><td class="r ${cls(r.lt)}">${inr(r.lt)}</td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}"><b>${inr(r.net)}</b></td></tr>`).join('')+'</tbody>':empty('chart','No realised gains yet','Sell a holding or add a misc profit/loss entry to see it here.')}
 
 /* import & sync */
 const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -674,13 +698,20 @@ function rKSet(){const k=kite;$('kSet').innerHTML=k.creds
 function kDisconnect(){if(!confirm('Disconnect Zerodha? You can reconnect any time.'))return;kite={creds:false,connected:false,expired:false,last:null,pv:null,done:''};toast('Zerodha disconnected');rKSet()}
 
 /* misc */
-function rMisc(){const rows=compute().filter(r=>r.k==='m');
- $('miscTbl').innerHTML=misc.length?'<thead><tr><th>Date</th><th>Type</th><th class="r">Amount</th><th class="r">Brokerage</th><th>Tax adjusted</th><th class="r">Tax</th><th class="r">Net</th><th></th></tr></thead><tbody>'+
- misc.map(m=>{const r=rows.find(x=>x.id===m.id);return`<tr><td>${fmtD(m.date)}</td><td>${m.et==='buyback'?'Share buyback':T[m.type][0]}</td><td class="r ${m.et==='buyback'?'':cls(m.amt)}"><b>${inr(m.amt)}</b>${m.et==='buyback'?`<div class="muted" style="font-size:12px">cost ${inr(m.cost)}</div>`:''}</td><td class="r">${inr(m.brk||0)}</td><td><span class="badge ${m.adj?'b-buy':'b-off'}">${m.adj?'Yes':'No'}</span></td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}">${inr(r.net)}</td><td class="r"><button class="lnk" style="color:var(--loss)" onclick="if(confirm('Delete this entry?')){misc=misc.filter(x=>x.id!==${m.id});rMisc()}">Delete</button></td></tr>`}).join('')+'</tbody>':empty('wallet','No entries yet','Entries you add above appear here.')}
+let miscOpen=false;
+function toggleMisc(){miscOpen=!miscOpen;$('miscCard').style.display=miscOpen?'':'none';rMisc()}
+function rMisc(){const b=$('mAddBtn'),t=miscOpen?'Close':'Add misc P/L';b.className='btn ib'+(miscOpen?' ghost':'');b.title=t;b.setAttribute('aria-label',t);b.innerHTML=`${svg(miscOpen?'back':'plus2')}<span class="lbl">${t}</span>`;$('mBar').innerHTML=misc.length?`<div class="fb">${fbHtml('m')}</div>`:'';paintIcons($('mBar'));rMiscTable()}
+function rMiscTable(){const f=FB.m,nd=f.q.trim().toLowerCase(),rows=compute().filter(r=>r.k==='m'),tl=m=>m.et==='buyback'?'Share buyback':T[m.type][0];
+ let list=misc.filter(m=>fbIn(f,m.date)&&(!nd||[tl(m),m.note||''].some(x=>x.toLowerCase().includes(nd)))).map(m=>({m,r:rows.find(x=>x.id===m.id)}));
+ list=sortBy(list,{date:x=>x.m.date,type:x=>tl(x.m),amount:x=>x.m.amt,brokerage:x=>x.m.brk||0,tax:x=>x.r.tax,net:x=>x.r.net,note:x=>x.m.note||''}[SORT.m.key],SORT.m.dir);
+ $('miscSub').textContent=misc.length?`${list.length} entr${list.length===1?'y':'ies'}${list.length!==misc.length?' of '+misc.length:''} · net ${inr(list.reduce((s,x)=>s+x.r.net,0))}`:'';
+ $('miscTbl').innerHTML=!misc.length?empty('wallet','No entries yet','Press Add misc P/L to record your first one.'):!list.length?empty('wallet','No entries match','Try a different period or clear the search.'):
+ '<thead><tr>'+sth('m','Date','date',0,'desc')+sth('m','Type','type')+sth('m','Amount','amount',1,'desc')+sth('m','Brokerage','brokerage',1,'desc')+'<th>Tax adjusted</th>'+sth('m','Tax','tax',1,'desc')+sth('m','Net','net',1,'desc')+sth('m','Note','note')+'<th></th></tr></thead><tbody>'+
+ list.map(({m,r})=>`<tr><td>${fmtD(m.date)}</td><td>${tl(m)}</td><td class="r ${m.et==='buyback'?'':cls(m.amt)}"><b>${inr(m.amt)}</b>${m.et==='buyback'?`<div class="muted" style="font-size:12px">cost ${inr(m.cost)}</div>`:''}</td><td class="r">${inr(m.brk||0)}</td><td><span class="badge ${m.adj?'b-buy':'b-off'}">${m.adj?'Yes':'No'}</span></td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}">${inr(r.net)}</td><td class="muted nt" title="${(m.note||'').replace(/"/g,'&quot;')}">${m.note||'–'}</td><td class="r"><button class="lnk" style="color:var(--loss)" onclick="if(confirm('Delete this entry?')){misc=misc.filter(x=>x.id!==${m.id});rMisc()}">Delete</button></td></tr>`).join('')+'</tbody>'}
 function miscMode(){const bb=$('mType').value==='buyback';$('mKindWrap').style.display=bb?'none':'';$('mCostWrap').style.display=bb?'':'none';
  $('mAmtLbl').textContent=bb?'Buyback proceeds received (₹)':'Amount (₹)';$('mEntryHint').textContent=bb?'From 1 Oct 2024 buyback proceeds are taxed as dividend at your slab rate. Before that they are tax-free for you.':''}
 function addMisc(e){e.preventDefault();const bb=$('mType').value==='buyback';
- misc.push({id:++nextId,type:bb?'equity':$('mType').value,date:$('mDate').value,amt:bb?Math.abs(+$('mAmt').value):+$('mAmt').value*+$('mKind').value,adj:document.querySelector('[name=madj]:checked').value==='yes',term:$('mTerm').value,et:bb?'buyback':'general',cost:bb?+$('mCost').value||0:0,brk:+$('mBrk').value||0});
+ misc.push({id:++nextId,type:bb?'equity':$('mType').value,date:$('mDate').value,amt:bb?Math.abs(+$('mAmt').value):+$('mAmt').value*+$('mKind').value,adj:document.querySelector('[name=madj]:checked').value==='yes',term:$('mTerm').value,et:bb?'buyback':'general',cost:bb?+$('mCost').value||0:0,brk:+$('mBrk').value||0,note:$('mNote').value.trim()});
  e.target.reset();miscMode();$('mDate').value=today;rMisc();toast('Entry saved')}
 
 const opts=Object.entries(T).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('');

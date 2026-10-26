@@ -90,9 +90,9 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
                       <td className="td text-right font-medium">{formatQty(l.qty - sold)}</td>
                       <td className="td">
                         <div className="flex justify-end gap-2">
-                          <Link href={`/holdings/${asset.id}/lots/${l.id}`} className="btn-ghost !h-8 !px-2.5">
+                          <Link href={`/holdings/${asset.id}/lots/${l.id}`} aria-label="Edit" title="Edit" className="btn-ghost !h-8 !px-2.5">
                             <Pencil size={14} />
-                            Edit
+                            <span className="hidden sm:inline">Edit</span>
                           </Link>
                           {sold > 0 ? (
                             <span className="grid h-8 place-items-center px-2 text-xs text-muted" title="Delete the sales first">
@@ -153,9 +153,9 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
                       <td className={`td text-right font-medium ${gainClass(r?.netGain ?? 0)}`}>{formatINR(r?.netGain ?? 0)}</td>
                       <td className="td">
                         <div className="flex justify-end gap-2">
-                          <Link href={`/holdings/${asset.id}/sales/${s.id}`} className="btn-ghost !h-8 !px-2.5">
+                          <Link href={`/holdings/${asset.id}/sales/${s.id}`} aria-label="Edit" title="Edit" className="btn-ghost !h-8 !px-2.5">
                             <Pencil size={14} />
-                            Edit
+                            <span className="hidden sm:inline">Edit</span>
                           </Link>
                           <DeleteButton
                             compact

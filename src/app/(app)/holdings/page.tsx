@@ -125,13 +125,13 @@ export default async function HoldingsPage({
         }
         actions={
           <>
-            <Link href="/holdings/import" className="btn-ghost">
+            <Link href="/holdings/import" aria-label="Import trades" title="Import trades" className="btn-ghost shrink-0 max-sm:!w-10 max-sm:!min-w-10 max-sm:!px-0">
               <Upload size={16} />
-              Import trades
+              <span className="hidden sm:inline">Import trades</span>
             </Link>
-            <Link href="/holdings/sync" className="btn-ghost">
+            <Link href="/holdings/sync" aria-label="Sync" title="Sync" className="btn-ghost shrink-0 max-sm:!w-10 max-sm:!min-w-10 max-sm:!px-0">
               <RefreshCw size={16} />
-              Sync
+              <span className="hidden sm:inline">Sync</span>
             </Link>
           </>
         }
@@ -196,7 +196,7 @@ export default async function HoldingsPage({
                     <td className="td text-right font-medium">{formatINR(h.cost)}</td>
                     <td className="td text-right">
                       <div className="flex justify-end gap-2">
-                        <Link href={`/holdings/${h.id}`} className="btn-ghost !h-8 !px-3">
+                        <Link href={`/holdings/${h.id}`} className="btn-ghost !hidden !h-8 !px-3 sm:!inline-flex">
                           Details
                         </Link>
                         <Link href={`/sell/${h.id}`} className="btn-accent !h-8 !px-3">

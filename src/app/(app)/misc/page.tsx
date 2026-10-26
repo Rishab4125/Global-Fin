@@ -1,42 +1,122 @@
 import { Receipt } from "lucide-react";
-import { EmptyState, PageHeader, SectionCard } from "@/components/ui";
+import { ListSearch } from "@/components/ListSearch";
+import { SortHeader } from "@/components/SortHeader";
+import { EmptyState, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
+import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
 import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
-import { MiscForm } from "@/features/misc/MiscForm";
+import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
+import { AddMisc } from "@/features/misc/AddMisc";
 import { deleteMiscAction } from "@/features/misc/actions";
 import { loadPortfolio } from "@/features/portfolio/data";
 import { formatDate, formatINR, gainClass } from "@/lib/format";
+import { parseSort, sortRows } from "@/lib/sort";
 
-export default async function MiscPage() {
+const SORT_KEYS = ["date", "type", "amount", "brokerage", "tax", "net", "note"] as const;
+
+export default async function MiscPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string }>;
+}) {
+  const query = await searchParams;
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);
+  const today = todayIso();
   const rowById = new Map(pf.rows.map((r) => [r.id, r]));
-  const entries = [...pf.miscEvents].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const typeOf = (e: (typeof pf.miscEvents)[number]) =>
+    e.entryType === "buyback" ? "Share buyback" : ASSET_RULES[e.assetType].label;
+
+  const earliest = pf.miscEvents.map((e) => e.date).sort()[0] ?? today;
+  const period = resolvePeriod({ ...query, period: query.period ?? "all" }, today);
+  const options = fyOptions(pf.miscEvents.length ? earliest : null, today).map((fy, i) => ({
+    value: `fy:${fy}`,
+    label: i === 0 ? `FY ${fy} (current)` : `FY ${fy}`,
+  }));
+  if (period.value.startsWith("fy:") && !options.some((o) => o.value === period.value)) {
+    options.push({ value: period.value, label: period.label });
+  }
+  const periodQuery =
+    period.value === "custom"
+      ? `period=custom&from=${period.from}&to=${period.to}`
+      : `period=${encodeURIComponent(period.value)}`;
+
+  const q = (query.q ?? "").trim();
+  const needle = q.toLowerCase();
+  const sort = parseSort(query, SORT_KEYS, { key: "date", dir: "desc" });
+  const sortQuery = `sort=${sort.key}&dir=${sort.dir}`;
+  const withQ = q ? `&q=${encodeURIComponent(q)}` : "";
+
+  const shown = pf.miscEvents.filter(
+    (e) => inPeriod(e.date, period) && (!needle || [typeOf(e), e.note ?? ""].some((s) => s.toLowerCase().includes(needle))),
+  );
+  const getters: Record<(typeof SORT_KEYS)[number], (e: (typeof shown)[number]) => string | number> = {
+    date: (e) => e.date,
+    type: (e) => typeOf(e),
+    amount: (e) => e.amount,
+    brokerage: (e) => e.brokerage,
+    tax: (e) => rowById.get(e.id)?.tax ?? 0,
+    net: (e) => rowById.get(e.id)?.netGain ?? 0,
+    note: (e) => e.note ?? "",
+  };
+  const entries = sortRows(shown, getters[sort.key], sort.dir);
+  const net = entries.reduce((s, e) => s + (rowById.get(e.id)?.netGain ?? 0), 0);
+  const filtered = entries.length !== pf.miscEvents.length;
+
+  const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc") => (
+    <SortHeader label={label} col={col} sort={sort} basePath="/misc" query={`${periodQuery}${withQ}`} align={align} firstDir={firstDir} />
+  );
 
   return (
     <div>
-      <PageHeader
+      <AddMisc
+        today={today}
         title="Misc profit / loss"
         description="Record a one-off gain or loss without a buy and sell, such as dividends or F&O."
-      />
+      >
+        {pf.miscEvents.length > 0 && (
+          <>
+            <ListSearch q={q} basePath="/misc" query={`${periodQuery}&${sortQuery}`} placeholder="Search type or note" />
+            <PeriodFilter
+              options={options}
+              value={period.value}
+              from={period.from ?? ""}
+              to={period.to ?? ""}
+              earliest={earliest}
+              today={today}
+              basePath="/misc"
+              extraQuery={`${sortQuery}${withQ}`}
+            />
+          </>
+        )}
+      </AddMisc>
       <div className="space-y-5">
-        <MiscForm today={todayIso()} />
-        <SectionCard title="Entries" flush>
-          {entries.length === 0 ? (
-            <EmptyState icon={Receipt} title="No entries yet" text="Entries you add above appear here." />
+        <SectionCard
+          title="Entries"
+          description={
+            pf.miscEvents.length
+              ? `${entries.length} entr${entries.length === 1 ? "y" : "ies"}${filtered ? ` of ${pf.miscEvents.length}` : ""} · net ${formatINR(net)}`
+              : undefined
+          }
+          flush
+        >
+          {pf.miscEvents.length === 0 ? (
+            <EmptyState icon={Receipt} title="No entries yet" text="Press Add misc P/L to record your first one." />
+          ) : entries.length === 0 ? (
+            <EmptyState icon={Receipt} title="No entries match" text="Try a different period or clear the search." />
           ) : (
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="th">Date</th>
-                  <th className="th">Type</th>
-                  <th className="th text-right">Amount</th>
-                  <th className="th text-right">Brokerage</th>
+                  {head("Date", "date", "left", "desc")}
+                  {head("Type", "type")}
+                  {head("Amount", "amount", "right", "desc")}
+                  {head("Brokerage", "brokerage", "right", "desc")}
                   <th className="th">Tax adjusted</th>
-                  <th className="th text-right">Tax</th>
-                  <th className="th text-right">Net</th>
-                  <th className="th">Note</th>
+                  {head("Tax", "tax", "right", "desc")}
+                  {head("Net", "net", "right", "desc")}
+                  {head("Note", "note")}
                   <th className="th" />
                 </tr>
               </thead>
@@ -46,9 +126,7 @@ export default async function MiscPage() {
                   return (
                     <tr key={e.id}>
                       <td className="td">{formatDate(e.date)}</td>
-                      <td className="td">
-                        {e.entryType === "buyback" ? "Share buyback" : ASSET_RULES[e.assetType].label}
-                      </td>
+                      <td className="td">{typeOf(e)}</td>
                       <td className={`td text-right font-medium ${e.entryType === "buyback" ? "" : gainClass(e.amount)}`}>
                         {formatINR(e.amount)}
                         {e.entryType === "buyback" && (
@@ -63,7 +141,9 @@ export default async function MiscPage() {
                       </td>
                       <td className="td text-right">{formatINR(r?.tax ?? 0)}</td>
                       <td className={`td text-right ${gainClass(r?.netGain ?? 0)}`}>{formatINR(r?.netGain ?? 0)}</td>
-                      <td className="td text-muted">{e.note}</td>
+                      <td className="td max-w-40 truncate text-muted" title={e.note || undefined}>
+                        {e.note || "–"}
+                      </td>
                       <td className="td text-right">
                         <form action={deleteMiscAction}>
                           <input type="hidden" name="id" value={e.id} />

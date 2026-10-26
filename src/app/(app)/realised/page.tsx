@@ -29,9 +29,14 @@ export default async function RealisedPage({
         title="Realised gains"
         description="Profit and loss from sales and misc entries, with estimated tax. Losses reduce gains in the same financial year."
         actions={
-          <a href={`/realised/export?fy=${fy}`} className="btn-ghost">
+          <a
+            href={`/realised/export?fy=${fy}`}
+            aria-label="Export CSV"
+            title="Export CSV"
+            className="btn-ghost shrink-0 max-sm:!w-10 max-sm:!min-w-10 max-sm:!px-0"
+          >
             <Download size={16} />
-            Export CSV
+            <span className="hidden sm:inline">Export CSV</span>
           </a>
         }
       />
@@ -103,7 +108,10 @@ export default async function RealisedPage({
                     <td className="td">{formatDate(r.date)}</td>
                     <td className="td">
                       <div className="font-medium">{r.label}</div>
-                      <div className="text-xs text-muted">
+                      <div
+                        className="max-w-56 truncate text-xs text-muted"
+                        title={r.note || undefined}
+                      >
                         {ASSET_RULES[r.assetType].label}
                         {!r.taxApplied && " · no tax applied"}
                         {r.note && ` · ${r.note}`}

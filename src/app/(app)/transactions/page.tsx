@@ -231,10 +231,12 @@ export default async function TransactionsPage({
                     {t.assetId ? (
                       <Link
                         href={`/holdings/${t.assetId}/${t.kind === "buy" ? "lots" : "sales"}/${t.id}`}
+                        aria-label="Edit"
+                        title="Edit"
                         className="btn-ghost !h-8 !px-2.5"
                       >
                         <Pencil size={14} />
-                        Edit
+                        <span className="hidden sm:inline">Edit</span>
                       </Link>
                     ) : (
                       <Link href="/misc" className="btn-ghost !h-8 !px-2.5">
