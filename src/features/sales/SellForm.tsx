@@ -178,8 +178,8 @@ export function SellForm({
 function Stat({ label, value, cls = "" }: { label: string; value: string; cls?: string }) {
   return (
     <div>
-      <div className="text-xs text-muted">{label}</div>
-      <div className={`num text-base font-semibold ${cls}`}>{value}</div>
+      <div className="kpi-label">{label}</div>
+      <div className={`num text-lg font-semibold ${cls}`}>{value}</div>
     </div>
   );
 }

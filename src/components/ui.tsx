@@ -13,7 +13,7 @@ export function PageHeader({
     <div className="mb-5 flex items-end justify-between gap-3 sm:mb-6">
       <div className="min-w-0">
         <h1 className="text-xl font-semibold text-ink sm:text-2xl">{title}</h1>
-        {description && <p className="mt-1 text-[13px] text-muted sm:text-sm">{description}</p>}
+        {description && <p className="mt-1 text-sm text-muted">{description}</p>}
       </div>
       {actions && <div className="shrink-0">{actions}</div>}
     </div>
@@ -66,7 +66,7 @@ export function SectionCard({
       {title && (
         <div className="border-b border-line px-5 py-4">
           <h2 className="text-base font-semibold">{title}</h2>
-          {description && <p className="mt-0.5 text-[13px] text-muted">{description}</p>}
+          {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
         </div>
       )}
       <div className={flush ? "overflow-x-auto" : "p-5"}>{children}</div>

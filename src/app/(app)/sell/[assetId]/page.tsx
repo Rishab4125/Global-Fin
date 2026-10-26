@@ -27,7 +27,7 @@ export default async function SellPage({ params }: { params: Promise<{ assetId: 
         title={`Sell ${holding.name}`}
         description={`${rule.label} · you hold ${formatQty(holding.qty)} units`}
       />
-      <div className="mb-5 rounded-lg border border-line bg-surface2 px-4 py-3 text-[13px] text-muted">
+      <div className="mb-5 rounded-lg border border-line bg-surface2 px-4 py-3 text-sm text-muted">
         {rule.note} Oldest purchases are sold first (FIFO). Tax shown is an estimate, not advice.
       </div>
       <SellForm assetId={holding.id} isSgb={holding.type === "sgb"} maxQty={holding.qty} today={todayIso()} />
