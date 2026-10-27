@@ -18,7 +18,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     session({ session, token }) {
-      if (token.uid) session.user.id = token.uid;
+      // Sessions from before the stable id existed get an empty id, which sends the user back to sign in.
+      session.user.id = token.uid ?? "";
       return session;
     },
   },

@@ -1,5 +1,5 @@
-import type { RealisedRow } from "@/domain/gains";
-import { ASSET_RULES } from "@/domain/taxRules";
+import type { RealisedRow } from "../../domain/gains";
+import { ASSET_RULES } from "../../domain/taxRules";
 
 export interface Totals {
   gain: number;
@@ -33,9 +33,11 @@ export function byAssetGroup(rows: RealisedRow[]) {
 }
 
 export function toCsv(rows: RealisedRow[]): string {
+  // Text that starts with = + - @ would run as a formula when the file is opened in Excel, so it is made literal.
   const esc = (v: string | number | null) => {
-    const s = v === null ? "" : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    let s = v === null ? "" : String(v);
+    if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const header = [
     "Date",

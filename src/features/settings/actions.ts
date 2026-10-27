@@ -1,13 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { db } from "@/db/client";
 import { userSettings } from "@/db/schema";
 import { requireUser } from "@/features/auth/session";
 import type { ActionState } from "@/features/portfolio/actionState";
+import { number } from "@/lib/validation";
 
-const schema = z.coerce.number().min(0, "Rate must be 0-45").max(45, "Rate must be 0-45");
+const schema = number("tax rate", { max: 45 });
 
 export async function saveSlabAction(_: ActionState, form: FormData): Promise<ActionState> {
   const user = await requireUser();

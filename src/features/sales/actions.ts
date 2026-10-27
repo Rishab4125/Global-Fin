@@ -6,20 +6,24 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { sales, saleAllocations } from "@/db/schema";
-import { allocateFifo } from "@/domain/fifo";
+import { sales } from "@/db/schema";
+import { reallocate, type Allocation } from "@/domain/fifo";
 import { computeRealised, type SaleEvent } from "@/domain/gains";
 import { requireUser } from "@/features/auth/session";
 import type { ActionState } from "@/features/portfolio/actionState";
 import { loadPortfolio } from "@/features/portfolio/data";
+import { allocationStatements, isOversold, rebuildAssetAllocations } from "@/features/portfolio/reallocate";
+import { number, pastDate, qty } from "@/lib/validation";
+
+const NEW_SALE = "preview";
 
 const saleSchema = z.object({
   assetId: z.string().uuid(),
   saleId: z.string().uuid().optional(),
-  sellDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date"),
-  qty: z.coerce.number().positive("Quantity must be positive"),
-  price: z.coerce.number().min(0, "Price cannot be negative"),
-  fees: z.coerce.number().min(0).default(0),
+  sellDate: pastDate,
+  qty: qty(),
+  price: number("price"),
+  fees: number("fees"),
   applyTax: z.boolean(),
   exemptRedemption: z.boolean(),
   isBuyback: z.boolean(),
@@ -52,22 +56,35 @@ async function plan(userId: string, form: FormData) {
   const existing = v.saleId ? pf.saleEvents.find((s) => s.id === v.saleId) : undefined;
   if (v.saleId && (!existing || existing.assetId !== asset.id)) return { error: "Sale not found" } as const;
 
-  const sold = new Map(pf.sold);
-  for (const a of existing?.allocations ?? []) sold.set(a.lotId, (sold.get(a.lotId) ?? 0) - a.qty);
-
+  // Replay every sale of this holding oldest first, so a back-dated sale takes the right lots and any
+  // existing sale that has to shift to other lots is re-matched too.
   const assetLots = pf.lots.filter((l) => l.assetId === asset.id);
-  const remaining = new Map(assetLots.map((l) => [l.id, l.qty - (sold.get(l.id) ?? 0)]));
-  const { allocations, shortfall } = allocateFifo(assetLots, remaining, v.qty, v.sellDate);
-  if (shortfall > 1e-9) {
-    const have = v.qty - shortfall;
-    return {
-      error: `Only ${have} units available to sell on or before ${v.sellDate}`,
-    } as const;
+  const assetSales = pf.saleEvents.filter((s) => s.assetId === asset.id && s.id !== v.saleId);
+  const { allocations: matched, short } = reallocate(assetLots, [
+    ...assetSales.map((s) => ({ id: s.id, date: s.date, qty: s.qty })),
+    { id: NEW_SALE, date: v.sellDate, qty: v.qty },
+  ]);
+  if (short) {
+    if (short.id !== NEW_SALE) {
+      return { error: `This would leave your ${short.date} sale of ${short.qty} units without enough units.` } as const;
+    }
+    const have = Math.max(
+      0,
+      assetLots.filter((l) => l.buyDate <= v.sellDate).reduce((s, l) => s + l.qty, 0) -
+        assetSales.filter((s) => s.date <= v.sellDate).reduce((s, x) => s + x.qty, 0),
+    );
+    return { error: `Only ${have} units available to sell on or before ${v.sellDate}` } as const;
+  }
+  const allocations = matched.get(NEW_SALE)!;
+  const reassigned = new Map<string, Allocation[]>();
+  for (const s of assetSales) {
+    const next = matched.get(s.id)!;
+    if (JSON.stringify(next) !== JSON.stringify(s.allocations)) reassigned.set(s.id, next);
   }
 
   const hypo: SaleEvent = {
     kind: "sale",
-    id: "preview",
+    id: NEW_SALE,
     assetId: asset.id,
     assetName: asset.name,
     assetType: asset.type,
@@ -80,10 +97,12 @@ async function plan(userId: string, form: FormData) {
     buyback: v.isBuyback,
     allocations,
   };
-  const others = pf.saleEvents.filter((s) => s.id !== v.saleId);
+  const others = pf.saleEvents
+    .filter((s) => s.id !== v.saleId)
+    .map((s) => (reassigned.has(s.id) ? { ...s, allocations: reassigned.get(s.id)! } : s));
   const rows = computeRealised([...others, ...pf.miscEvents, hypo], pf.lots, pf.slabRate);
   const row = rows.find((r) => r.id === "preview")!;
-  return { v, hypo, row, others, pf } as const;
+  return { v, hypo, row, others, pf, reassigned } as const;
 }
 
 export async function previewSaleAction(_: ActionState, form: FormData): Promise<ActionState> {
@@ -108,23 +127,33 @@ export async function recordSaleAction(_: ActionState, form: FormData): Promise<
   if ("error" in p) return { error: p.error };
 
   const saleId = randomUUID();
-  await db.batch([
-    db.insert(sales).values({
-      id: saleId,
-      userId: user.id,
-      assetId: p.v.assetId,
-      sellDate: p.v.sellDate,
-      qty: String(p.v.qty),
-      price: String(p.v.price),
-      fees: String(p.v.fees),
-      applyTax: p.v.applyTax,
-      exemptRedemption: p.hypo.exemptRedemption,
-      isBuyback: p.v.isBuyback,
-    }),
-    db.insert(saleAllocations).values(
-      p.hypo.allocations.map((a) => ({ saleId, lotId: a.lotId, qty: String(a.qty) })),
-    ),
-  ]);
+  const mine = new Map(p.reassigned).set(saleId, p.hypo.allocations);
+  try {
+    await db.batch([
+      db.insert(sales).values({
+        id: saleId,
+        userId: user.id,
+        assetId: p.v.assetId,
+        sellDate: p.v.sellDate,
+        qty: String(p.v.qty),
+        price: String(p.v.price),
+        fees: String(p.v.fees),
+        applyTax: p.v.applyTax,
+        exemptRedemption: p.hypo.exemptRedemption,
+        isBuyback: p.v.isBuyback,
+      }),
+      ...allocationStatements(mine),
+    ] as unknown as Parameters<typeof db.batch>[0]);
+  } catch {
+    return { error: "Couldn't save this sale. Please try again." };
+  }
+
+  // Two sales submitted at once can both see the same free units. If that happened, undo this one.
+  if (await isOversold(user.id, p.v.assetId)) {
+    await db.delete(sales).where(and(eq(sales.id, saleId), eq(sales.userId, user.id)));
+    await rebuildAssetAllocations(user.id, p.v.assetId);
+    return { error: "Those units were just used by another sale. Review your holding and try again." };
+  }
 
   revalidatePath("/", "layout");
   redirect("/realised");
@@ -137,24 +166,26 @@ export async function updateSaleAction(_: ActionState, form: FormData): Promise<
   const saleId = p.v.saleId;
   if (!saleId) return { error: "Sale not found" };
 
-  await db.batch([
-    db
-      .update(sales)
-      .set({
-        sellDate: p.v.sellDate,
-        qty: String(p.v.qty),
-        price: String(p.v.price),
-        fees: String(p.v.fees),
-        applyTax: p.v.applyTax,
-        exemptRedemption: p.hypo.exemptRedemption,
-        isBuyback: p.v.isBuyback,
-      })
-      .where(and(eq(sales.id, saleId), eq(sales.userId, user.id))),
-    db.delete(saleAllocations).where(eq(saleAllocations.saleId, saleId)),
-    db.insert(saleAllocations).values(
-      p.hypo.allocations.map((a) => ({ saleId, lotId: a.lotId, qty: String(a.qty) })),
-    ),
-  ]);
+  const mine = new Map(p.reassigned).set(saleId, p.hypo.allocations);
+  try {
+    await db.batch([
+      db
+        .update(sales)
+        .set({
+          sellDate: p.v.sellDate,
+          qty: String(p.v.qty),
+          price: String(p.v.price),
+          fees: String(p.v.fees),
+          applyTax: p.v.applyTax,
+          exemptRedemption: p.hypo.exemptRedemption,
+          isBuyback: p.v.isBuyback,
+        })
+        .where(and(eq(sales.id, saleId), eq(sales.userId, user.id))),
+      ...allocationStatements(mine),
+    ] as unknown as Parameters<typeof db.batch>[0]);
+  } catch {
+    return { error: "Couldn't save this sale. Please try again." };
+  }
 
   revalidatePath("/", "layout");
   redirect(`/holdings/${p.v.assetId}`);
@@ -162,13 +193,26 @@ export async function updateSaleAction(_: ActionState, form: FormData): Promise<
 
 export async function deleteSaleAction(id: string): Promise<ActionState> {
   const user = await requireUser();
-  const [sale] = await db
-    .select({ assetId: sales.assetId })
-    .from(sales)
-    .where(and(eq(sales.id, id), eq(sales.userId, user.id)))
-    .limit(1);
+  const pf = await loadPortfolio(user.id);
+  const sale = pf.saleEvents.find((s) => s.id === id);
   if (!sale) return { error: "Sale not found" };
-  await db.delete(sales).where(and(eq(sales.id, id), eq(sales.userId, user.id)));
+
+  // Without this sale, later sales may now be matched to older lots.
+  const rest = pf.saleEvents.filter((s) => s.assetId === sale.assetId && s.id !== id);
+  const { allocations, short } = reallocate(
+    pf.lots.filter((l) => l.assetId === sale.assetId),
+    rest.map((s) => ({ id: s.id, date: s.date, qty: s.qty })),
+  );
+  if (short) return { error: "Couldn't re-match your other sales after this delete." };
+
+  try {
+    await db.batch([
+      db.delete(sales).where(and(eq(sales.id, id), eq(sales.userId, user.id))),
+      ...allocationStatements(allocations),
+    ] as unknown as Parameters<typeof db.batch>[0]);
+  } catch {
+    return { error: "Couldn't delete this sale. Please try again." };
+  }
   revalidatePath("/", "layout");
   redirect(`/holdings/${sale.assetId}`);
 }

@@ -4,6 +4,7 @@ import {
   ASSET_RULES,
   BUYBACK_DIVIDEND_FROM,
   CESS,
+  equityExemptionFor,
   equityRatesFor,
   type AssetTypeId,
   type Rate,
@@ -92,6 +93,8 @@ function resolveRate(rate: Rate, slabRate: number): number {
 
 function salePieces(sale: SaleEvent, lots: Map<string, Lot>) {
   const rule = ASSET_RULES[sale.assetType];
+  // Crypto (section 115BBH) allows only the cost of acquisition, so charges on the sale are not deducted.
+  const saleFees = sale.assetType === "crypto" ? 0 : sale.fees;
   let stcg = 0;
   let ltcg = 0;
   let cost = 0;
@@ -101,7 +104,7 @@ function salePieces(sale: SaleEvent, lots: Map<string, Lot>) {
     const lot = lots.get(a.lotId);
     if (!lot) continue;
     const allocCost = a.qty * lotUnitCost(lot);
-    const proceeds = a.qty * sale.price - sale.fees * (a.qty / sale.qty);
+    const proceeds = a.qty * sale.price - saleFees * (a.qty / sale.qty);
     const gain = proceeds - allocCost;
     cost += allocCost;
     const isLong =
@@ -114,7 +117,7 @@ function salePieces(sale: SaleEvent, lots: Map<string, Lot>) {
       costStcg += allocCost;
     }
   }
-  const proceeds = sale.qty * sale.price - sale.fees;
+  const proceeds = sale.qty * sale.price - saleFees;
   return { stcg, ltcg, cost, costStcg, costLtcg, proceeds };
 }
 
@@ -185,7 +188,7 @@ function settleYear(pieces: Piece[], setOff: boolean): Settled {
     if (p.gain <= EPS) continue;
     let base = p.gain - offset[i];
     if (p.equityExempt && p.term === "LTCG") {
-      exemptionLeft ??= equityRatesFor(p.date).exemption;
+      exemptionLeft ??= equityExemptionFor(p.date);
       const used = Math.min(exemptionLeft, base);
       exemptionLeft -= used;
       exempt[i] = used;
@@ -248,7 +251,7 @@ export function computeRealised(
       const p = salePieces(e, lotMap);
       stcg = p.stcg;
       ltcg = p.ltcg;
-      taxApplied = e.applyTax && !e.exemptRedemption;
+      taxApplied = e.applyTax && !(e.exemptRedemption && e.assetType === "sgb");
       buyback = !!e.buyback;
       dividend = e.qty * e.price;
       costS = p.costStcg;
@@ -263,7 +266,7 @@ export function computeRealised(
         qty: e.qty,
         proceeds: round2(p.proceeds),
         cost: round2(p.cost),
-        note: [e.exemptRedemption ? "Tax-free RBI redemption" : "", e.buyback ? "Share buyback." : ""]
+        note: [e.exemptRedemption && e.assetType === "sgb" ? "Tax-free RBI redemption" : "", e.buyback ? "Share buyback." : ""]
           .filter(Boolean)
           .join(" "),
       };
@@ -396,7 +399,7 @@ export function computeRealised(
       exemptionUsed: round2(exemptBy[i]),
       taxableGain: round2(d.taxableGain),
       exemptionLeft: rule.usesEquityExemption
-        ? round2(equityRatesFor(d.e.date).exemption - (exemptionUsedInFy.get(d.fy) ?? 0))
+        ? round2(equityExemptionFor(d.e.date) - (exemptionUsedInFy.get(d.fy) ?? 0))
         : null,
       offsetByLosses: round2(offsetBy[i]),
       lossUsed: round2(lossUsedBy[i]),

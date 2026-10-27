@@ -54,6 +54,12 @@ export const EQUITY_RATES = [
   { from: EQUITY_REGIME_CHANGE_DATE, stcg: 0.2, ltcg: 0.125, exemption: 125000 },
 ] as const;
 
+/** The yearly LTCG exemption is one amount per financial year: the one in force at the end of that year. */
+export function equityExemptionFor(date: string): number {
+  const [y, m] = date.split("-").map(Number);
+  return equityRatesFor(`${m >= 4 ? y + 1 : y}-03-31`).exemption;
+}
+
 export function equityRatesFor(date: string) {
   let current: (typeof EQUITY_RATES)[number] = EQUITY_RATES[0];
   for (const r of EQUITY_RATES) if (date >= r.from) current = r;

@@ -8,14 +8,15 @@ import { miscEntries } from "@/db/schema";
 import { ASSET_TYPE_IDS } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import type { ActionState } from "@/features/portfolio/actionState";
+import { number, pastDate } from "@/lib/validation";
 
 const schema = z.object({
   assetType: z.enum(["buyback", ...ASSET_TYPE_IDS]),
-  entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date"),
-  amount: z.coerce.number().refine((n) => Number.isFinite(n) && n !== 0, "Enter a non-zero amount"),
+  entryDate: pastDate,
+  amount: number("amount", { min: -1e12 }).refine((n) => n !== 0, "Enter a non-zero amount"),
   kind: z.enum(["profit", "loss"]),
-  cost: z.coerce.number().min(0, "Cost cannot be negative").default(0),
-  brokerage: z.coerce.number().min(0, "Brokerage cannot be negative").default(0),
+  cost: number("cost"),
+  brokerage: number("brokerage"),
   taxAdjusted: z.boolean(),
   term: z.enum(["STCG", "LTCG"]),
   note: z.string().trim().max(200).default(""),

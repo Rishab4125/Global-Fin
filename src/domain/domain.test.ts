@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addMonths, financialYear, heldLongerThan } from "./dates";
-import { allocateFifo, computeHoldings, type Lot } from "./fifo";
+import { allocateFifo, computeHoldings, reallocate, type Lot } from "./fifo";
 import { computeRealised, type MiscEvent, type SaleEvent } from "./gains";
 
 const lot = (id: string, buyDate: string, qty: number, unitPrice: number, fees = 0): Lot => ({
@@ -400,5 +400,63 @@ describe("selling a holding in a share buyback", () => {
   it("does nothing special when tax effect is off", () => {
     const [r] = computeRealised([buyback({ applyTax: false })], lots, 0.3);
     expect(r.tax).toBe(0);
+  });
+});
+
+describe("fixes", () => {
+  it("uses the full-year 1.25L exemption for a sale before the July 2024 change", () => {
+    const lots = [lot("a", "2022-01-01", 1000, 100)];
+    // gain 120000 on 2024-06-01: inside 1.25L (the cap in force at the end of FY 2024-25), so no tax
+    const [r] = computeRealised(
+      [sale({ date: "2024-06-01", qty: 100, price: 1300, allocations: [{ lotId: "a", qty: 100 }] })],
+      lots,
+      0.3,
+    );
+    expect(r.ltcg).toBe(120000);
+    expect(r.tax).toBe(0);
+  });
+
+  it("does not deduct sale fees for crypto", () => {
+    const lots = [lot("a", "2025-01-01", 1, 1000)];
+    const [r] = computeRealised(
+      [sale({ assetType: "crypto", fees: 50, date: "2025-03-01", qty: 1, price: 2000, allocations: [{ lotId: "a", qty: 1 }] })],
+      lots,
+      0.3,
+    );
+    expect(r.gain).toBe(1000);
+  });
+
+  it("ignores the SGB tax-free flag on other asset types", () => {
+    const lots = [lot("a", "2024-01-01", 10, 100)];
+    const [r] = computeRealised(
+      [sale({ assetType: "gold_etf", exemptRedemption: true, date: "2025-03-01", qty: 10, price: 200, allocations: [{ lotId: "a", qty: 10 }] })],
+      lots,
+      0.3,
+    );
+    expect(r.taxApplied).toBe(true);
+  });
+});
+
+describe("reallocate", () => {
+  const lots = [lot("old", "2020-01-01", 5, 100), lot("new", "2024-01-01", 5, 120)];
+
+  it("gives a back-dated sale the oldest lot even if a later sale was recorded first", () => {
+    const { allocations, short } = reallocate(lots, [
+      { id: "june", date: "2025-06-01", qty: 5 },
+      { id: "march", date: "2025-03-01", qty: 5 },
+    ]);
+    expect(short).toBeNull();
+    expect(allocations.get("march")).toEqual([{ lotId: "old", qty: 5 }]);
+    expect(allocations.get("june")).toEqual([{ lotId: "new", qty: 5 }]);
+  });
+
+  it("reports the sale that cannot be covered", () => {
+    const { short } = reallocate(lots, [{ id: "big", date: "2025-01-01", qty: 11 }]);
+    expect(short?.id).toBe("big");
+  });
+
+  it("only uses lots bought on or before the sale date", () => {
+    const { short } = reallocate(lots, [{ id: "early", date: "2022-01-01", qty: 6 }]);
+    expect(short?.id).toBe("early");
   });
 });
