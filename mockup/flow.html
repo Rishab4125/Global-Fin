@@ -205,7 +205,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
   </form>
   <div class="tbar" id="hBar"></div>
   <div class="card flush"><div class="ct"><h2>Current holdings</h2></div><div class="htools" id="holdTools"></div><div class="scroll"><table id="holdTbl"></table></div></div>
-  <div class="card flush" id="closedCard" style="display:none"><div class="ct"><h2>Fully sold</h2><p>Past holdings you no longer own</p></div><div id="closedList"></div></div>
+  <div class="card flush" id="closedCard" style="display:none"><div class="ct"><h2>Fully sold</h2><p>Past holdings you no longer own</p></div><div class="htools" id="closedTools"></div><div id="closedList"></div></div>
 </section>
 
 <!-- HOLDING DETAIL -->
@@ -497,7 +497,7 @@ function rDash(){renderPeriod();const rows=compute(),h=holdings(),pr=rows.filter
  $('allocBars').innerHTML=Object.entries(al).map(([k,v])=>`<div class="hb"><span>${k}</span><i style="width:${v/am*100}%"></i><span class="r num">${inr(v)}</span></div>`).join('')||'<p class="muted">No holdings yet.</p>'}
 
 /* holdings */
-const FB={h:{per:'all',from:'',to:'',q:''},t:{per:'all',from:'',to:'',q:''},m:{per:'all',from:'',to:'',q:''}},SORT={h:{key:'invested',dir:'desc'},t:{key:'date',dir:'desc'},m:{key:'date',dir:'desc'}};let addOpen=false,holdEdit=false,holdSel=new Set(),holdIds=[];
+const FB={h:{per:'all',from:'',to:'',q:''},t:{per:'all',from:'',to:'',q:''},m:{per:'all',from:'',to:'',q:''}},SORT={h:{key:'invested',dir:'desc'},t:{key:'date',dir:'desc'},m:{key:'date',dir:'desc'}};let addOpen=false,holdEdit=false,holdSel=new Set(),holdIds=[],closedEdit=false,closedSel=new Set(),closedIds=[];
 const fbBounds=f=>f.per==='custom'?[f.from,f.to]:fyRange(f.per.slice(3));
 const fbIn=(f,d)=>{if(f.per==='all')return true;const[a,b]=fbBounds(f);return d>=a&&d<=b};
 const sortBy=(arr,get,dir)=>arr.map((r,i)=>({r,i,v:get(r)})).sort((a,b)=>{const c=typeof a.v==='number'&&typeof b.v==='number'?a.v-b.v:String(a.v).localeCompare(String(b.v),undefined,{numeric:true,sensitivity:'base'});return c?c*(dir==='asc'?1:-1):a.i-b.i}).map(x=>x.r);
@@ -542,7 +542,16 @@ function rHoldTable(){const f=FB.h,nd=f.q.trim().toLowerCase(),all=holdings().le
  :empty('brief',all?'No holdings match':'No holdings yet',all?'Try a different period or clear the search.':'Press Add investment to record your first one.');
  const held=new Set(holdings().map(x=>x.aid)),closed=Object.keys(assets).filter(a=>!held.has(a)&&lots.some(l=>l.aid===a&&fbIn(f,l.date))&&hit([assets[a].name,T[assets[a].type][0]]));
  $('closedCard').style.display=closed.length?'block':'none';
- $('closedList').innerHTML=closed.map(a=>`<button class="lnk" style="display:flex;justify-content:space-between;width:100%;padding:12px 20px;border-top:1px solid var(--line)" onclick="go('detail','${a}')"><span>${assets[a].name}</span><span class="muted" style="font-weight:400">${T[assets[a].type][0]}</span></button>`).join('')}
+ closedIds=closed;closedSel=new Set([...closedSel].filter(a=>closedIds.includes(a)));closedTools();
+ $('closedList').innerHTML=closed.map(a=>closedEdit?`<label class="pick ${closedSel.has(a)?'sel':''}" style="width:100%;padding:12px 20px;border-top:1px solid var(--line);${closedSel.has(a)?'background:var(--soft)':''}"><input type="checkbox" ${closedSel.has(a)?'checked':''} onchange="closedPick('${a}')" aria-label="Select ${assets[a].name}"><span>${assets[a].name}</span><span class="muted" style="font-weight:400;margin-left:auto">${T[assets[a].type][0]}</span></label>`:`<button class="lnk" style="display:flex;justify-content:space-between;width:100%;padding:12px 20px;border-top:1px solid var(--line)" onclick="go('detail','${a}')"><span>${assets[a].name}</span><span class="muted" style="font-weight:400">${T[assets[a].type][0]}</span></button>`).join('')}
+function closedTools(){const t=$('closedTools');if(!closedIds.length){t.innerHTML='';closedEdit=false;return}
+ const n=closedSel.size,all=n===closedIds.length;
+ t.innerHTML=closedEdit?`<label><input type="checkbox" ${all?'checked':''} onchange="closedAll(this.checked)">Select all <span class="n">(${n} of ${closedIds.length} selected)</span></label><div style="display:flex;gap:8px"><button class="btn dng" ${n?'':'disabled'} onclick="delClosed()">${svg('trash',15)}Delete${n?' ('+n+')':''}</button><button class="btn ghost" onclick="closedDone()">Done</button></div>`:`<span class="muted">${closedIds.length} shown</span><button class="btn ghost" onclick="closedEdit=true;rHoldTable()">${svg('pencil',15)}Edit</button>`}
+function closedPick(a){closedSel.has(a)?closedSel.delete(a):closedSel.add(a);rHoldTable()}
+function closedAll(on){closedSel=new Set(on?closedIds:[]);rHoldTable()}
+function closedDone(){closedEdit=false;closedSel=new Set();rHoldTable()}
+function delClosed(){const n=closedSel.size;if(!n||!confirm(`Delete ${n} holding${n===1?'':'s'}? This also deletes ${n===1?'its':'their'} purchases, sales and realised gains. This cannot be undone.`))return;
+ const ids=new Set(closedSel);lots=lots.filter(l=>!ids.has(l.aid));sales=sales.filter(s=>!ids.has(s.aid));ids.forEach(a=>delete assets[a]);closedEdit=false;closedSel=new Set();toast(`${n} holding${n===1?'':'s'} deleted`);rHold()}
 function holdTools(){const t=$('holdTools');if(!holdIds.length){t.innerHTML='';holdEdit=false;return}
  const n=holdSel.size,all=n===holdIds.length;
  t.innerHTML=holdEdit?`<label><input type="checkbox" ${all?'checked':''} onchange="holdAll(this.checked)">Select all <span class="n">(${n} of ${holdIds.length} selected)</span></label><div style="display:flex;gap:8px"><button class="btn dng" ${n?'':'disabled'} onclick="delHoldings()">${svg('trash',15)}Delete${n?' ('+n+')':''}</button><button class="btn ghost" onclick="holdDone()">Done</button></div>`:`<span class="muted">${holdIds.length} shown</span><button class="btn ghost" onclick="holdEdit=true;rHoldTable()">${svg('pencil',15)}Edit</button>`}

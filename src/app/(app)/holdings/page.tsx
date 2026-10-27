@@ -11,6 +11,7 @@ import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { AddInvestment } from "@/features/holdings/AddInvestment";
+import { ClosedHoldings } from "@/features/holdings/ClosedHoldings";
 import { HoldingsTable } from "@/features/holdings/HoldingsTable";
 import { loadPortfolio } from "@/features/portfolio/data";
 import { formatINR, formatQty } from "@/lib/format";
@@ -198,16 +199,7 @@ export default async function HoldingsPage({
 
         {closed.length > 0 && (
           <SectionCard title="Fully sold" description="Past holdings you no longer own" flush>
-            <ul className="divide-y divide-line">
-              {closed.map((a) => (
-                <li key={a.id}>
-                  <Link href={`/holdings/${a.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-surface2">
-                    <span className="font-medium">{a.name}</span>
-                    <span className="text-sm text-muted">{ASSET_RULES[a.type].label}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <ClosedHoldings rows={closed.map((a) => ({ id: a.id, name: a.name, typeLabel: ASSET_RULES[a.type].label }))} />
           </SectionCard>
         )}
       </div>
