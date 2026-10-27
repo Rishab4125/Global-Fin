@@ -1,32 +1,39 @@
 import { BriefcaseBusiness, RefreshCw, Upload } from "lucide-react";
 import Link from "next/link";
 import { ListSearch } from "@/components/ListSearch";
-import { SortHeader } from "@/components/SortHeader";
-import { EmptyState, SectionCard } from "@/components/ui";
+import { SortSelect } from "@/components/SortSelect";
+import { EmptyState, Kpi, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
 import { lotUnitCost } from "@/domain/fifo";
-import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
 import { platformOf } from "@/domain/platform";
 import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
-import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { AddInvestment } from "@/features/holdings/AddInvestment";
-import { ClosedHoldings } from "@/features/holdings/ClosedHoldings";
-import { HoldingsTable } from "@/features/holdings/HoldingsTable";
+import { HoldingsGrid } from "@/features/holdings/HoldingsGrid";
 import { loadPortfolio } from "@/features/portfolio/data";
-import { formatINR, formatQty } from "@/lib/format";
+import { formatDate, formatINR, formatQty } from "@/lib/format";
 import { parseSort, sortRows } from "@/lib/sort";
 
-const SORT_KEYS = ["name", "type", "platform", "qty", "avg", "invested"] as const;
+const SORT_KEYS = ["invested", "name", "qty", "avg", "recent"] as const;
+const SORT_OPTIONS = [
+  { value: "invested:desc", label: "Invested: high to low" },
+  { value: "invested:asc", label: "Invested: low to high" },
+  { value: "name:asc", label: "Name: A to Z" },
+  { value: "qty:desc", label: "Quantity: high to low" },
+  { value: "avg:desc", label: "Avg cost: high to low" },
+  { value: "recent:desc", label: "Recently bought" },
+];
 
 interface Row {
   id: string;
   name: string;
   typeLabel: string;
-  platform: string;
+  platforms: string[];
   qty: number;
   cost: number;
   avgCost: number;
+  since: string;
+  lastBuy: string;
 }
 
 export const metadata = { title: "Holdings" };
@@ -41,79 +48,63 @@ export default async function HoldingsPage({
   const pf = await loadPortfolio(user.id);
   const today = todayIso();
 
-  const earliest = pf.lots.map((l) => l.buyDate).sort()[0] ?? today;
-  const period = resolvePeriod({ ...query, period: query.period ?? "all" }, today);
-  const options = fyOptions(pf.lots.length ? earliest : null, today).map((fy, i) => ({
-    value: `fy:${fy}`,
-    label: i === 0 ? `FY ${fy} (current)` : `FY ${fy}`,
-  }));
-  if (period.value.startsWith("fy:") && !options.some((o) => o.value === period.value)) {
-    options.push({ value: period.value, label: period.label });
-  }
-  const periodQuery =
-    period.value === "custom"
-      ? `period=custom&from=${period.from}&to=${period.to}`
-      : `period=${encodeURIComponent(period.value)}`;
-
   const q = (query.q ?? "").trim();
   const needle = q.toLowerCase();
   const sort = parseSort(query, SORT_KEYS, { key: "invested", dir: "desc" });
-  const sortQuery = `sort=${sort.key}&dir=${sort.dir}`;
-  const withQ = q ? `&q=${encodeURIComponent(q)}` : "";
+  const withQ = q ? `q=${encodeURIComponent(q)}` : "";
 
   const assetMap = new Map(pf.assets.map((a) => [a.id, a]));
-  const acc = new Map<string, Row & { platforms: Set<string> }>();
+  const acc = new Map<string, Row & { platformSet: Set<string> }>();
+  const byPlatform = new Map<string, number>();
   for (const l of pf.lots) {
     const rem = l.qty - (pf.sold.get(l.id) ?? 0);
     const a = assetMap.get(l.assetId);
-    if (rem <= 1e-9 || !a || !inPeriod(l.buyDate, period)) continue;
+    if (rem <= 1e-9 || !a) continue;
     const r = acc.get(a.id) ?? {
       id: a.id,
       name: a.name,
       typeLabel: ASSET_RULES[a.type].label,
-      platform: "",
-      platforms: new Set<string>(),
+      platforms: [],
+      platformSet: new Set<string>(),
       qty: 0,
       cost: 0,
       avgCost: 0,
+      since: l.buyDate,
+      lastBuy: l.buyDate,
     };
+    const part = rem * lotUnitCost(l);
+    const platform = platformOf(l.source);
     r.qty += rem;
-    r.cost += rem * lotUnitCost(l);
-    r.platforms.add(platformOf(l.source));
+    r.cost += part;
+    r.platformSet.add(platform);
+    r.since = l.buyDate < r.since ? l.buyDate : r.since;
+    r.lastBuy = l.buyDate > r.lastBuy ? l.buyDate : r.lastBuy;
+    byPlatform.set(platform, (byPlatform.get(platform) ?? 0) + part);
     acc.set(a.id, r);
   }
-  const all: Row[] = [...acc.values()].map((r) => ({
+  const all: Row[] = [...acc.values()].map(({ platformSet, ...r }) => ({
     ...r,
-    platform: [...r.platforms].sort().join(", ") || "–",
+    platforms: [...platformSet].sort(),
     avgCost: r.qty > 0 ? r.cost / r.qty : 0,
   }));
-  const matches = (parts: string[]) => !needle || parts.some((s) => s.toLowerCase().includes(needle));
-  const filtered = all.filter((r) => matches([r.name, r.typeLabel, r.platform]));
+  const filtered = all.filter(
+    (r) => !needle || [r.name, r.typeLabel, ...r.platforms].some((s) => s.toLowerCase().includes(needle)),
+  );
 
   const getters: Record<(typeof SORT_KEYS)[number], (r: Row) => string | number> = {
     name: (r) => r.name,
-    type: (r) => r.typeLabel,
-    platform: (r) => r.platform,
     qty: (r) => r.qty,
     avg: (r) => r.avgCost,
     invested: (r) => r.cost,
+    recent: (r) => r.lastBuy,
   };
   const rows = sortRows(filtered, getters[sort.key], sort.dir);
-  const totalCost = rows.reduce((s, r) => s + r.cost, 0);
-
-  const heldIds = new Set(pf.holdings.map((h) => h.id));
-  const closed = pf.assets.filter(
-    (a) =>
-      !heldIds.has(a.id) &&
-      pf.lots.some((l) => l.assetId === a.id && inPeriod(l.buyDate, period)) &&
-      matches([a.name, ASSET_RULES[a.type].label]),
-  );
-
-  const filterNote = period.value !== "all" || q;
-  const baseQuery = `${periodQuery}${withQ}`;
-  const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc", className = "") => (
-    <SortHeader label={label} col={col} sort={sort} basePath="/holdings" query={baseQuery} align={align} firstDir={firstDir} className={className} />
-  );
+  const totalCost = all.reduce((s, r) => s + r.cost, 0);
+  const shownCost = rows.reduce((s, r) => s + r.cost, 0);
+  const platformSplit = [...byPlatform.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([p, c]) => `${p} ${formatINR(c)}`)
+    .join(" · ");
 
   return (
     <div>
@@ -122,9 +113,7 @@ export default async function HoldingsPage({
         title="Holdings"
         description={
           pf.holdings.length
-            ? `${rows.length} holding${rows.length === 1 ? "" : "s"}${filterNote ? ` of ${pf.holdings.length}` : ""} · ${formatINR(totalCost)} invested${
-                period.value !== "all" ? ` · units bought in ${period.value === "custom" ? "the selected dates" : period.label}` : ""
-              }`
+            ? `${rows.length} holding${rows.length === 1 ? "" : "s"}${q ? ` of ${all.length}` : ""} · ${formatINR(shownCost)} invested`
             : "Record what you own."
         }
         actions={
@@ -143,66 +132,40 @@ export default async function HoldingsPage({
         <ListSearch
           q={q}
           basePath="/holdings"
-          query={`${periodQuery}&${sortQuery}`}
+          query={`sort=${sort.key}&dir=${sort.dir}`}
           placeholder="Search name, type or platform"
         />
-        <PeriodFilter
-          options={options}
-          value={period.value}
-          from={period.from ?? ""}
-          to={period.to ?? ""}
-          earliest={earliest}
-          today={today}
-          basePath="/holdings"
-          extraQuery={`${sortQuery}${withQ}`}
-        />
+        <SortSelect options={SORT_OPTIONS} value={`${sort.key}:${sort.dir}`} basePath="/holdings" query={withQ} />
       </AddInvestment>
 
-      <div className="space-y-5">
-        <SectionCard title="Current holdings" flush>
-          {pf.holdings.length === 0 ? (
-            <EmptyState
-              icon={BriefcaseBusiness}
-              title="No holdings yet"
-              text="Press Add investment to record your first one."
-            />
-          ) : rows.length === 0 ? (
-            <EmptyState
-              icon={BriefcaseBusiness}
-              title="No holdings match"
-              text="Try a different period or clear the search."
-            />
-          ) : (
-            <HoldingsTable
-              head={
-                <>
-                  {head("Name", "name", "left", "asc", "sticky-col")}
-                  {head("Type", "type", "left", "asc", "hidden md:table-cell")}
-                  {head("Platform", "platform", "left", "asc", "hidden md:table-cell")}
-                  {head("Quantity", "qty", "right", "desc")}
-                  {head("Avg cost", "avg", "right", "desc")}
-                  {head("Invested", "invested", "right", "desc")}
-                </>
-              }
-              rows={rows.map((h) => ({
-                id: h.id,
-                name: h.name,
-                typeLabel: h.typeLabel,
-                platform: h.platform,
-                qty: formatQty(h.qty),
-                avgCost: formatINR(h.avgCost),
-                cost: formatINR(h.cost),
-              }))}
-            />
-          )}
-        </SectionCard>
+      {all.length > 0 && (
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4">
+          <Kpi label="Total invested" value={formatINR(totalCost)} icon={BriefcaseBusiness} hint={`${all.length} holding${all.length === 1 ? "" : "s"}`} />
+          <Kpi label="By platform" value={String(byPlatform.size)} hint={platformSplit} />
+        </div>
+      )}
 
-        {closed.length > 0 && (
-          <SectionCard title="Fully sold" description="Past holdings you no longer own" flush>
-            <ClosedHoldings rows={closed.map((a) => ({ id: a.id, name: a.name, typeLabel: ASSET_RULES[a.type].label }))} />
-          </SectionCard>
+      <SectionCard flush>
+        {pf.holdings.length === 0 ? (
+          <EmptyState icon={BriefcaseBusiness} title="No holdings yet" text="Press Add investment to record your first one." />
+        ) : rows.length === 0 ? (
+          <EmptyState icon={BriefcaseBusiness} title="No holdings match" text="Clear the search to see all your holdings." />
+        ) : (
+          <HoldingsGrid
+            rows={rows.map((h) => ({
+              id: h.id,
+              name: h.name,
+              typeLabel: h.typeLabel,
+              platforms: h.platforms,
+              qty: formatQty(h.qty),
+              avgCost: formatINR(h.avgCost),
+              cost: formatINR(h.cost),
+              since: formatDate(h.since),
+              share: totalCost > 0 ? `${((h.cost / totalCost) * 100).toFixed(1)}%` : "–",
+            }))}
+          />
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }
