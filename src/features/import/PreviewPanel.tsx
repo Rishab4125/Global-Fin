@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { formatDate, formatINR, formatQty } from "@/lib/format";
 import type { ImportPreview, PreviewRow } from "./view";
 
@@ -20,6 +23,12 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
   const { counts } = preview;
   const adjustable = preview.matches.filter((m) => m.kind !== "isin");
   const sync = mode === "sync";
+  // Status chips only hide rows (they stay in the form), so a hidden "Import anyway" tick is still submitted.
+  const [shown, setShown] = useState<PreviewRow["status"][]>([]);
+  const toggleStatus = (s: PreviewRow["status"]) =>
+    setShown((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]));
+  const statusCount = (s: PreviewRow["status"]) => preview.rows.filter((r) => r.status === s).length;
+  const statuses = (Object.keys(STATUS) as PreviewRow["status"][]).filter(statusCount);
 
   return (
     <div className="space-y-4">
@@ -78,6 +87,33 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
         </p>
       )}
 
+      {!sync && statuses.length > 1 && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
+          {statuses.map((s) => {
+            const on = shown.includes(s);
+            return (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleStatus(s)}
+                className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition ${
+                  on ? "border-primary/40 bg-primary-soft text-primary-strong" : "border-line bg-surface text-muted hover:text-ink"
+                }`}
+              >
+                {STATUS[s].label}
+                <b className="font-semibold">{statusCount(s)}</b>
+              </button>
+            );
+          })}
+          {shown.length > 0 && (
+            <button type="button" onClick={() => setShown([])} className="text-[13px] text-muted hover:text-ink">
+              Show all
+            </button>
+          )}
+        </div>
+      )}
+
       {preview.rows.length > 0 && (
         <div className="max-h-96 overflow-auto rounded-xl border border-line">
           <table className="w-full">
@@ -93,7 +129,7 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
             </thead>
             <tbody>
               {preview.rows.map((r) => (
-                <tr key={r.key}>
+                <tr key={r.key} hidden={shown.length > 0 && !shown.includes(r.status)}>
                   <td className="td font-medium">{r.symbol}</td>
                   <td className="td">{formatDate(r.date)}</td>
                   <td className="td">{r.side === "buy" ? "Buy" : "Sell"}</td>

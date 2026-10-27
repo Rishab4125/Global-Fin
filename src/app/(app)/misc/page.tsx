@@ -1,5 +1,6 @@
 import { Receipt } from "lucide-react";
 import { DeleteButton } from "@/components/DeleteButton";
+import { FilterBar } from "@/components/FilterBar";
 import { ListSearch } from "@/components/ListSearch";
 import { SortHeader } from "@/components/SortHeader";
 import { EmptyState, SectionCard } from "@/components/ui";
@@ -11,6 +12,7 @@ import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { AddMisc } from "@/features/misc/AddMisc";
 import { deleteMiscAction } from "@/features/misc/actions";
 import { loadPortfolio } from "@/features/portfolio/data";
+import { filterQs, passes, readFilters } from "@/lib/filters";
 import { formatDate, formatINR, gainClass } from "@/lib/format";
 import { parseSort, sortRows } from "@/lib/sort";
 
@@ -21,7 +23,7 @@ export const metadata = { title: "Misc profit / loss" };
 export default async function MiscPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string; ty?: string; sign?: string; adj?: string }>;
 }) {
   const query = await searchParams;
   const user = await requireUser();
@@ -45,6 +47,10 @@ export default async function MiscPage({
       ? `period=custom&from=${period.from}&to=${period.to}`
       : `period=${encodeURIComponent(period.value)}`;
 
+  const typeOptions = [...new Set(pf.miscEvents.map(typeOf))].sort();
+  const filters = readFilters(query, ["ty", "sign", "adj"], { ty: typeOptions, sign: ["Profit", "Loss"], adj: ["Yes", "No"] });
+  const fq = filterQs(filters);
+  const withF = fq ? `&${fq}` : "";
   const q = (query.q ?? "").trim();
   const needle = q.toLowerCase();
   const sort = parseSort(query, SORT_KEYS, { key: "date", dir: "desc" });
@@ -52,7 +58,12 @@ export default async function MiscPage({
   const withQ = q ? `&q=${encodeURIComponent(q)}` : "";
 
   const shown = pf.miscEvents.filter(
-    (e) => inPeriod(e.date, period) && (!needle || [typeOf(e), e.note ?? ""].some((s) => s.toLowerCase().includes(needle))),
+    (e) =>
+      inPeriod(e.date, period) &&
+      passes(filters.ty, typeOf(e)) &&
+      passes(filters.sign, (rowById.get(e.id)?.netGain ?? 0) >= 0 ? "Profit" : "Loss") &&
+      passes(filters.adj, e.taxAdjusted ? "Yes" : "No") &&
+      (!needle || [typeOf(e), e.note ?? ""].some((s) => s.toLowerCase().includes(needle))),
   );
   const getters: Record<(typeof SORT_KEYS)[number], (e: (typeof shown)[number]) => string | number> = {
     date: (e) => e.date,
@@ -68,7 +79,7 @@ export default async function MiscPage({
   const filtered = entries.length !== pf.miscEvents.length;
 
   const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc", className = "") => (
-    <SortHeader label={label} col={col} sort={sort} basePath="/misc" query={`${periodQuery}${withQ}`} align={align} firstDir={firstDir} className={className} />
+    <SortHeader label={label} col={col} sort={sort} basePath="/misc" query={`${periodQuery}${withQ}${withF}`} align={align} firstDir={firstDir} className={className} />
   );
 
   return (
@@ -80,7 +91,7 @@ export default async function MiscPage({
       >
         {pf.miscEvents.length > 0 && (
           <>
-            <ListSearch q={q} basePath="/misc" query={`${periodQuery}&${sortQuery}`} placeholder="Search type or note" />
+            <ListSearch q={q} basePath="/misc" query={`${periodQuery}&${sortQuery}${withF}`} placeholder="Search type or note" />
             <PeriodFilter
               options={options}
               value={period.value}
@@ -89,7 +100,16 @@ export default async function MiscPage({
               earliest={earliest}
               today={today}
               basePath="/misc"
-              extraQuery={`${sortQuery}${withQ}`}
+              extraQuery={`${sortQuery}${withQ}${withF}`}
+            />
+            <FilterBar
+              basePath="/misc"
+              selected={filters}
+              groups={[
+                { id: "ty", label: "Type", options: typeOptions.length > 1 ? typeOptions : [] },
+                { id: "sign", label: "Result", options: ["Profit", "Loss"] },
+                { id: "adj", label: "Tax adjusted", options: ["Yes", "No"] },
+              ]}
             />
           </>
         )}
@@ -107,7 +127,7 @@ export default async function MiscPage({
           {pf.miscEvents.length === 0 ? (
             <EmptyState icon={Receipt} title="No entries yet" text="Press Add misc P/L to record your first one." />
           ) : entries.length === 0 ? (
-            <EmptyState icon={Receipt} title="No entries match" text="Try a different period or clear the search." />
+            <EmptyState icon={Receipt} title="No entries match" text="Try a different period or clear the search and filters." />
           ) : (
             <table className="w-full">
               <thead>

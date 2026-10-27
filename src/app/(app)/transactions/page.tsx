@@ -1,5 +1,6 @@
 import { ArrowLeftRight, Pencil } from "lucide-react";
 import Link from "next/link";
+import { FilterBar } from "@/components/FilterBar";
 import { ListSearch } from "@/components/ListSearch";
 import { SortHeader } from "@/components/SortHeader";
 import { EmptyState, PageHeader, SectionCard } from "@/components/ui";
@@ -10,6 +11,7 @@ import { ASSET_RULES, type AssetTypeId } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { loadPortfolio } from "@/features/portfolio/data";
+import { filterQs, passes, PLATFORMS, readFilters } from "@/lib/filters";
 import { formatDate, formatINR, formatQty, gainClass } from "@/lib/format";
 import { parseSort, sortRows } from "@/lib/sort";
 
@@ -25,6 +27,7 @@ interface Txn {
   assetId?: string;
   name: string;
   typeLabel: string;
+  group: string;
   platform: string;
   qty: number | null;
   price: number | null;
@@ -46,7 +49,7 @@ export const metadata = { title: "Transactions" };
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string; act?: string; ty?: string; pf?: string }>;
 }) {
   const query = await searchParams;
   const user = await requireUser();
@@ -65,6 +68,7 @@ export default async function TransactionsPage({
         assetId: l.assetId,
         name: a?.name ?? "Unknown",
         typeLabel: a ? typeLabel(a.type) : "",
+        group: a ? ASSET_RULES[a.type].group : "",
         platform: platformOf(l.source),
         qty: l.qty,
         price: l.unitPrice,
@@ -82,6 +86,7 @@ export default async function TransactionsPage({
         assetId: s.assetId,
         name: a?.name ?? "Unknown",
         typeLabel: a ? typeLabel(a.type) : "",
+        group: a ? ASSET_RULES[a.type].group : "",
         platform: platformOf(s.source),
         qty: s.qty,
         price: s.price,
@@ -98,6 +103,7 @@ export default async function TransactionsPage({
         date: m.date,
         name: buyback ? "Share buyback" : "Misc profit / loss",
         typeLabel: buyback ? `Cost ${formatINR(m.cost)}` : typeLabel(m.assetType),
+        group: ASSET_RULES[m.assetType].group,
         platform: "–",
         qty: null,
         price: null,
@@ -123,11 +129,21 @@ export default async function TransactionsPage({
       ? `period=custom&from=${period.from}&to=${period.to}`
       : `period=${encodeURIComponent(period.value)}`;
 
+  const groupOptions = [...new Set(txns.map((t) => t.group).filter(Boolean))].sort();
+  const filters = readFilters(query, ["act", "ty", "pf"], {
+    act: Object.values(badge).map((b) => b.label),
+    ty: groupOptions,
+    pf: PLATFORMS,
+  });
+  const fq = filterQs(filters);
   const q = (query.q ?? "").trim();
   const needle = q.toLowerCase();
   const shown = txns.filter(
     (t) =>
       inPeriod(t.date, period) &&
+      passes(filters.act, badge[t.kind].label) &&
+      passes(filters.ty, t.group) &&
+      passes(filters.pf, t.platform) &&
       (!needle ||
         [t.name, t.typeLabel, t.platform, badge[t.kind].label, t.note ?? ""].some((s) => s.toLowerCase().includes(needle))),
   );
@@ -136,6 +152,7 @@ export default async function TransactionsPage({
   const sort = parseSort(query, SORT_KEYS, { key: "date", dir: "desc" });
   const sortQuery = `sort=${sort.key}&dir=${sort.dir}`;
   const withQ = q ? `&q=${encodeURIComponent(q)}` : "";
+  const withF = fq ? `&${fq}` : "";
   const getters: Record<(typeof SORT_KEYS)[number], (t: Txn) => string | number> = {
     date: (t) => t.date,
     action: (t) => badge[t.kind].label,
@@ -148,7 +165,7 @@ export default async function TransactionsPage({
   };
   const rows = sortRows(shown, getters[sort.key], sort.dir);
   const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc", className = "") => (
-    <SortHeader label={label} col={col} sort={sort} basePath="/transactions" query={`${periodQuery}${withQ}`} align={align} firstDir={firstDir} className={className} />
+    <SortHeader label={label} col={col} sort={sort} basePath="/transactions" query={`${periodQuery}${withQ}${withF}`} align={align} firstDir={firstDir} className={className} />
   );
 
   return (
@@ -161,7 +178,7 @@ export default async function TransactionsPage({
         <ListSearch
           q={q}
           basePath="/transactions"
-          query={`${periodQuery}&${sortQuery}`}
+          query={`${periodQuery}&${sortQuery}${withF}`}
           placeholder="Search name, type, platform or note"
         />
         <PeriodFilter
@@ -172,7 +189,16 @@ export default async function TransactionsPage({
           earliest={earliest}
           today={today}
           basePath="/transactions"
-          extraQuery={`${sortQuery}${withQ}`}
+          extraQuery={`${sortQuery}${withQ}${withF}`}
+        />
+        <FilterBar
+          basePath="/transactions"
+          selected={filters}
+          groups={[
+            { id: "act", label: "Action", options: Object.values(badge).map((b) => b.label) },
+            { id: "ty", label: "Asset class", options: groupOptions.length > 1 ? groupOptions : [] },
+            { id: "pf", label: "Platform", options: PLATFORMS },
+          ]}
         />
       </div>
       {txns.length > 0 && (
@@ -188,7 +214,7 @@ export default async function TransactionsPage({
           <EmptyState
             icon={ArrowLeftRight}
             title="No transactions match"
-            text="Try a different period or clear the search."
+            text="Try a different period or clear the search and filters."
           />
         ) : (
           <table className="w-full">

@@ -1,29 +1,40 @@
 import { Download, LineChart } from "lucide-react";
-import Link from "next/link";
+import { FilterBar } from "@/components/FilterBar";
 import { EmptyState, Kpi, PageHeader, SectionCard } from "@/components/ui";
+import { todayIso } from "@/domain/dates";
+import { fyOptions } from "@/domain/period";
+import { PLATFORMS } from "@/lib/filters";
 import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
+import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { loadPortfolio } from "@/features/portfolio/data";
+import { realisedView, RESULTS, TERMS, type RealisedQuery } from "@/features/reports/realisedFilter";
 import { byAssetGroup, totals } from "@/features/reports/summary";
 import { formatDate, formatINR, formatQty, gainClass } from "@/lib/format";
 
 export const metadata = { title: "Realised gains" };
 
-export default async function RealisedPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ fy?: string }>;
-}) {
-  const { fy = "all" } = await searchParams;
+export default async function RealisedPage({ searchParams }: { searchParams: Promise<RealisedQuery> }) {
+  const query = await searchParams;
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);
+  const today = todayIso();
 
-  const years = [...new Set(pf.rows.map((r) => r.fy))].sort().reverse();
-  const rows = pf.rows
-    .filter((r) => fy === "all" || r.fy === fy)
-    .sort((a, b) => (a.date < b.date ? 1 : -1));
+  const view = realisedView(pf, query, today);
+  const { period, filters, groups: groupOptions } = view;
+  const rows = [...view.rows].sort((a, b) => (a.date < b.date ? 1 : -1));
   const t = totals(rows);
   const groups = byAssetGroup(rows);
+
+  const earliest = pf.rows.map((r) => r.date).sort()[0] ?? today;
+  const options = fyOptions(pf.rows.length ? earliest : null, today).map((fy, i) => ({
+    value: `fy:${fy}`,
+    label: i === 0 ? `FY ${fy} (current)` : `FY ${fy}`,
+  }));
+  if (period.value.startsWith("fy:") && !options.some((o) => o.value === period.value)) {
+    options.push({ value: period.value, label: period.label });
+  }
+  const exportQs = [view.periodQuery, view.fq].filter(Boolean).join("&");
 
   return (
     <div>
@@ -32,7 +43,7 @@ export default async function RealisedPage({
         description="Profit and loss from sales and misc entries, with estimated tax. Losses reduce gains in the same financial year."
         actions={
           <a
-            href={`/realised/export?fy=${fy}`}
+            href={`/realised/export?${exportQs}`}
             aria-label="Export CSV"
             title="Export CSV"
             className="btn-ghost shrink-0 max-sm:!w-10 max-sm:!min-w-10 max-sm:!px-0"
@@ -43,20 +54,27 @@ export default async function RealisedPage({
         }
       />
 
-      <div className="mb-5 flex gap-1.5 overflow-x-auto pb-1">
-        {["all", ...years].map((y) => (
-          <Link
-            key={y}
-            href={`/realised?fy=${y}`}
-            className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
-              y === fy
-                ? "bg-primary text-(--on-primary)"
-                : "border border-line bg-surface text-muted hover:text-ink"
-            }`}
-          >
-            {y === "all" ? "All years" : `FY ${y}`}
-          </Link>
-        ))}
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <PeriodFilter
+          options={options}
+          value={period.value}
+          from={period.from ?? ""}
+          to={period.to ?? ""}
+          earliest={earliest}
+          today={today}
+          basePath="/realised"
+          extraQuery={view.fq}
+        />
+        <FilterBar
+          basePath="/realised"
+          selected={filters}
+          groups={[
+            { id: "ty", label: "Asset class", options: groupOptions.length > 1 ? groupOptions : [] },
+            { id: "term", label: "Term", options: TERMS },
+            { id: "sign", label: "Result", options: RESULTS },
+            { id: "pf", label: "Platform", options: PLATFORMS },
+          ]}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
@@ -87,7 +105,7 @@ export default async function RealisedPage({
             <EmptyState
               icon={LineChart}
               title="No realised gains yet"
-              text="Sell a holding or add a misc profit/loss entry to see it here."
+              text="Sell a holding or add a misc profit/loss entry, or change the period and filters."
             />
           ) : (
             <table className="w-full">

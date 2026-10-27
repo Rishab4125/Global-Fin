@@ -1,5 +1,6 @@
 import { BriefcaseBusiness, RefreshCw, Upload } from "lucide-react";
 import Link from "next/link";
+import { FilterBar } from "@/components/FilterBar";
 import { ListSearch } from "@/components/ListSearch";
 import { SortSelect } from "@/components/SortSelect";
 import { EmptyState, Kpi, SectionCard } from "@/components/ui";
@@ -11,6 +12,7 @@ import { requireUser } from "@/features/auth/session";
 import { AddInvestment } from "@/features/holdings/AddInvestment";
 import { HoldingsGrid } from "@/features/holdings/HoldingsGrid";
 import { loadPortfolio } from "@/features/portfolio/data";
+import { filterQs, joinQs, passes, PLATFORMS, readFilters } from "@/lib/filters";
 import { formatDate, formatINR, formatQty } from "@/lib/format";
 import { parseSort, sortRows } from "@/lib/sort";
 
@@ -41,7 +43,7 @@ export const metadata = { title: "Holdings" };
 export default async function HoldingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; dir?: string; pf?: string; ty?: string }>;
 }) {
   const query = await searchParams;
   const user = await requireUser();
@@ -51,7 +53,10 @@ export default async function HoldingsPage({
   const q = (query.q ?? "").trim();
   const needle = q.toLowerCase();
   const sort = parseSort(query, SORT_KEYS, { key: "invested", dir: "desc" });
-  const withQ = q ? `q=${encodeURIComponent(q)}` : "";
+  const groupOptions = [...new Set(pf.holdings.map((h) => ASSET_RULES[h.type].group))].sort();
+  const filters = readFilters(query, ["pf", "ty"], { pf: PLATFORMS, ty: groupOptions });
+  const fq = filterQs(filters);
+  const withQ = joinQs(q ? `q=${encodeURIComponent(q)}` : "", fq);
 
   const assetMap = new Map(pf.assets.map((a) => [a.id, a]));
   const acc = new Map<string, Row & { platformSet: Set<string> }>();
@@ -60,6 +65,7 @@ export default async function HoldingsPage({
     const rem = l.qty - (pf.sold.get(l.id) ?? 0);
     const a = assetMap.get(l.assetId);
     if (rem <= 1e-9 || !a) continue;
+    if (!passes(filters.pf, platformOf(l.source)) || !passes(filters.ty, ASSET_RULES[a.type].group)) continue;
     const r = acc.get(a.id) ?? {
       id: a.id,
       name: a.name,
@@ -113,7 +119,7 @@ export default async function HoldingsPage({
         title="Holdings"
         description={
           pf.holdings.length
-            ? `${rows.length} holding${rows.length === 1 ? "" : "s"}${q ? ` of ${all.length}` : ""} · ${formatINR(shownCost)} invested`
+            ? `${rows.length} holding${rows.length === 1 ? "" : "s"}${q || fq ? ` of ${all.length}` : ""} · ${formatINR(shownCost)} invested`
             : "Record what you own."
         }
         actions={
@@ -132,10 +138,18 @@ export default async function HoldingsPage({
         <ListSearch
           q={q}
           basePath="/holdings"
-          query={`sort=${sort.key}&dir=${sort.dir}`}
+          query={joinQs(`sort=${sort.key}&dir=${sort.dir}`, fq)}
           placeholder="Search name, type or platform"
         />
         <SortSelect options={SORT_OPTIONS} value={`${sort.key}:${sort.dir}`} basePath="/holdings" query={withQ} />
+        <FilterBar
+          basePath="/holdings"
+          selected={filters}
+          groups={[
+            { id: "pf", label: "Platform", options: PLATFORMS },
+            { id: "ty", label: "Asset class", options: groupOptions.length > 1 ? groupOptions : [] },
+          ]}
+        />
       </AddInvestment>
 
       {all.length > 0 && (
@@ -149,7 +163,7 @@ export default async function HoldingsPage({
         {pf.holdings.length === 0 ? (
           <EmptyState icon={BriefcaseBusiness} title="No holdings yet" text="Press Add investment to record your first one." />
         ) : rows.length === 0 ? (
-          <EmptyState icon={BriefcaseBusiness} title="No holdings match" text="Clear the search to see all your holdings." />
+          <EmptyState icon={BriefcaseBusiness} title="No holdings match" text="Clear the search or filters to see all your holdings." />
         ) : (
           <HoldingsGrid
             rows={rows.map((h) => ({

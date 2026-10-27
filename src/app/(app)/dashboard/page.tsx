@@ -1,14 +1,18 @@
 import { BriefcaseBusiness, Coins, Landmark, PiggyBank, Plus, RefreshCw, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import { FilterBar } from "@/components/FilterBar";
 import { EmptyState, Kpi, PageHeader, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
+import { lotUnitCost } from "@/domain/fifo";
 import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
+import { platformOf } from "@/domain/platform";
 import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { AllocationChart, GainByYearChart } from "@/features/dashboard/Charts";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { loadPortfolio } from "@/features/portfolio/data";
 import { byFinancialYear, totals } from "@/features/reports/summary";
+import { filterQs, passes, PLATFORMS, readFilters } from "@/lib/filters";
 import { formatDate, formatINR } from "@/lib/format";
 
 export const metadata = { title: "Dashboard" };
@@ -16,7 +20,7 @@ export const metadata = { title: "Dashboard" };
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ period?: string; from?: string; to?: string; ty?: string; pf?: string }>;
 }) {
   const query = await searchParams;
   const user = await requireUser();
@@ -37,10 +41,30 @@ export default async function DashboardPage({
     options.push({ value: period.value, label: period.label });
   }
 
-  const periodRows = pf.rows.filter((r) => inPeriod(r.date, period));
-  const invested = pf.holdings.reduce((s, h) => s + h.cost, 0);
+  // Asset class / platform filters apply to the KPIs and both charts.
+  const assetMap = new Map(pf.assets.map((a) => [a.id, a]));
+  const groupOptions = [...new Set(pf.assets.map((a) => ASSET_RULES[a.type].group))].sort();
+  const filters = readFilters(query, ["ty", "pf"], { ty: groupOptions, pf: PLATFORMS });
+  const fq = filterQs(filters);
+  const saleSource = new Map(pf.saleEvents.map((s) => [s.id, s.source]));
+  const rowsInFilter = pf.rows.filter(
+    (r) =>
+      passes(filters.ty, ASSET_RULES[r.assetType].group) &&
+      passes(filters.pf, r.kind === "sale" ? platformOf(saleSource.get(r.id)) : "–"),
+  );
+  const periodRows = rowsInFilter.filter((r) => inPeriod(r.date, period));
+
+  const heldCost = new Map<string, number>();
+  for (const l of pf.lots) {
+    const rem = l.qty - (pf.sold.get(l.id) ?? 0);
+    const a = assetMap.get(l.assetId);
+    if (rem <= 1e-9 || !a) continue;
+    if (!passes(filters.ty, ASSET_RULES[a.type].group) || !passes(filters.pf, platformOf(l.source))) continue;
+    heldCost.set(a.id, (heldCost.get(a.id) ?? 0) + rem * lotUnitCost(l));
+  }
+  const invested = [...heldCost.values()].reduce((s, c) => s + c, 0);
   const t = totals(periodRows);
-  const years = byFinancialYear(pf.rows);
+  const years = byFinancialYear(rowsInFilter);
 
   const periodText =
     period.value === "custom" && period.from && period.to
@@ -48,9 +72,9 @@ export default async function DashboardPage({
       : period.label;
 
   const allocMap = new Map<string, number>();
-  for (const h of pf.holdings) {
-    const g = ASSET_RULES[h.type].group;
-    allocMap.set(g, (allocMap.get(g) ?? 0) + h.cost);
+  for (const [id, cost] of heldCost) {
+    const g = ASSET_RULES[assetMap.get(id)!.type].group;
+    allocMap.set(g, (allocMap.get(g) ?? 0) + cost);
   }
   const allocation = [...allocMap.entries()]
     .map(([group, cost]) => ({ group, cost: Math.round(cost) }))
@@ -88,7 +112,7 @@ export default async function DashboardPage({
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <PeriodFilter
           options={options}
           value={period.value}
@@ -96,6 +120,15 @@ export default async function DashboardPage({
           to={period.to ?? ""}
           earliest={allDates[0] ?? today}
           today={today}
+          extraQuery={fq}
+        />
+        <FilterBar
+          basePath="/dashboard"
+          selected={filters}
+          groups={[
+            { id: "ty", label: "Asset class", options: groupOptions.length > 1 ? groupOptions : [] },
+            { id: "pf", label: "Platform", options: PLATFORMS },
+          ]}
         />
       </div>
 
@@ -104,7 +137,7 @@ export default async function DashboardPage({
           label="Currently invested"
           value={formatINR(invested)}
           icon={BriefcaseBusiness}
-          hint={`${pf.holdings.length} holdings, as of today`}
+          hint={`${heldCost.size} holdings, as of today`}
         />
         <Kpi
           label="Realised gain"
