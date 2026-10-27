@@ -293,15 +293,15 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
     <h2 style="font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px"><span style="display:inline-flex;color:var(--primary)" data-i="chart"></span>What to import</h2>
     <p class="muted" style="margin:2px 0 0">CSV or Excel (.xlsx) only. Equity trades only.</p>
     <div class="grid c2" style="margin-top:12px;gap:8px 16px">
-      <p style="margin:0"><b style="font-weight:500">Zerodha:</b> <span class="muted">P&amp;L report (Console, Reports, P&amp;L). Not the Tax P&amp;L or Tradebook.</span></p>
-      <p style="margin:0"><b style="font-weight:500">Groww:</b> <span class="muted">Stocks P&amp;L report or Stocks order history (Reports). Either one is enough.</span></p>
+      <p style="margin:0"><b style="font-weight:500">Zerodha:</b> <span class="muted">P&amp;L report (Console, Reports, P&amp;L), not the Tax P&amp;L. It has no trade dates, so buys are dated the report start and sells the report end. Download one financial year at a time.</span></p>
+      <p style="margin:0"><b style="font-weight:500">Groww:</b> <span class="muted">Stocks order history (Reports).</span></p>
     </div>
   </div>
   <div class="card">
     <h2 style="font-size:16px;font-weight:600;margin-bottom:4px">Upload trades</h2>
-    <p class="muted" style="margin:0 0 16px">Choose the broker and upload its report. CSV and Excel files both work. Uploading the same file again, or an overlapping date range, never adds a trade twice. For Groww, importing both the Order history and the P&amp;L report for the same period will flag the trades that match.</p>
+    <p class="muted" style="margin:0 0 16px">Choose the broker and upload its report. CSV and Excel files both work. Uploading the same file again, or an overlapping date range, never adds a trade twice.</p>
     <div class="grid f3">
-      <div><label class="fl">Broker</label><select><option>Zerodha (P&amp;L)</option><option>Groww (Stock P&amp;L or Order history)</option></select></div>
+      <div><label class="fl">Broker</label><select><option>Zerodha (P&amp;L)</option><option>Groww (Stocks order history)</option></select></div>
       <div><label class="fl">File</label><button type="button" class="btn ghost" style="width:100%" onclick="loadSample()"><span data-i="upload"></span><span id="upFile">Choose sample pnl.csv</span></button><div class="hint">Mockup: loads a made-up P&amp;L report with 6 trades</div></div>
     </div>
     <div id="upOut"></div>

@@ -25,10 +25,10 @@ export default async function ImportPage() {
         <p className="mt-0.5 text-sm text-muted">CSV or Excel (.xlsx) only. Equity trades only.</p>
         <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 sm:gap-4">
           <p>
-            <b className="font-medium">Zerodha:</b> <span className="text-muted">P&amp;L report (Console, Reports, P&amp;L). Not the Tax P&amp;L or Tradebook.</span>
+            <b className="font-medium">Zerodha:</b> <span className="text-muted">P&amp;L report (Console, Reports, P&amp;L), not the Tax P&amp;L. It has no trade dates, so buys are dated the report start and sells the report end. Download one financial year at a time.</span>
           </p>
           <p>
-            <b className="font-medium">Groww:</b> <span className="text-muted">Stocks P&amp;L report or Stocks order history (Reports). Either one is enough.</span>
+            <b className="font-medium">Groww:</b> <span className="text-muted">Stocks order history (Reports).</span>
           </p>
         </div>
       </div>

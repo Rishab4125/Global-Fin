@@ -2,25 +2,22 @@ import { readSheets, type Sheet } from "../reportReader";
 import { norm } from "./common";
 import type { ParseResult, ParsedFile } from "../types";
 import { parseGrowwOrders } from "./groww";
-import { parsePnlRows } from "./pnl";
+import { parseZerodhaPnl } from "./zerodhaPnl";
 
 type RowParser = (rows: string[][]) => ParseResult | null;
 
 /**
- * Only two kinds of report are accepted: Zerodha's P&L and Groww's stock P&L or stock order history.
- * Sources are stored with each trade id, so these names must stay stable ("zerodha_csv" is the retired tradebook source).
+ * Only two reports are accepted: Zerodha's P&L and Groww's stock order history.
+ * Sources are stored with each trade id, so these names must stay stable.
  */
 const FORMATS: Record<string, [source: string, parse: RowParser][]> = {
-  zerodha: [["zerodha_pnl", parsePnlRows]],
-  groww: [
-    ["groww_orders", parseGrowwOrders],
-    ["groww_pnl", parsePnlRows],
-  ],
+  zerodha: [["zerodha_pnl", parseZerodhaPnl]],
+  groww: [["groww_orders", parseGrowwOrders]],
 };
 
 const HELP: Record<string, string> = {
   zerodha: "Upload the P&L report from Zerodha Console (Reports > P&L), not the Tax P&L, as CSV or XLSX.",
-  groww: "Upload the stock Order history or the stock Profit & Loss report from Groww, as CSV or XLSX.",
+  groww: "Upload the Stocks order history report from Groww, as CSV or XLSX.",
 };
 
 /** The Tax P&L (capital gains statement) carries tax columns the plain P&L does not. */
@@ -43,6 +40,8 @@ export function parseSheets(broker: string, sheets: Sheet[]): ParsedFile {
 
   for (const [source, parse] of formats) {
     const matched = sheets.map((s) => parse(s.rows)).filter((r): r is ParseResult => r !== null);
+    const failed = matched.find((r) => r.error);
+    if (failed && !matched.some((r) => r.trades.length)) return { trades: [], skipped: [], source: "", error: failed.error };
     if (matched.length) {
       return {
         source,

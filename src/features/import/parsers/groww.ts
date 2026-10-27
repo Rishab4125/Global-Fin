@@ -4,7 +4,7 @@ import { cell, findHeader, stableId, toIsoDate, toNumber } from "./common";
 const REQUIRED = {
   type: ["type", "transactiontype", "side", "buysell", "tradetype"],
   qty: ["quantity", "qty"],
-  date: ["executeddateandtime", "executeddate", "executiontime", "executedat", "orderdate", "tradedate", "date"],
+  date: ["executiondateandtime", "executeddateandtime", "executeddate", "executiontime", "executedat", "orderdate", "tradedate", "date"],
 };
 const OPTIONAL = {
   symbol: ["symbol", "tradingsymbol"],
@@ -16,7 +16,7 @@ const OPTIONAL = {
   orderId: ["exchangeorderid", "orderid", "tradeid", "exchangeorderno"],
 };
 
-/** Groww stock order history: one row per executed order. */
+/** Groww Stocks order history (Reports > Stocks order history): one row per executed order. */
 export function parseGrowwOrders(rows: string[][]): ParseResult | null {
   const h = findHeader(rows, REQUIRED, OPTIONAL);
   if (!h) return null;

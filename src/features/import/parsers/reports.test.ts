@@ -1,10 +1,11 @@
+import { existsSync, readFileSync } from "node:fs";
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import { classifyTrade, looseKey } from "../../../domain/brokerSync";
 import { toIsoDate, toNumber } from "./common";
 import { parseSheets, parseBrokerFile } from "./detect";
 import { parseGrowwOrders } from "./groww";
-import { parsePnlRows } from "./pnl";
+import { parseZerodhaPnl } from "./zerodhaPnl";
 
 describe("toIsoDate / toNumber", () => {
   it("reads the date styles brokers use", () => {
@@ -25,73 +26,63 @@ describe("toIsoDate / toNumber", () => {
 });
 
 const zerodhaPnl = [
-  ["Client ID", "AB1234"],
   [],
-  ["Symbol", "ISIN", "Entry Date", "Exit Date", "Quantity", "Buy Value", "Sell Value", "Profit", "Period of Holding"],
-  ["RELIANCE", "INE002A01018", "2024-01-10", "2025-02-20", "10", "25000", "31000", "6000", "406"],
-  ["TCS", "INE467B01029", "2025-01-05", "2025-01-05", "5", "19000", "19500", "500", "0"],
-  ["NIFTY25FEBFUT", "", "2025-02-01", "2025-02-03", "50", "100", "120", "20", "2"],
-  ["Total", "", "", "", "", "", "", "6500", ""],
+  ["", "Client ID", "AB1234"],
+  ["", "P&L Statement for Equity from 2025-12-01 to 2026-10-27"],
+  ["", "Summary"],
+  ["", "Realized P&L", "6000"],
+  [],
+  ["", "Symbol", "ISIN", "Quantity", "Buy Value", "Sell Value", "Realized P&L", "Realized P&L Pct.", "Previous Closing Price", "Open Quantity", "Open Quantity Type", "Open Value", "Unrealized P&L"],
+  ["", "RELIANCE", "INE002A01018", "10", "25000", "31000", "6000", "24", "0", "0", "", "0", "0"],
+  ["", "ATHERENERG", "INE0LEZ01016", "0", "0", "0", "0", "0", "1575", "4", "", "4356.5", "1943.5"],
+  ["", "TCS", "INE467B01029", "5", "19000", "19500", "500", "2.6", "3900", "2", "", "7000", "800"],
 ];
 
-describe("parsePnlRows", () => {
-  it("turns each closed position into a buy and a sell with per-unit prices", () => {
-    const r = parsePnlRows(zerodhaPnl)!;
+describe("parseZerodhaPnl", () => {
+  it("dates realised buys at the period start and sells at the period end", () => {
+    const r = parseZerodhaPnl(zerodhaPnl)!;
     const rel = r.trades.filter((t) => t.symbol === "RELIANCE");
     expect(rel.map((t) => [t.side, t.date, t.qty, t.price])).toEqual([
-      ["buy", "2024-01-10", 10, 2500],
-      ["sell", "2025-02-20", 10, 3100],
+      ["buy", "2025-12-01", 10, 2500],
+      ["sell", "2026-10-27", 10, 3100],
     ]);
     expect(rel[0].isin).toBe("INE002A01018");
   });
 
-  it("skips rows without an ISIN and total rows", () => {
-    const r = parsePnlRows(zerodhaPnl)!;
-    expect(r.trades.some((t) => t.symbol === "NIFTY25FEBFUT")).toBe(false);
-    expect(r.skipped.some((s) => s.startsWith("NIFTY25FEBFUT"))).toBe(true);
-    expect(r.trades.some((t) => t.symbol === "Total")).toBe(false);
+  it("turns open quantity into a buy at cost, with or without realised units", () => {
+    const r = parseZerodhaPnl(zerodhaPnl)!;
+    const ather = r.trades.filter((t) => t.symbol === "ATHERENERG");
+    expect(ather.map((t) => [t.side, t.date, t.qty, t.price])).toEqual([["buy", "2025-12-01", 4, 1089.125]]);
+    const tcs = r.trades.filter((t) => t.symbol === "TCS");
+    expect(tcs.map((t) => [t.side, t.qty])).toEqual([["buy", 5], ["sell", 5], ["buy", 2]]);
   });
 
-  it("gives identical rows distinct but repeatable ids", () => {
-    const row = ["INFY", "INE009A01021", "2025-01-01", "2025-02-01", "5", "7000", "7500"];
-    const header = ["Symbol", "ISIN", "Entry Date", "Exit Date", "Quantity", "Buy Value", "Sell Value"];
-    const a = parsePnlRows([header, row, row])!;
-    const b = parsePnlRows([header, row, row])!;
-    const ids = a.trades.map((t) => t.tradeId);
-    expect(new Set(ids).size).toBe(4);
-    expect(ids).toEqual(b.trades.map((t) => t.tradeId));
+  it("gives every trade a distinct, repeatable id", () => {
+    const a = parseZerodhaPnl(zerodhaPnl)!.trades.map((t) => t.tradeId);
+    const b = parseZerodhaPnl(zerodhaPnl)!.trades.map((t) => t.tradeId);
+    expect(new Set(a).size).toBe(a.length);
+    expect(a).toEqual(b);
   });
 
-  it("reads Groww-style P&L with buy and sell prices", () => {
-    const r = parsePnlRows([
-      ["Stock name", "ISIN", "Quantity", "Buy date", "Buy price", "Buy value", "Sell date", "Sell price", "Sell value", "Remark"],
-      ["Infosys Ltd", "INE009A01021", "4", "10-01-2025", "1500", "6000", "20-03-2025", "1600", "6400", "Short term"],
-    ])!;
-    expect(r.trades.map((t) => [t.side, t.date, t.price])).toEqual([
-      ["buy", "2025-01-10", 1500],
-      ["sell", "2025-03-20", 1600],
-    ]);
-    expect(r.trades[0].symbol).toBe("Infosys Ltd");
+  it("errors when the report period is missing", () => {
+    const noPeriod = zerodhaPnl.filter((r) => !String(r[1]).startsWith("P&L Statement"));
+    expect(parseZerodhaPnl(noPeriod)!.error).toMatch(/period/);
   });
 
-  it("refuses summary reports that have no dates", () => {
-    expect(parsePnlRows([["Symbol", "ISIN", "Quantity", "Buy Value", "Sell Value", "Realized P&L"]])).toBeNull();
-  });
-
-  it("skips short sales", () => {
-    const r = parsePnlRows([
-      ["Symbol", "ISIN", "Entry Date", "Exit Date", "Quantity", "Buy Value", "Sell Value"],
-      ["SBIN", "INE062A01020", "2025-02-02", "2025-02-01", "1", "100", "110"],
-    ])!;
-    expect(r.trades).toHaveLength(0);
-    expect(r.skipped).toHaveLength(1);
+  it("ignores the dated Tax P&L layout", () => {
+    expect(
+      parseZerodhaPnl([
+        ["Symbol", "ISIN", "Entry Date", "Exit Date", "Quantity", "Buy Value", "Sell Value"],
+        ["A", "I1", "2025-01-01", "2025-02-01", "1", "10", "12"],
+      ]),
+    ).toBeNull();
   });
 });
 
 describe("parseGrowwOrders", () => {
   const header = [
     "Stock name", "Symbol", "ISIN", "Type", "Quantity", "Value", "Exchange", "Exchange Order Id",
-    "Executed date and time", "Order status",
+    "Execution date and time", "Order status",
   ];
   it("reads executed orders and skips others", () => {
     const r = parseGrowwOrders([
@@ -119,10 +110,10 @@ describe("parseSheets", () => {
   it("picks the matching report type and merges matching sheets", () => {
     const out = parseSheets("zerodha", [
       { name: "Summary", rows: [["Client ID", "X"]] },
-      { name: "Tradewise Exits", rows: zerodhaPnl },
+      { name: "Equity", rows: zerodhaPnl },
     ]);
     expect(out.source).toBe("zerodha_pnl");
-    expect(out.trades.length).toBe(4);
+    expect(out.trades.length).toBe(6);
   });
 
   it("no longer accepts the Zerodha tradebook", () => {
@@ -140,7 +131,7 @@ describe("parseSheets", () => {
   });
 
   it("explains what to upload when nothing matches", () => {
-    expect(parseSheets("groww", [{ name: "x", rows: [["a", "b"]] }]).error).toMatch(/Order history/);
+    expect(parseSheets("groww", [{ name: "x", rows: [["a", "b"]] }]).error).toMatch(/order history/i);
     expect(parseSheets("zerodha", [{ name: "x", rows: [["a"]] }]).error).toMatch(/Reports > P&L/);
   });
 
@@ -157,22 +148,33 @@ describe("parseSheets", () => {
 });
 
 describe("reading real files", () => {
-  it("reads an .xlsx P&L workbook, including date cells", async () => {
+  it("reads an .xlsx Zerodha P&L workbook whose table starts in column B", async () => {
     const wb = new ExcelJS.Workbook();
-    wb.addWorksheet("Summary").addRow(["Client ID", "AB1234"]);
-    const ws = wb.addWorksheet("Tradewise Exits");
-    ws.addRow(["Symbol", "ISIN", "Entry Date", "Exit Date", "Quantity", "Buy Value", "Sell Value"]);
-    ws.addRow(["RELIANCE", "INE002A01018", new Date(Date.UTC(2024, 0, 10)), new Date(Date.UTC(2025, 1, 20)), 10, 25000, 31000]);
-    const buf = Buffer.from(await wb.xlsx.writeBuffer());
-    const file = new File([buf], "pnl.xlsx");
+    const ws = wb.addWorksheet("Equity");
+    zerodhaPnl.forEach((r, i) => r.length && (ws.getRow(i + 1).values = [undefined, ...r.map((x) => (/^-?\d+(\.\d+)?$/.test(x) ? Number(x) : x))]));
+    wb.addWorksheet("Other Debits and Credits").addRow(["Particulars", "Posting Date", "Debit", "Credit"]);
+    const file = new File([Buffer.from(await wb.xlsx.writeBuffer())], "pnl.xlsx");
 
     const out = await parseBrokerFile("zerodha", file);
     expect(out.error).toBeUndefined();
     expect(out.source).toBe("zerodha_pnl");
-    expect(out.trades.map((t) => [t.side, t.date, t.price])).toEqual([
-      ["buy", "2024-01-10", 2500],
-      ["sell", "2025-02-20", 3100],
+    expect(out.trades.filter((t) => t.symbol === "RELIANCE").map((t) => [t.side, t.date, t.price])).toEqual([
+      ["buy", "2025-12-01", 2500],
+      ["sell", "2026-10-27", 3100],
     ]);
+  });
+
+  it("reads an .xlsx Groww order history with its header below the client details", async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Sheet1");
+    ws.addRow(["Name", "A User"]);
+    ws.addRow(["Order history for stocks from 01-12-2025 to 26-10-2026"]);
+    ws.addRow([]);
+    ws.addRow(["Stock name", "Symbol", "ISIN", "Type", "Quantity", "Value", "Exchange", "Exchange Order Id", "Execution date and time", "Order status"]);
+    ws.addRow(["ITC LTD", "ITC", "INE154A01025", "BUY", 2, 760, "NSE", "1100000016708891", "01-01-2026 10:08 AM", "Executed"]);
+    const out = await parseBrokerFile("groww", new File([Buffer.from(await wb.xlsx.writeBuffer())], "orders.xlsx"));
+    expect(out.source).toBe("groww_orders");
+    expect(out.trades.map((t) => [t.side, t.date, t.qty, t.price])).toEqual([["buy", "2026-01-01", 2, 380]]);
   });
 
   it("rejects old .xls files with a helpful message", async () => {
@@ -182,10 +184,35 @@ describe("reading real files", () => {
 });
 
 describe("cross-report duplicates", () => {
-  it("flags a P&L trade that matches one already imported from a tradebook", () => {
+  it("flags a trade that matches one already imported from another report", () => {
     const loose = new Set([looseKey("a1", "2025-01-02", "buy", 10)]);
     const t = { date: "2025-01-02", side: "buy", qty: 10, price: 100.4 };
     expect(classifyTrade("zerodha_pnl:x:b", "a1", t, new Set(), new Set(), loose)).toBe("possible_duplicate");
     expect(classifyTrade("zerodha_pnl:x:b", "a2", t, new Set(), new Set(), loose)).toBe("new");
+  });
+});
+
+/** Runs against the sample reports in pl_example/ (not committed); skipped when the folder is absent. */
+const sample = (name: string) => `pl_example/${name}`;
+const zerodhaSample = sample("pnl-WDD918 (1).xlsx");
+const growwSample = sample("Stocks_Order_History_2290118049_2025-12-01_2026-10-26.xlsx");
+
+describe.skipIf(!existsSync(zerodhaSample) || !existsSync(growwSample))("sample reports", () => {
+  const load = (path: string) => new File([readFileSync(path)], path.split("/").pop()!);
+
+  it("imports the Zerodha P&L sample", async () => {
+    const out = await parseBrokerFile("zerodha", load(zerodhaSample));
+    expect(out.error).toBeUndefined();
+    expect(out.source).toBe("zerodha_pnl");
+    expect(out.trades.length).toBeGreaterThan(10);
+    expect(out.trades.every((t) => t.isin && t.price > 0 && t.qty > 0)).toBe(true);
+  });
+
+  it("imports the Groww order history sample", async () => {
+    const out = await parseBrokerFile("groww", load(growwSample));
+    expect(out.error).toBeUndefined();
+    expect(out.source).toBe("groww_orders");
+    expect(out.trades).toHaveLength(13);
+    expect(out.trades.filter((t) => t.side === "sell")).toHaveLength(3);
   });
 });

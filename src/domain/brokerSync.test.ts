@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { classifyTrade, diffHoldings, manualKey } from "./brokerSync";
-import { parseZerodhaTradebook } from "../features/import/parsers/zerodha";
 
 const kite = (isin: string, qty: number, avg = 100, last = 110) => ({
   isin,
@@ -46,27 +45,5 @@ describe("classifyTrade", () => {
   });
   it("treats everything else as new", () => {
     expect(classifyTrade("z:3", null, t, new Set(), new Set())).toBe("new");
-  });
-});
-
-describe("parseZerodhaTradebook", () => {
-  const csv = [
-    "symbol,isin,trade_date,exchange,segment,series,trade_type,auction,quantity,price,trade_id,order_id,order_execution_time",
-    "RELIANCE,INE002A01018,2025-01-02,NSE,EQ,EQ,buy,false,10,1200.5,111,900,2025-01-02T09:30:00",
-    "RELIANCE,INE002A01018,2025-02-03,NSE,EQ,EQ,sell,false,4,1300,112,901,2025-02-03T10:00:00",
-    "NIFTY25JANFUT,,2025-01-02,NFO,FO,,buy,false,50,100,113,902,2025-01-02T09:31:00",
-  ].join("\n");
-
-  it("parses equity trades and skips derivatives", () => {
-    const r = parseZerodhaTradebook(csv);
-    expect(r.trades.map((x) => [x.side, x.qty, x.tradeId])).toEqual([
-      ["buy", 10, "111"],
-      ["sell", 4, "112"],
-    ]);
-    expect(r.skipped.length).toBe(1);
-  });
-
-  it("rejects a file with the wrong layout", () => {
-    expect(parseZerodhaTradebook("a,b\n1,2").error).toBeTruthy();
   });
 });
