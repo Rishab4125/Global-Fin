@@ -125,6 +125,13 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;display:none;z-index:100;font-weight:500}
 .pbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px;color:var(--muted)}.pbar select,.pbar input{width:auto;height:36px}.pbar .btn{height:36px}
 .screen{display:none}.screen.on{display:block}
+.flt{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:8px}.fchips{display:flex;flex-wrap:wrap;gap:8px}.fg{position:relative}
+.fchip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:inherit;font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap}.fchip:hover{color:var(--ink)}.fchip.on{background:var(--soft);color:var(--primary-strong);border-color:color-mix(in srgb,var(--primary) 40%,transparent)}.fmob{display:none}
+.fpop{position:absolute;top:calc(100% + 6px);left:0;z-index:30;min-width:210px;max-height:280px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.14);padding:8px}.fpop label{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;cursor:pointer;font-size:14px}.fpop label:hover{background:var(--surface2)}.fpop input{accent-color:var(--primary);width:16px;height:16px}.fpop .lnk{display:block;margin:4px 8px 2px;font-size:13px;color:var(--muted)}
+.fpills{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex:1 1 100%}.fpill{display:inline-flex;gap:6px;align-items:center;height:28px;padding:0 10px;border-radius:99px;border:0;background:var(--soft);color:var(--primary-strong);font:inherit;font-size:12px;font-weight:500;cursor:pointer}.fpills .lnk{font-size:13px;color:var(--muted)}
+.fback{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:60}.fsheet{position:fixed;left:0;right:0;bottom:0;z-index:61;background:var(--surface);border-radius:16px 16px 0 0;padding:16px 16px 20px;max-height:80vh;overflow:auto;box-shadow:0 -8px 30px rgba(0,0,0,.2)}.fsh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.fsg{margin:14px 0}.fopts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.fopt{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:99px;border:1px solid var(--line);font-size:14px;font-weight:500;cursor:pointer}.fopt.on{background:var(--soft);border-color:var(--primary);color:var(--primary-strong)}.fopt input{display:none}.fsf{display:flex;gap:8px;margin-top:18px}.fsf .btn{flex:1}
+.stc{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}.stc .fchip b{font-weight:600}
+@media(max-width:639px){.fchips{display:none}.fmob{display:inline-flex}}@media(min-width:640px){.fsheet,.fback{display:none}}
 .hsum{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}.hsum .card{margin:0;padding:16px}
 .hgrid{display:grid;grid-template-columns:1fr;gap:12px;padding:12px}.hgrid .empty,.hgrid>.es{grid-column:1/-1}
 .hc{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--surface)}.hc.sel{border-color:var(--primary);background:var(--soft);box-shadow:0 0 0 1px var(--primary)}
@@ -186,6 +193,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
   <div class="ph"><div><h1>Welcome back, Rishab</h1><p>Your portfolio and realised gains at a glance.</p></div>
     <div class="row" style="display:flex;gap:8px"><button class="btn ghost ib" onclick="go('sync')" title="Sync holdings from Zerodha" aria-label="Sync"><span data-i="sync"></span><span class="lbl">Sync</span></button><button class="btn ib" onclick="go('holdings')" title="Add investment" aria-label="Add investment"><span data-i="plus2"></span><span class="lbl">Add investment</span></button></div></div>
   <div class="pbar" id="periodBar"></div>
+  <div class="tbar" id="dFilt"></div>
   <div class="grid k4" style="margin-bottom:24px" id="kpis"></div>
   <div class="grid c2">
     <div class="card flush"><div class="ct"><h2>Post-tax gain by financial year</h2><p>Green is profit, red is loss</p></div><div style="padding:20px"><div class="bars" id="fyBars"></div></div></div>
@@ -270,7 +278,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 <!-- REALISED -->
 <section class="screen" id="realised">
   <div class="ph"><div><h1>Realised gains</h1><p>Profit and loss from sales and misc entries, with estimated tax.</p></div><button class="btn ghost ib" title="Export CSV" aria-label="Export CSV" onclick="toast('CSV export is in the real app')"><span data-i="download"></span><span class="lbl">Export CSV</span></button></div>
-  <div class="chips" id="fyChips"></div>
+  <div class="tbar" id="rBar"></div>
   <div class="grid k3" style="margin-bottom:24px" id="rKpis"></div>
   <div class="card flush"><div class="ct"><h2>By asset class</h2></div><div style="padding:20px" class="assets" id="rGroups"></div></div>
   <div class="card flush"><div class="ct"><h2>Details</h2></div><div class="scroll"><table id="realTbl"></table></div></div>
@@ -453,7 +461,7 @@ const empty=(ic,t,m)=>`<div class="empty"><span class="ic">${svg(ic,20)}</span><
 /* data helpers */
 const soldQty=(l,ex)=>sales.filter(s=>s.id!==ex).reduce((q,s)=>q+s.alloc.filter(a=>a.lot===l.id).reduce((x,a)=>x+a.qty,0),0);
 const remaining=(l,ex)=>l.qty-soldQty(l,ex);
-function holdings(){const h={};lots.forEach(l=>{const r=remaining(l);if(r<=1e-9)return;h[l.aid]=h[l.aid]||{aid:l.aid,qty:0,cost:0};h[l.aid].qty+=r;h[l.aid].cost+=r*(l.price+l.fees/l.qty)});return Object.values(h)}
+function holdings(p){const h={};lots.forEach(l=>{const r=remaining(l);if(r<=1e-9||(p&&!p(l)))return;h[l.aid]=h[l.aid]||{aid:l.aid,qty:0,cost:0};h[l.aid].qty+=r;h[l.aid].cost+=r*(l.price+l.fees/l.qty)});return Object.values(h)}
 function settleFy(ps,on){const n=ps.length,off=Array(n).fill(0),lu=Array(n).fill(0),ex=Array(n).fill(0),tx=Array(n).fill(0),tax=Array(n).fill(0);
  if(on){const byRate=(a,b)=>ps[b].rate-ps[a].rate||(+ps[a].eq)-(+ps[b].eq),idx=ps.map((_,i)=>i);
   const gains=idx.filter(i=>ps[i].g>1e-9&&!ps[i].iso).sort(byRate),lg=gains.filter(i=>ps[i].t==='L');
@@ -466,7 +474,7 @@ function settleFy(ps,on){const n=ps.length,off=Array(n).fill(0),lu=Array(n).fill
   if(p.eq&&p.t==='L'){left??=EXEMPT;const u=Math.min(left,base);left-=u;ex[i]=u;base-=u}
   tx[i]=base;tax[i]=base*p.rate*(1+CESS)}
  return{off,lu,ex,tx,tax,total:tax.reduce((a,x)=>a+x,0)}}
-const plat=o=>(o.est||String(o.bid||'').startsWith('z'))?'Zerodha':String(o.bid||'').startsWith('g')?'Groww':'Manual';
+const plat=o=>(o.est||String(o.bid||'').startsWith('z'))?'Zerodha':String(o.bid||'').startsWith('g')?'Groww':'Other';
 function compute(extra,exclude){
  const ev=[...sales.filter(s=>s.id!==exclude).map(s=>({k:'s',...s})),...misc.map(m=>({k:'m',...m}))];if(extra)ev.push(extra);
  ev.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
@@ -495,7 +503,7 @@ function compute(extra,exclude){
 const saleRows=()=>compute().filter(r=>r.k==='s');
 
 /* dashboard */
-function rDash(){renderPeriod();const rows=compute(),h=holdings(),pr=rows.filter(r=>inPer(r.date));const g=pr.reduce((s,r)=>s+r.gain,0),t=pr.reduce((s,r)=>s+r.tax,0);
+function rDash(){renderPeriod();$('dFilt').innerHTML=fBar('d');const dP=l=>fPass('d',{pf:plat(l),ty:grpOf(assets[l.aid].type)}),rows=compute().filter(r=>fPass('d',{ty:grpOf(r.type),pf:rPf(r)})),h=holdings(dP),pr=rows.filter(r=>inPer(r.date));const g=pr.reduce((s,r)=>s+r.gain,0),t=pr.reduce((s,r)=>s+r.tax,0);
  $('kpis').innerHTML=kpi('Currently invested',inr(h.reduce((s,x)=>s+x.cost,0)),h.length+' holdings, as of today','brief')+kpi('Realised gain',inr(g),'Before tax · '+perLabel(),'trend',cls(g))+kpi('Estimated tax',inr(t),'Incl. 4% cess · '+perLabel(),'bank')+kpi('Post-tax gain',inr(g-t),'What you keep · '+perLabel(),'wallet',cls(g-t));
  const by={};rows.forEach(r=>by[r.fy]=(by[r.fy]||0)+r.net);const max=Math.max(...Object.values(by).map(Math.abs),1);
  $('fyBars').innerHTML=Object.keys(by).sort().map(k=>`<div><span style="margin-bottom:4px" class="num">${inr(by[k])}</span><i style="height:${Math.max(4,Math.abs(by[k])/max*150)}px;background:${by[k]>=0?'var(--gain)':'var(--loss)'}"></i><span style="margin:6px 0">FY ${k}</span></div>`).join('')||'<p class="muted">No realised gains yet.</p>';
@@ -503,7 +511,33 @@ function rDash(){renderPeriod();const rows=compute(),h=holdings(),pr=rows.filter
  $('allocBars').innerHTML=Object.entries(al).map(([k,v])=>`<div class="hb"><span>${k}</span><i style="width:${v/am*100}%"></i><span class="r num">${inr(v)}</span></div>`).join('')||'<p class="muted">No holdings yet.</p>'}
 
 /* holdings */
-const FB={h:{per:'all',from:'',to:'',q:''},t:{per:'all',from:'',to:'',q:''},m:{per:'all',from:'',to:'',q:''}},SORT={h:{key:'invested',dir:'desc'},t:{key:'date',dir:'desc'},m:{key:'date',dir:'desc'}};let addOpen=false,holdEdit=false,holdSel=new Set(),holdIds=[];
+/* filters (shared chips, pills and mobile sheet) */
+const FLT={h:{},t:{},m:{},r:{},d:{}};let FOPEN=null;
+const fset=(k,g)=>FLT[k][g]||(FLT[k][g]=new Set()),fN=k=>Object.values(FLT[k]).reduce((s,x)=>s+x.size,0);
+const uniq=a=>[...new Set(a)].sort(),grpOf=t=>T[t][1],miscTl=m=>m.et==='buyback'?'Share buyback':T[m.type][0];
+const rPf=r=>r.k==='s'?plat(sales.find(s=>s.id===r.id)||{}):'–';
+const fPass=(k,v)=>Object.entries(FLT[k]).every(([g,s])=>!s.size||[].concat(v[g]??[]).some(x=>s.has(x)));
+const FDEF={
+ h:()=>[{id:'pf',label:'Platform',keep:1,o:['Zerodha','Groww','Other']},{id:'ty',label:'Asset class',o:uniq(Object.values(assets).map(a=>grpOf(a.type)))}],
+ t:()=>[{id:'act',label:'Action',keep:1,o:['Buy','Sell','Buyback','Misc P/L']},{id:'ty',label:'Asset class',o:uniq([...Object.values(assets).map(a=>grpOf(a.type)),...misc.map(m=>grpOf(m.type))])},{id:'pf',label:'Platform',keep:1,o:['Zerodha','Groww','Other']}],
+ m:()=>[{id:'ty',label:'Type',o:uniq(misc.map(miscTl))},{id:'sign',label:'Result',keep:1,o:['Profit','Loss']},{id:'adj',label:'Tax adjusted',keep:1,o:['Yes','No']}],
+ r:()=>{const rs=compute();return[{id:'ty',label:'Asset class',o:uniq(rs.map(r=>grpOf(r.type)))},{id:'term',label:'Term',keep:1,o:['Short term','Long term']},{id:'sign',label:'Result',keep:1,o:['Profit','Loss']},{id:'pf',label:'Platform',keep:1,o:['Zerodha','Groww','Other']}]},
+ d:()=>[{id:'ty',label:'Asset class',o:uniq(Object.values(assets).map(a=>grpOf(a.type)))},{id:'pf',label:'Platform',keep:1,o:['Zerodha','Groww','Other']}]
+};
+const FRE={h:()=>rHold(),t:()=>rTx(),m:()=>rMisc(),r:()=>rReal(),d:()=>rDash()};
+function fBar(k){const gs=FDEF[k]().filter(g=>g.keep||g.o.length>1),n=fN(k),is=g=>FOPEN&&FOPEN.k===k&&FOPEN.g===g;
+ const opt=(g,o)=>`<input type="checkbox" ${fset(k,g.id).has(o)?'checked':''} data-v="${o}" onchange="fTog('${k}','${g.id}',this.dataset.v)">`;
+ const chip=g=>{const s=fset(k,g.id);return`<div class="fg"><button class="fchip ${s.size?'on':''}" aria-expanded="${!!is(g.id)}" onclick="fOpen('${k}','${g.id}')">${g.label}${s.size?' · '+(s.size===1?[...s][0]:s.size):''} ▾</button>${is(g.id)?`<div class="fpop">${g.o.map(o=>`<label>${opt(g,o)}${o}</label>`).join('')}${s.size?`<button class="lnk" onclick="fClr('${k}','${g.id}')">Clear</button>`:''}</div>`:''}</div>`};
+ const pills=gs.flatMap(g=>[...fset(k,g.id)].map(v=>`<button class="fpill" aria-label="Remove filter ${g.label}: ${v}" onclick="fTog('${k}','${g.id}','${v}')">${g.label}: ${v} ×</button>`));
+ const sheet=is('*')?`<div class="fback" onclick="fClose()"></div><div class="fsheet" role="dialog" aria-label="Filters"><div class="fsh"><b style="font-size:16px">Filters</b><button class="lnk" onclick="fClose()">Close</button></div>${gs.map(g=>`<div class="fsg"><div class="hl">${g.label}</div><div class="fopts">${g.o.map(o=>`<label class="fopt ${fset(k,g.id).has(o)?'on':''}">${opt(g,o)}${o}</label>`).join('')}</div></div>`).join('')}<div class="fsf"><button class="btn ghost" onclick="fClrAll('${k}')">Clear all</button><button class="btn" onclick="fClose()">Show results</button></div></div>`:'';
+ return`<div class="flt"><div class="fchips">${gs.map(chip).join('')}</div><button class="fchip fmob ${n?'on':''}" onclick="fOpen('${k}','*')">${svg('sync',14)}Filters${n?' ('+n+')':''}</button>${n?`<div class="fpills">${pills.join('')}<button class="lnk" onclick="fClrAll('${k}')">Clear all</button></div>`:''}${sheet}</div>`}
+function fOpen(k,g){FOPEN=FOPEN&&FOPEN.k===k&&FOPEN.g===g?null:{k,g};FRE[k]()}
+function fClose(){const k=FOPEN&&FOPEN.k;FOPEN=null;if(k)FRE[k]()}
+function fTog(k,g,v){const s=fset(k,g);s.has(v)?s.delete(v):s.add(v);FRE[k]()}
+function fClr(k,g){fset(k,g).clear();FRE[k]()}
+function fClrAll(k){Object.values(FLT[k]).forEach(s=>s.clear());FRE[k]()}
+document.addEventListener('click',e=>{if(FOPEN&&FOPEN.g!=='*'&&!e.target.closest('.flt')){FOPEN=null;document.querySelectorAll('.fpop').forEach(x=>x.remove());document.querySelectorAll('.fchip[aria-expanded]').forEach(x=>x.setAttribute('aria-expanded','false'))}});
+const FB={h:{per:'all',from:'',to:'',q:''},t:{per:'all',from:'',to:'',q:''},m:{per:'all',from:'',to:'',q:''},r:{per:'all',from:'',to:'',q:''}},SORT={h:{key:'invested',dir:'desc'},t:{key:'date',dir:'desc'},m:{key:'date',dir:'desc'}};let addOpen=false,holdEdit=false,holdSel=new Set(),holdIds=[];
 const fbBounds=f=>f.per==='custom'?[f.from,f.to]:fyRange(f.per.slice(3));
 const fbIn=(f,d)=>{if(f.per==='all')return true;const[a,b]=fbBounds(f);return d>=a&&d<=b};
 const sortBy=(arr,get,dir)=>arr.map((r,i)=>({r,i,v:get(r)})).sort((a,b)=>{const c=typeof a.v==='number'&&typeof b.v==='number'?a.v-b.v:String(a.v).localeCompare(String(b.v),undefined,{numeric:true,sensitivity:'base'});return c?c*(dir==='asc'?1:-1):a.i-b.i}).map(x=>x.r);
@@ -525,28 +559,28 @@ function rpDraw(){const[y,m]=rp.view.split('-').map(Number),first=new Date(Date.
 function rpPick(d){if(rp.step===0){rp.a=d;rp.b='';rp.step=1;rpDraw();return}let a=rp.a,b=d;if(a>b)[a,b]=[b,a];const k=rp.key;rpClose();k==='dash'?dateSet(a,b):fbDate(k,a,b)}
 function fbHtml(k){const f=FB[k],o=fyList().map((y,i)=>`<option value="fy:${y}" ${f.per==='fy:'+y?'selected':''}>FY ${y}${i===0?' (current)':''}</option>`).join('');
  const[a,b]=f.per==='all'?[earliest(),today]:fbBounds(f);
- return`<input class="sq" type="search" placeholder="${k==='h'?'Search name, type or platform':k==='m'?'Search type or note':'Search name, type, platform or action'}" value="${f.q.replace(/"/g,'&quot;')}" oninput="fbQ('${k}',this.value)" aria-label="Search">`+
+ return(k==='r'?'':`<input class="sq" type="search" placeholder="${k==='h'?'Search name, type or platform':k==='m'?'Search type or note':'Search name, type, platform or action'}" value="${f.q.replace(/"/g,'&quot;')}" oninput="fbQ('${k}',this.value)" aria-label="Search">`)+
  `<span class="cal">${svg('cal',16)}</span><select onchange="fbPer('${k}',this.value)" aria-label="Period">${f.per==='custom'?'<option value="" selected disabled>Select period</option>':''}${o}<option value="all" ${f.per==='all'?'selected':''}>All time</option></select>`+
  `<i class="brk"></i>${rngBtn(k,a,b)}`}
-const fbRender=k=>k==='h'?rHold():k==='m'?rMisc():rTx();
+const fbRender=k=>k==='h'?rHold():k==='m'?rMisc():k==='r'?rReal():rTx();
 function fbPer(k,v){const f=FB[k];f.per=v;fbRender(k)}
 function fbDate(k,a,b){const f=FB[k];let[cf,ct]=f.per==='all'?[earliest(),today]:fbBounds(f);if(a!==null)cf=a;if(b!==null)ct=b;if(!cf||!ct)return;if(cf>ct)[cf,ct]=[ct,cf];
  const m=fyList().find(y=>{const r=fyRange(y);return r[0]===cf&&r[1]===ct});if(m)f.per='fy:'+m;else if(cf===earliest()&&ct===today)f.per='all';else{f.per='custom';f.from=cf;f.to=ct}fbRender(k)}
 function fbQ(k,v){const el=document.activeElement;if(el&&el.classList.contains('sq')){el.classList.add('busy');clearTimeout(el._b);el._b=setTimeout(()=>el.classList.remove('busy'),400)}FB[k].q=v;k==='h'?rHoldTable():k==='m'?rMiscTable():rTxTable()}
 function toggleAdd(){addOpen=!addOpen;$('addCard').style.display=addOpen?'':'none';rHold()}
 function rHold(){const b=$('addBtn');b.className='btn ib'+(addOpen?' ghost':'');b.title=addOpen?'Close':'Add investment';b.setAttribute('aria-label',b.title);b.innerHTML=`${svg(addOpen?'back':'plus2')}<span class="lbl">${addOpen?'Close':'Add investment'}</span>`;
- $('hBar').innerHTML=`<div class="fb"><input class="sq" type="search" placeholder="Search name, type or platform" value="${FB.h.q.replace(/"/g,'&quot;')}" oninput="fbQ('h',this.value)" aria-label="Search"><i class="brk"></i><select aria-label="Sort holdings" onchange="holdSort(this.value)">${HSORT.map(o=>`<option value="${o[0]}" ${SORT.h.key+':'+SORT.h.dir===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`;paintIcons($('hBar'));rHoldTable()}
+ $('hBar').innerHTML=`<div class="fb"><input class="sq" type="search" placeholder="Search name, type or platform" value="${FB.h.q.replace(/"/g,'&quot;')}" oninput="fbQ('h',this.value)" aria-label="Search"><i class="brk"></i><select aria-label="Sort holdings" onchange="holdSort(this.value)">${HSORT.map(o=>`<option value="${o[0]}" ${SORT.h.key+':'+SORT.h.dir===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>`+fBar('h');paintIcons($('hBar'));rHoldTable()}
 const HSORT=[['invested:desc','Invested: high to low'],['invested:asc','Invested: low to high'],['name:asc','Name: A to Z'],['qty:desc','Quantity: high to low'],['avg:desc','Avg cost: high to low'],['recent:desc','Recently bought']];
 function holdSort(v){const[k,d]=v.split(':');SORT.h={key:k,dir:d};rHoldTable()}
 function rHoldTable(){const nd=FB.h.q.trim().toLowerCase(),acc={},byPf={};
- lots.forEach(l=>{const r=remaining(l);if(r<=1e-9)return;const a=acc[l.aid]=acc[l.aid]||{aid:l.aid,qty:0,cost:0,pl:new Set(),since:l.date,last:l.date};const c=r*(l.price+l.fees/l.qty);a.qty+=r;a.cost+=c;a.pl.add(plat(l));byPf[plat(l)]=(byPf[plat(l)]||0)+c;if(l.date<a.since)a.since=l.date;if(l.date>a.last)a.last=l.date});
+ lots.forEach(l=>{const r=remaining(l);if(r<=1e-9||!fPass('h',{pf:plat(l),ty:grpOf(assets[l.aid].type)}))return;const a=acc[l.aid]=acc[l.aid]||{aid:l.aid,qty:0,cost:0,pl:new Set(),since:l.date,last:l.date};const c=r*(l.price+l.fees/l.qty);a.qty+=r;a.cost+=c;a.pl.add(plat(l));byPf[plat(l)]=(byPf[plat(l)]||0)+c;if(l.date<a.since)a.since=l.date;if(l.date>a.last)a.last=l.date});
  const allH=Object.values(acc),total=allH.reduce((s,x)=>s+x.cost,0);
  let h=allH.map(x=>({...x,name:assets[x.aid].name,type:T[assets[x.aid].type][0],pfs:[...x.pl].sort(),avg:x.cost/x.qty})).filter(x=>!nd||[x.name,x.type,...x.pfs].some(s=>s.toLowerCase().includes(nd)));
  h=sortBy(h,{name:x=>x.name,qty:x=>x.qty,avg:x=>x.avg,invested:x=>x.cost,recent:x=>x.last}[SORT.h.key],SORT.h.dir);
  $('holdSub').textContent=allH.length?`${h.length} holding${h.length===1?'':'s'}${h.length!==allH.length?' of '+allH.length:''} · ${inr(h.reduce((s,x)=>s+x.cost,0))} invested`:'Record what you own.';
  $('holdSum').innerHTML=allH.length?`<div class="card"><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.04em">Total invested</div><div style="font-size:22px;font-weight:600;margin-top:6px">${inr(total)}</div><div class="muted" style="font-size:12px;margin-top:6px">${allH.length} holding${allH.length===1?'':'s'}</div></div><div class="card"><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.04em">By platform</div><div style="font-size:22px;font-weight:600;margin-top:6px">${Object.keys(byPf).length}</div><div class="muted" style="font-size:12px;margin-top:6px">${Object.entries(byPf).sort((a,b)=>b[1]-a[1]).map(e=>e[0]+' '+inr(e[1])).join(' · ')}</div></div>`:'';
  holdIds=h.map(x=>x.aid);holdSel=new Set([...holdSel].filter(a=>holdIds.includes(a)));holdTools();
- $('holdGrid').innerHTML=h.length?h.map(x=>{const on=holdEdit&&holdSel.has(x.aid);return`<div class="hc ${on?'sel':''}"><div class="hh">${holdEdit?`<input type="checkbox" ${on?'checked':''} onchange="holdPick('${x.aid}')" aria-label="Select ${x.name}">`:''}<div class="hn">${holdEdit?`<b>${x.name}</b>`:`<button class="lnk" style="font-weight:600" onclick="go('detail','${x.aid}')">${x.name}</button>`}<div class="hm2"><span class="muted">${x.type}</span>${x.pfs.map(p=>`<span class="badge ${p==='Zerodha'?'b-buy':p==='Groww'?'b-sell':'b-off'}">${p}</span>`).join('')}</div></div><div class="hv"><div class="hl">Invested</div><b>${inr(x.cost)}</b></div></div><div class="hs"><div><div class="hl">Quantity</div>${+x.qty.toFixed(6)}</div><div><div class="hl">Avg cost</div>${inr(x.avg)}</div><div><div class="hl">Portfolio</div>${total?(x.cost/total*100).toFixed(1)+'%':'–'}</div></div><div class="hf"><span class="muted" style="font-size:12px">Since ${fmtD(x.since)}</span>${holdEdit?'':`<div class="actions"><button class="btn ghost sm" onclick="go('detail','${x.aid}')">Details</button><button class="btn soft sm" onclick="openSell('${x.aid}')">Sell</button></div>`}</div></div>`}).join(''):empty('brief',allH.length?'No holdings match':'No holdings yet',allH.length?'Clear the search to see all your holdings.':'Press Add investment to record your first one.')}
+ $('holdGrid').innerHTML=h.length?h.map(x=>{const on=holdEdit&&holdSel.has(x.aid);return`<div class="hc ${on?'sel':''}"><div class="hh">${holdEdit?`<input type="checkbox" ${on?'checked':''} onchange="holdPick('${x.aid}')" aria-label="Select ${x.name}">`:''}<div class="hn">${holdEdit?`<b>${x.name}</b>`:`<button class="lnk" style="font-weight:600" onclick="go('detail','${x.aid}')">${x.name}</button>`}<div class="hm2"><span class="muted">${x.type}</span>${x.pfs.map(p=>`<span class="badge ${p==='Zerodha'?'b-buy':p==='Groww'?'b-sell':'b-off'}">${p}</span>`).join('')}</div></div><div class="hv"><div class="hl">Invested</div><b>${inr(x.cost)}</b></div></div><div class="hs"><div><div class="hl">Quantity</div>${+x.qty.toFixed(6)}</div><div><div class="hl">Avg cost</div>${inr(x.avg)}</div><div><div class="hl">Portfolio</div>${total?(x.cost/total*100).toFixed(1)+'%':'–'}</div></div><div class="hf"><span class="muted" style="font-size:12px">Since ${fmtD(x.since)}</span>${holdEdit?'':`<div class="actions"><button class="btn ghost sm" onclick="go('detail','${x.aid}')">Details</button><button class="btn soft sm" onclick="openSell('${x.aid}')">Sell</button></div>`}</div></div>`}).join(''):empty('brief',allH.length?'No holdings match':'No holdings yet',allH.length?'Clear the search or filters to see all your holdings.':'Press Add investment to record your first one.')}
 function holdTools(){const t=$('holdTools');if(!holdIds.length){t.innerHTML='';holdEdit=false;return}
  const n=holdSel.size,all=n===holdIds.length;
  t.innerHTML=holdEdit?`<label><input type="checkbox" ${all?'checked':''} onchange="holdAll(this.checked)">Select all <span class="n">(${n} of ${holdIds.length} selected)</span></label><div style="display:flex;gap:8px"><button class="btn dng" ${n?'':'disabled'} onclick="delHoldings()">${svg('trash',15)}Delete${n?' ('+n+')':''}</button><button class="btn ghost" onclick="holdDone()">Done</button></div>`:`<span class="muted">${holdIds.length} shown</span><button class="btn ghost" onclick="holdEdit=true;rHoldTable()">${svg('pencil',15)}Edit</button>`}
@@ -628,14 +662,14 @@ function confirmSale(){const s=planSale();if(!s)return;
  else{s.id=++nextId;sales.push(s);toast('Sale recorded');fy='all';go('realised')}}
 
 /* transactions */
-function rTx(){$('tBar').innerHTML=`<div class="fb">${fbHtml('t')}</div>`;paintIcons($('tBar'));rTxTable()}
+function rTx(){$('tBar').innerHTML=`<div class="fb">${fbHtml('t')}</div>`+fBar('t');paintIcons($('tBar'));rTxTable()}
 function rTxTable(){const f=FB.t,nd=f.q.trim().toLowerCase();
  let t=[
  ...lots.map(l=>({k:'Buy',id:l.id,aid:l.aid,date:l.date,qty:l.qty,price:l.price,fees:l.fees,amt:l.qty*l.price,pf:plat(l)})),
  ...sales.map(s=>({k:s.bb?'Buyback':'Sell',id:s.id,aid:s.aid,date:s.date,qty:s.qty,price:s.price,fees:s.fees,amt:s.qty*s.price,pf:plat(s)})),
  ...misc.map(m=>({k:m.et==='buyback'?'Buyback':'Misc P/L',id:m.id,date:m.date,fees:m.brk||0,amt:m.amt,type:m.type,cost:m.cost,pf:'–'}))
  ].map(x=>({...x,name:x.aid?assets[x.aid].name:(x.k==='Buyback'?'Share buyback':'Misc profit / loss'),tl:x.aid?T[assets[x.aid].type][0]:(x.k==='Buyback'?'Cost '+inr(x.cost):T[x.type][0])}));
- t=t.filter(x=>fbIn(f,x.date)&&(!nd||[x.name,x.tl,x.pf,x.k].some(s=>s.toLowerCase().includes(nd))));
+ t=t.filter(x=>fbIn(f,x.date)&&fPass('t',{act:x.k,ty:x.aid?grpOf(assets[x.aid].type):grpOf(x.type),pf:x.pf})&&(!nd||[x.name,x.tl,x.pf,x.k].some(s=>s.toLowerCase().includes(nd))));
  t=sortBy(t,{date:x=>x.date,k:x=>x.k,name:x=>x.name,pf:x=>x.pf,qty:x=>x.qty??-Infinity,price:x=>x.price??-Infinity,fees:x=>x.fees,amt:x=>x.amt}[SORT.t.key],SORT.t.dir);
  const bc={Buy:'b-buy',Sell:'b-sell',Buyback:'b-sell','Misc P/L':'b-off'};
  $('txTbl').innerHTML=t.length?`<thead><tr>${sth('t','Date','date',0,'desc')}${sth('t','Action','k')}${sth('t','Asset','name')}${sth('t','Platform','pf',0,'asc','hmd')}${sth('t','Qty','qty',1,'desc')}${sth('t','Price','price',1,'desc')}${sth('t','Fees','fees',1,'desc','hmd')}${sth('t','Amount','amt',1,'desc')}<th></th></tr></thead><tbody>`+
@@ -643,12 +677,12 @@ function rTxTable(){const f=FB.t,nd=f.q.trim().toLowerCase();
   const asset=m?`<b style="font-weight:500">${x.name}</b> <span class="muted" style="font-size:12px;margin-left:8px">${x.tl}</span>`:`<button class="lnk" onclick="go('detail','${x.aid}')">${x.name}</button> <span class="muted" style="font-size:12px;margin-left:8px">${x.tl}</span>`;
   const act=m?`<button class="btn ghost sm" onclick="go('misc')">Manage</button>`:`<button class="btn ghost sm ib" title="Edit" aria-label="Edit" onclick="${x.k==='Buy'?'openEditLot':'openEditSale'}(${x.id})">${svg('pencil',14)}<span class="lbl">Edit</span></button>`;
   return`<tr><td>${fmtD(x.date)}</td><td><span class="badge ${bc[x.k]}">${x.k}</span></td><td>${asset}</td><td class="muted hmd">${x.pf}</td><td class="r">${m?'–':x.qty}</td><td class="r">${m?'–':inr(x.price)}</td><td class="r hmd">${x.fees?inr(x.fees):'–'}</td><td class="r ${x.k==='Misc P/L'?cls(x.amt):''}"><b>${inr(x.amt)}</b></td><td><div class="actions">${act}</div></td></tr>`}).join('')+'</tbody>'
- :empty('swap','No transactions match','Try a different period or clear the search.')}
+ :empty('swap','No transactions match','Try a different period or clear the search and filters.')}
 
 /* realised */
 function rReal(){const all=compute().sort((a,b)=>a.date<b.date?1:-1),years=[...new Set(all.map(r=>r.fy))].sort().reverse();
- $('fyChips').innerHTML=['all',...years].map(y=>`<button class="chip ${y===fy?'on':''}" onclick="fy='${y}';rReal()">${y==='all'?'All years':'FY '+y}</button>`).join('');
- const rows=all.filter(r=>fy==='all'||r.fy===fy),g=rows.reduce((s,r)=>s+r.gain,0),t=rows.reduce((s,r)=>s+r.tax,0);
+ $('rBar').innerHTML=`<div class="fb">${fbHtml('r')}</div>`+fBar('r');paintIcons($('rBar'));
+ const rows=all.filter(r=>fbIn(FB.r,r.date)&&fPass('r',{ty:grpOf(r.type),term:[Math.abs(r.st)>1e-9?'Short term':'',Math.abs(r.lt)>1e-9?'Long term':''],sign:r.net>=0?'Profit':'Loss',pf:rPf(r)})),g=rows.reduce((s,r)=>s+r.gain,0),t=rows.reduce((s,r)=>s+r.tax,0);
  $('rKpis').innerHTML=kpi('Gross gain',inr(g),'',null,cls(g))+kpi('Estimated tax',inr(t),'Incl. 4% cess')+kpi('Post-tax gain',inr(g-t),'',null,cls(g-t));
  const gr={};rows.forEach(r=>{const n=T[r.type][1];gr[n]=gr[n]||{g:0,t:0};gr[n].g+=r.gain;gr[n].t+=r.tax});
  $('rGroups').innerHTML=Object.entries(gr).map(([k,v])=>`<div><div class="muted" style="font-size:13px;font-weight:500">${k}</div><div class="num ${cls(v.g)}" style="font-size:18px;font-weight:600;margin-top:4px">${inr(v.g)}</div><div class="muted num" style="font-size:12px;margin-top:2px">Tax ${inr(v.t)} · Net ${inr(v.g-v.t)}</div></div>`).join('')||'<span class="muted">Nothing to show.</span>';
@@ -679,6 +713,7 @@ function upRows(){return up.trades.map(t=>{const aid=chosen(t.sym);let st='new';
  else if(aid&&lots.some(l=>l.aid===aid&&!l.bid&&!l.est&&t.side==='buy'&&l.date===t.date&&l.qty===t.qty&&l.price===t.price))st='dup';
  return{...t,aid,st}})}
 const stBadge=r=>r.st==='new'?'<span class="badge b-buy">New</span>':r.st==='imported'?'<span class="badge b-off">Already imported</span>':'<span class="badge b-sell">Possible duplicate</span>';
+let upSt=new Set();function upTog(s){upSt.has(s)?upSt.delete(s):upSt.add(s);rUp()}
 function rUp(){const o=$('upOut');if(!up){o.innerHTML='';return}
  const rows=upRows(),c=s=>rows.filter(r=>r.st===s).length;
  const syms=[...new Set(up.trades.map(t=>t.sym))];
@@ -688,12 +723,13 @@ function rUp(){const o=$('upOut');if(!up){o.innerHTML='';return}
  o.innerHTML=`<div style="margin-top:20px">`+
   (up.done?`<div class="note" style="color:var(--ink)">${up.done}</div>`:'')+
   `<p class="muted" style="margin:0 0 14px">${c('new')} new, ${c('imported')} already imported, ${c('dup')} possible duplicate${c('dup')===1?'':'s'}.</p>`+
+  `<div class="stc">${[['new','New'],['imported','Already imported'],['dup','Possible duplicate']].filter(([s])=>c(s)).map(([s,l])=>`<button class="fchip ${upSt.has(s)?'on':''}" aria-pressed="${upSt.has(s)}" onclick="upTog('${s}')">${l} <b>${c(s)}</b></button>`).join('')}</div>`+
   `<div class="note" style="margin-bottom:14px"><b style="color:var(--ink);font-weight:500">Which holding does each stock belong to?</b><div class="hint" style="margin:4px 0 12px">This stops the same stock from being added twice. Pick an existing holding if one already covers it.</div>`+
   syms.map(sym=>`<div class="grid" style="grid-template-columns:minmax(120px,1fr) 1.6fr;align-items:center;margin-bottom:8px"><div><b>${sym}</b> <span class="muted" style="font-size:12px">${KIND[autoMatch(sym).kind]}</span></div><select onchange="up.map['${sym}']=this.value;rUp()">${opts(sym)}</select></div>`).join('')+`</div>`+
   (up.recon?`<div class="note" style="color:var(--ink)">Replacing ${up.recon} &quot;still held&quot; entry from your earlier P&amp;L with the holdings in this report, so the same shares are not counted twice.</div>`:'')+
   (estN?`<label class="note" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:14px"><input type="checkbox" ${up.rep?'checked':''} onchange="up.rep=this.checked" style="margin-top:3px;flex:none"><span>Replace ${estN} estimated entr${estN===1?'y':'ies'} created by Zerodha sync for these stocks with the real trades from this file. Keeping them would count the same shares twice.</span></label>`:'')+
   `<div class="scroll" style="border:1px solid var(--line);border-radius:8px"><table><thead><tr><th>Stock</th><th>Date</th><th>Type</th><th class="r">Qty</th><th class="r">Price</th><th>Status</th></tr></thead><tbody>`+
-  rows.map(r=>`<tr><td><b>${r.sym}</b></td><td>${fmtD(r.date)}</td><td>${r.side==='buy'?'Buy':'Sell'}</td><td class="r num">${r.qty}</td><td class="r num">${inr(r.price)}</td><td>${r.st==='dup'?`<label style="display:flex;gap:8px;align-items:center">${stBadge(r)}<input type="checkbox" ${up.dup[r.id]?'checked':''} onchange="up.dup['${r.id}']=this.checked"><span class="muted" style="font-size:12px">Same stock, day and quantity as an existing entry. Import anyway</span></label>`:stBadge(r)}</td></tr>`).join('')+
+  rows.filter(r=>!upSt.size||upSt.has(r.st)).map(r=>`<tr><td><b>${r.sym}</b></td><td>${fmtD(r.date)}</td><td>${r.side==='buy'?'Buy':'Sell'}</td><td class="r num">${r.qty}</td><td class="r num">${inr(r.price)}</td><td>${r.st==='dup'?`<label style="display:flex;gap:8px;align-items:center">${stBadge(r)}<input type="checkbox" ${up.dup[r.id]?'checked':''} onchange="up.dup['${r.id}']=this.checked"><span class="muted" style="font-size:12px">Same stock, day and quantity as an existing entry. Import anyway</span></label>`:stBadge(r)}</td></tr>`).join('')+
   `</tbody></table></div><div style="margin-top:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" onclick="doImport()">Import</button><span class="muted" style="font-size:13px">Try importing, then choose the file again: the same trades show as already imported.</span></div></div>`;paintIcons(o)}
 function doImport(){const rows=upRows(),todo=rows.filter(r=>r.st==='new'||(r.st==='dup'&&up.dup[r.id]));
  if(!todo.length){toast('Nothing new to import');return}
@@ -746,12 +782,12 @@ function kDisconnect(){if(!confirm('Disconnect Zerodha? You can reconnect any ti
 /* misc */
 let miscOpen=false;
 function toggleMisc(){miscOpen=!miscOpen;$('miscCard').style.display=miscOpen?'':'none';rMisc()}
-function rMisc(){const b=$('mAddBtn'),t=miscOpen?'Close':'Add misc P/L';b.className='btn ib'+(miscOpen?' ghost':'');b.title=t;b.setAttribute('aria-label',t);b.innerHTML=`${svg(miscOpen?'back':'plus2')}<span class="lbl">${t}</span>`;$('mBar').innerHTML=misc.length?`<div class="fb">${fbHtml('m')}</div>`:'';paintIcons($('mBar'));rMiscTable()}
+function rMisc(){const b=$('mAddBtn'),t=miscOpen?'Close':'Add misc P/L';b.className='btn ib'+(miscOpen?' ghost':'');b.title=t;b.setAttribute('aria-label',t);b.innerHTML=`${svg(miscOpen?'back':'plus2')}<span class="lbl">${t}</span>`;$('mBar').innerHTML=misc.length?`<div class="fb">${fbHtml('m')}</div>`+fBar('m'):'';paintIcons($('mBar'));rMiscTable()}
 function rMiscTable(){const f=FB.m,nd=f.q.trim().toLowerCase(),rows=compute().filter(r=>r.k==='m'),tl=m=>m.et==='buyback'?'Share buyback':T[m.type][0];
- let list=misc.filter(m=>fbIn(f,m.date)&&(!nd||[tl(m),m.note||''].some(x=>x.toLowerCase().includes(nd)))).map(m=>({m,r:rows.find(x=>x.id===m.id)}));
+ let list=misc.filter(m=>fbIn(f,m.date)&&(!nd||[tl(m),m.note||''].some(x=>x.toLowerCase().includes(nd)))).map(m=>({m,r:rows.find(x=>x.id===m.id)})).filter(x=>fPass('m',{ty:tl(x.m),sign:x.r.net>=0?'Profit':'Loss',adj:x.m.adj?'Yes':'No'}));
  list=sortBy(list,{date:x=>x.m.date,type:x=>tl(x.m),amount:x=>x.m.amt,brokerage:x=>x.m.brk||0,tax:x=>x.r.tax,net:x=>x.r.net,note:x=>x.m.note||''}[SORT.m.key],SORT.m.dir);
  $('miscSub').textContent=misc.length?`${list.length} entr${list.length===1?'y':'ies'}${list.length!==misc.length?' of '+misc.length:''} · net ${inr(list.reduce((s,x)=>s+x.r.net,0))}`:'';
- $('miscTbl').innerHTML=!misc.length?empty('wallet','No entries yet','Press Add misc P/L to record your first one.'):!list.length?empty('wallet','No entries match','Try a different period or clear the search.'):
+ $('miscTbl').innerHTML=!misc.length?empty('wallet','No entries yet','Press Add misc P/L to record your first one.'):!list.length?empty('wallet','No entries match','Try a different period or clear the search and filters.'):
  '<thead><tr>'+sth('m','Date','date',0,'desc')+sth('m','Type','type')+sth('m','Amount','amount',1,'desc')+sth('m','Brokerage','brokerage',1,'desc','hmd')+'<th class="hmd">Tax adjusted</th>'+sth('m','Tax','tax',1,'desc')+sth('m','Net','net',1,'desc')+sth('m','Note','note',0,'asc','hmd')+'<th></th></tr></thead><tbody>'+
  list.map(({m,r})=>`<tr><td>${fmtD(m.date)}</td><td>${tl(m)}</td><td class="r ${m.et==='buyback'?'':cls(m.amt)}"><b>${inr(m.amt)}</b>${m.et==='buyback'?`<div class="muted" style="font-size:12px">cost ${inr(m.cost)}</div>`:''}</td><td class="r hmd">${m.brk?inr(m.brk):'–'}</td><td class="hmd"><span class="badge ${m.adj?'b-buy':'b-off'}">${m.adj?'Yes':'No'}</span></td><td class="r">${inr(r.tax)}</td><td class="r ${cls(r.net)}">${inr(r.net)}</td><td class="muted nt hmd" title="${(m.note||'').replace(/"/g,'&quot;')}">${m.note||'–'}</td><td class="r"><button class="lnk" style="color:var(--loss)" onclick="if(confirm('Delete this entry?')){misc=misc.filter(x=>x.id!==${m.id});rMisc()}">Delete</button></td></tr>`).join('')+'</tbody>'}
 function miscMode(){const bb=$('mType').value==='buyback';$('mKindWrap').style.display=bb?'none':'';$('mCostWrap').style.display=bb?'':'none';
