@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, eq, notExists, sql } from "drizzle-orm";
+import { and, eq, inArray, notExists, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -187,6 +187,23 @@ export async function deleteLotAction(id: string): Promise<ActionState> {
   revalidatePath("/", "layout");
   const [stillThere] = await db.select({ id: assets.id }).from(assets).where(and(eq(assets.id, lot.assetId), eq(assets.userId, user.id))).limit(1);
   redirect(stillThere ? `/holdings/${lot.assetId}` : "/holdings");
+}
+
+/** Delete whole holdings with everything under them. Sales go first so their allocations clear before the lots. */
+export async function deleteHoldingsAction(ids: string[]): Promise<ActionState> {
+  const user = await requireUser();
+  const parsed = z.array(z.string().uuid()).min(1, "Choose at least one holding.").max(500).safeParse(ids);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  try {
+    await db.batch([
+      db.delete(sales).where(and(eq(sales.userId, user.id), inArray(sales.assetId, parsed.data))),
+      db.delete(assets).where(and(eq(assets.userId, user.id), inArray(assets.id, parsed.data))),
+    ]);
+  } catch {
+    return { error: "Couldn't delete the selected holdings. Please try again." };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true, nonce: Date.now() };
 }
 
 const assetSchema = z.object({

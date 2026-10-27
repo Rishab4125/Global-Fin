@@ -125,6 +125,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;display:none;z-index:100;font-weight:500}
 .pbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px;color:var(--muted)}.pbar select,.pbar input{width:auto;height:36px}.pbar .btn{height:36px}
 .screen{display:none}.screen.on{display:block}
+.htools{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 20px;border-bottom:1px solid var(--line)}.htools:empty{display:none}.htools label{display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer}.htools .n{font-weight:400;color:var(--muted)}.htools .btn{height:36px}.btn.dng{background:var(--surface);color:var(--loss);border-color:color-mix(in srgb,var(--loss) 30%,transparent)}.btn.dng:hover:not(:disabled){background:color-mix(in srgb,var(--loss) 10%,transparent)}.btn:disabled{opacity:.5;cursor:not-allowed}tr.sel{background:var(--soft)}tr.sel td:first-child{background:var(--soft)!important}.pick{display:flex;align-items:center;gap:12px;cursor:pointer;font-weight:500}
 .okn{background:var(--soft);color:var(--primary-strong);border-radius:8px;padding:8px 12px;font-size:14px;margin-top:14px;display:none}
 .sk{animation:pulse 1.2s ease-in-out infinite}@keyframes pulse{50%{opacity:.5}}.skb{background:var(--surface2);border-radius:8px}
 .sq.busy{background:var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364746b' stroke-width='2' stroke-linecap='round'><path d='M21 12a9 9 0 1 1-6.2-8.55'><animateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='0.8s' repeatCount='indefinite'/></path></svg>") no-repeat right 10px center}
@@ -203,7 +204,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
     <button class="btn mt">Save investment</button>
   </form>
   <div class="tbar" id="hBar"></div>
-  <div class="card flush"><div class="ct"><h2>Current holdings</h2></div><div class="scroll"><table id="holdTbl"></table></div></div>
+  <div class="card flush"><div class="ct"><h2>Current holdings</h2></div><div class="htools" id="holdTools"></div><div class="scroll"><table id="holdTbl"></table></div></div>
   <div class="card flush" id="closedCard" style="display:none"><div class="ct"><h2>Fully sold</h2><p>Past holdings you no longer own</p></div><div id="closedList"></div></div>
 </section>
 
@@ -496,7 +497,7 @@ function rDash(){renderPeriod();const rows=compute(),h=holdings(),pr=rows.filter
  $('allocBars').innerHTML=Object.entries(al).map(([k,v])=>`<div class="hb"><span>${k}</span><i style="width:${v/am*100}%"></i><span class="r num">${inr(v)}</span></div>`).join('')||'<p class="muted">No holdings yet.</p>'}
 
 /* holdings */
-const FB={h:{per:'all',from:'',to:'',q:''},t:{per:'all',from:'',to:'',q:''},m:{per:'all',from:'',to:'',q:''}},SORT={h:{key:'invested',dir:'desc'},t:{key:'date',dir:'desc'},m:{key:'date',dir:'desc'}};let addOpen=false;
+const FB={h:{per:'all',from:'',to:'',q:''},t:{per:'all',from:'',to:'',q:''},m:{per:'all',from:'',to:'',q:''}},SORT={h:{key:'invested',dir:'desc'},t:{key:'date',dir:'desc'},m:{key:'date',dir:'desc'}};let addOpen=false,holdEdit=false,holdSel=new Set(),holdIds=[];
 const fbBounds=f=>f.per==='custom'?[f.from,f.to]:fyRange(f.per.slice(3));
 const fbIn=(f,d)=>{if(f.per==='all')return true;const[a,b]=fbBounds(f);return d>=a&&d<=b};
 const sortBy=(arr,get,dir)=>arr.map((r,i)=>({r,i,v:get(r)})).sort((a,b)=>{const c=typeof a.v==='number'&&typeof b.v==='number'?a.v-b.v:String(a.v).localeCompare(String(b.v),undefined,{numeric:true,sensitivity:'base'});return c?c*(dir==='asc'?1:-1):a.i-b.i}).map(x=>x.r);
@@ -535,12 +536,21 @@ function rHoldTable(){const f=FB.h,nd=f.q.trim().toLowerCase(),all=holdings().le
  let h=Object.values(acc).map(x=>({...x,name:assets[x.aid].name,type:T[assets[x.aid].type][0],pf:[...x.pl].sort().join(', ')||'–',avg:x.cost/x.qty})).filter(x=>hit([x.name,x.type,x.pf]));
  h=sortBy(h,{name:x=>x.name,type:x=>x.type,pf:x=>x.pf,qty:x=>x.qty,avg:x=>x.avg,invested:x=>x.cost}[SORT.h.key],SORT.h.dir);
  $('holdSub').textContent=all?`${h.length} holding${h.length===1?'':'s'}${h.length!==all?' of '+all:''} · ${inr(h.reduce((s,x)=>s+x.cost,0))} invested`:'Record what you own.';
+ holdIds=h.map(x=>x.aid);holdSel=new Set([...holdSel].filter(a=>holdIds.includes(a)));holdTools();
  $('holdTbl').innerHTML=h.length?`<thead><tr>${sth('h','Name','name')}${sth('h','Type','type')}${sth('h','Platform','pf')}${sth('h','Quantity','qty',1,'desc')}${sth('h','Avg cost','avg',1,'desc')}${sth('h','Invested','invested',1,'desc')}<th></th></tr></thead><tbody>`+
- h.map(x=>`<tr><td><button class="lnk" onclick="go('detail','${x.aid}')">${assets[x.aid].name}</button></td><td class="muted">${x.type}</td><td class="muted">${x.pf}</td><td class="r">${+x.qty.toFixed(6)}</td><td class="r">${inr(x.avg)}</td><td class="r"><b>${inr(x.cost)}</b></td><td><div class="actions"><button class="btn ghost sm hm" onclick="go('detail','${x.aid}')">Details</button><button class="btn soft sm" onclick="openSell('${x.aid}')">Sell</button></div></td></tr>`).join('')+'</tbody>'
+ h.map(x=>`<tr class="${holdEdit&&holdSel.has(x.aid)?'sel':''}"><td>${holdEdit?`<label class="pick"><input type="checkbox" ${holdSel.has(x.aid)?'checked':''} onchange="holdPick('${x.aid}')" aria-label="Select ${assets[x.aid].name}">${assets[x.aid].name}</label>`:`<button class="lnk" onclick="go('detail','${x.aid}')">${assets[x.aid].name}</button>`}</td><td class="muted">${x.type}</td><td class="muted">${x.pf}</td><td class="r">${+x.qty.toFixed(6)}</td><td class="r">${inr(x.avg)}</td><td class="r"><b>${inr(x.cost)}</b></td><td>${holdEdit?'':`<div class="actions"><button class="btn ghost sm hm" onclick="go('detail','${x.aid}')">Details</button><button class="btn soft sm" onclick="openSell('${x.aid}')">Sell</button></div>`}</td></tr>`).join('')+'</tbody>'
  :empty('brief',all?'No holdings match':'No holdings yet',all?'Try a different period or clear the search.':'Press Add investment to record your first one.');
  const held=new Set(holdings().map(x=>x.aid)),closed=Object.keys(assets).filter(a=>!held.has(a)&&lots.some(l=>l.aid===a&&fbIn(f,l.date))&&hit([assets[a].name,T[assets[a].type][0]]));
  $('closedCard').style.display=closed.length?'block':'none';
  $('closedList').innerHTML=closed.map(a=>`<button class="lnk" style="display:flex;justify-content:space-between;width:100%;padding:12px 20px;border-top:1px solid var(--line)" onclick="go('detail','${a}')"><span>${assets[a].name}</span><span class="muted" style="font-weight:400">${T[assets[a].type][0]}</span></button>`).join('')}
+function holdTools(){const t=$('holdTools');if(!holdIds.length){t.innerHTML='';holdEdit=false;return}
+ const n=holdSel.size,all=n===holdIds.length;
+ t.innerHTML=holdEdit?`<label><input type="checkbox" ${all?'checked':''} onchange="holdAll(this.checked)">Select all <span class="n">(${n} of ${holdIds.length} selected)</span></label><div style="display:flex;gap:8px"><button class="btn dng" ${n?'':'disabled'} onclick="delHoldings()">${svg('trash',15)}Delete${n?' ('+n+')':''}</button><button class="btn ghost" onclick="holdDone()">Done</button></div>`:`<span class="muted">${holdIds.length} shown</span><button class="btn ghost" onclick="holdEdit=true;rHoldTable()">${svg('pencil',15)}Edit</button>`}
+function holdPick(a){holdSel.has(a)?holdSel.delete(a):holdSel.add(a);rHoldTable()}
+function holdAll(on){holdSel=new Set(on?holdIds:[]);rHoldTable()}
+function holdDone(){holdEdit=false;holdSel=new Set();rHoldTable()}
+function delHoldings(){const n=holdSel.size;if(!n||!confirm(`Delete ${n} holding${n===1?'':'s'}? This also deletes ${n===1?'its':'their'} purchases, sales and realised gains. This cannot be undone.`))return;
+ const ids=new Set(holdSel);lots=lots.filter(l=>!ids.has(l.aid));sales=sales.filter(s=>!ids.has(s.aid));ids.forEach(a=>delete assets[a]);holdEdit=false;holdSel=new Set();toast(`${n} holding${n===1?'':'s'} deleted`);rHold()}
 function typeHint(){const r=T[$('bType').value];$('bHint').textContent=r[2]?`Long term after ${r[2]} months.`:'No holding-period concept; taxed at a single rate.'}
 function addBuy(e){e.preventDefault();const type=$('bType').value,name=$('bName').value.trim();
  let aid=Object.keys(assets).find(k=>assets[k].type===type&&assets[k].name.toLowerCase()===name.toLowerCase());

@@ -11,6 +11,7 @@ import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { AddInvestment } from "@/features/holdings/AddInvestment";
+import { HoldingsTable } from "@/features/holdings/HoldingsTable";
 import { loadPortfolio } from "@/features/portfolio/data";
 import { formatINR, formatQty } from "@/lib/format";
 import { parseSort, sortRows } from "@/lib/sort";
@@ -171,45 +172,27 @@ export default async function HoldingsPage({
               text="Try a different period or clear the search."
             />
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr>
+            <HoldingsTable
+              head={
+                <>
                   {head("Name", "name", "left", "asc", "sticky-col")}
                   {head("Type", "type", "left", "asc", "hidden md:table-cell")}
                   {head("Platform", "platform", "left", "asc", "hidden md:table-cell")}
                   {head("Quantity", "qty", "right", "desc")}
                   {head("Avg cost", "avg", "right", "desc")}
                   {head("Invested", "invested", "right", "desc")}
-                  <th className="th" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((h) => (
-                  <tr key={h.id}>
-                    <td className="td sticky-col font-medium">
-                      <Link href={`/holdings/${h.id}`} className="hover:text-primary hover:underline">
-                        {h.name}
-                      </Link>
-                    </td>
-                    <td className="td hidden text-muted md:table-cell">{h.typeLabel}</td>
-                    <td className="td hidden text-muted md:table-cell">{h.platform}</td>
-                    <td className="td text-right">{formatQty(h.qty)}</td>
-                    <td className="td text-right">{formatINR(h.avgCost)}</td>
-                    <td className="td text-right font-medium">{formatINR(h.cost)}</td>
-                    <td className="td text-right">
-                      <div className="flex justify-end gap-2">
-                        <Link href={`/holdings/${h.id}`} className="btn-ghost !hidden !h-8 !px-3 sm:!inline-flex">
-                          Details
-                        </Link>
-                        <Link href={`/sell/${h.id}`} className="btn-accent !h-8 !px-3">
-                          Sell
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </>
+              }
+              rows={rows.map((h) => ({
+                id: h.id,
+                name: h.name,
+                typeLabel: h.typeLabel,
+                platform: h.platform,
+                qty: formatQty(h.qty),
+                avgCost: formatINR(h.avgCost),
+                cost: formatINR(h.cost),
+              }))}
+            />
           )}
         </SectionCard>
 
