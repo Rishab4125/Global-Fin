@@ -43,11 +43,16 @@ export function parseSheets(broker: string, sheets: Sheet[]): ParsedFile {
     const failed = matched.find((r) => r.error);
     if (failed && !matched.some((r) => r.trades.length)) return { trades: [], skipped: [], source: "", error: failed.error };
     if (matched.length) {
-      return {
-        source,
-        trades: matched.flatMap((r) => r.trades),
-        skipped: matched.flatMap((r) => r.skipped),
-      };
+      // Sheets are parsed separately, so the same id can appear twice; keep the first and say so.
+      const seen = new Set<string>();
+      const skipped = matched.flatMap((r) => r.skipped);
+      const trades = matched.flatMap((r) => r.trades).filter((t) => {
+        if (!t.tradeId) return true;
+        if (!seen.has(t.tradeId)) return seen.add(t.tradeId), true;
+        skipped.push(`${t.symbol}: repeated in another sheet of this file`);
+        return false;
+      });
+      return { source, trades, skipped };
     }
   }
   return { trades: [], skipped: [], source: "", error: `Couldn't recognise this file. ${HELP[broker]}` };

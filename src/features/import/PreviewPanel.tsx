@@ -71,6 +71,13 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
         </label>
       )}
 
+      {!sync && preview.reconciledCount > 0 && (
+        <p className="rounded-xl border border-line p-3 text-sm">
+          Replacing {preview.reconciledCount} &quot;still held&quot; entr{preview.reconciledCount === 1 ? "y" : "ies"} from
+          your earlier P&amp;L with the holdings in this report, so the same shares are not counted twice.
+        </p>
+      )}
+
       {preview.rows.length > 0 && (
         <div className="max-h-96 overflow-auto rounded-xl border border-line">
           <table className="w-full">
@@ -96,7 +103,7 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
                     {r.status === "possible_duplicate" && r.tradeKey ? (
                       <label className="flex items-center gap-2 text-xs">
                         <input type="checkbox" name={`dup:${r.tradeKey}`} />
-                        <span className={STATUS[r.status].cls}>Matches a trade you entered. Import anyway</span>
+                        <span className={STATUS[r.status].cls}>Same stock, day and quantity as an existing entry. Import anyway</span>
                       </label>
                     ) : (
                       <span className={`text-xs ${STATUS[r.status].cls}`}>

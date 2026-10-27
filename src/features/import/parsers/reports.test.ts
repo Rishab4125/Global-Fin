@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { classifyTrade, looseKey } from "../../../domain/brokerSync";
 import { toIsoDate, toNumber } from "./common";
 import { parseSheets, parseBrokerFile } from "./detect";
+import { buildPlan } from "../plan";
 import { parseGrowwOrders } from "./groww";
 import { parseZerodhaPnl } from "./zerodhaPnl";
 
@@ -91,7 +92,7 @@ describe("parseGrowwOrders", () => {
       ["Reliance Industries", "RELIANCE", "INE002A01018", "SELL", "4", "12400", "NSE", "O2", "20-03-2025 11:00 AM", "Executed"],
       ["Reliance Industries", "RELIANCE", "INE002A01018", "BUY", "1", "2900", "NSE", "O3", "21-03-2025 11:00 AM", "Rejected"],
     ])!;
-    expect(r.trades.map((t) => [t.side, t.date, t.qty, t.price, t.tradeId])).toEqual([
+    expect(r.trades.map((t) => [t.side, t.date, t.qty, t.price, t.legacyTradeId])).toEqual([
       ["buy", "2025-03-05", 10, 2850, "O1"],
       ["sell", "2025-03-20", 4, 3100, "O2"],
     ]);
@@ -99,10 +100,30 @@ describe("parseGrowwOrders", () => {
     expect(r.skipped).toHaveLength(1);
   });
 
+  it("gives the same ids however the rows are ordered or trimmed", () => {
+    const fills = [
+      ["A", "A", "I1", "BUY", "1", "10", "NSE", "O1", "05-03-2025 10:00 AM", "Executed"],
+      ["A", "A", "I1", "BUY", "2", "30", "NSE", "O1", "05-03-2025 10:01 AM", "Executed"],
+    ];
+    const ids = (rows: string[][]) => new Map(parseGrowwOrders([header, ...rows])!.trades.map((t) => [t.qty, t.tradeId]));
+    const forward = ids(fills);
+    const reversed = ids([...fills].reverse());
+    const partial = ids([fills[1]]);
+    expect(reversed.get(1)).toBe(forward.get(1));
+    expect(reversed.get(2)).toBe(forward.get(2));
+    expect(partial.get(2)).toBe(forward.get(2));
+  });
+
+  it("keeps the old order-id form so earlier imports still count as imported", () => {
+    const row = ["A", "A", "I1", "BUY", "1", "10", "NSE", "O1", "05-03-2025", "Executed"];
+    const r = parseGrowwOrders([header, row, row])!;
+    expect(r.trades.map((t) => t.legacyTradeId)).toEqual(["O1", "O1#2"]);
+  });
+
   it("suffixes repeated order ids so each fill is kept", () => {
     const row = ["A", "A", "I1", "BUY", "1", "10", "NSE", "O1", "05-03-2025", "Executed"];
     const r = parseGrowwOrders([header, row, row])!;
-    expect(r.trades.map((t) => t.tradeId)).toEqual(["O1", "O1#2"]);
+    expect(new Set(r.trades.map((t) => t.tradeId)).size).toBe(2);
   });
 });
 
@@ -114,6 +135,15 @@ describe("parseSheets", () => {
     ]);
     expect(out.source).toBe("zerodha_pnl");
     expect(out.trades.length).toBe(6);
+  });
+
+  it("keeps one trade when two sheets contain the same P&L rows", () => {
+    const out = parseSheets("zerodha", [
+      { name: "Equity", rows: zerodhaPnl },
+      { name: "Equity copy", rows: zerodhaPnl },
+    ]);
+    expect(out.trades).toHaveLength(6);
+    expect(out.skipped.some((x) => /another sheet/.test(x))).toBe(true);
   });
 
   it("no longer accepts the Zerodha tradebook", () => {
@@ -206,6 +236,20 @@ describe.skipIf(!existsSync(zerodhaSample) || !existsSync(growwSample))("sample 
     expect(out.source).toBe("zerodha_pnl");
     expect(out.trades.length).toBeGreaterThan(10);
     expect(out.trades.every((t) => t.isin && t.price > 0 && t.qty > 0)).toBe(true);
+  });
+
+  it.each([
+    ["zerodha", zerodhaSample, "zerodha_pnl"],
+    ["groww", growwSample, "groww_orders"],
+  ])("a second import of the %s sample adds nothing", async (broker, path, source) => {
+    const out = await parseBrokerFile(broker, load(path));
+    const input = { trades: out.trades, source, assets: [], lots: [], sales: [], manualKeys: new Set<string>(), mapping: new Map(), includeDuplicates: new Set<string>(), replaceEstimated: false };
+    const first = buildPlan({ ...input, importedKeys: new Set() });
+    expect(first.lots.length + first.sales.length).toBeGreaterThan(0);
+    const stored = new Set([...first.lots, ...first.sales].map((x) => `${source}:${x.tradeId}`));
+    const second = buildPlan({ ...input, importedKeys: stored });
+    expect(second.lots.length + second.sales.length).toBe(0);
+    expect(second.rows.every((r) => r.status === "imported")).toBe(true);
   });
 
   it("imports the Groww order history sample", async () => {

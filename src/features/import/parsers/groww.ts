@@ -25,8 +25,8 @@ export function parseGrowwOrders(rows: string[][]): ParseResult | null {
 
   const trades: BrokerTrade[] = [];
   const skipped: string[] = [];
-  const idSeen = new Map<string, number>();
-  const hashSeen = new Map<string, number>();
+  const seen = new Map<string, number>();
+  const legacySeen = new Map<string, number>();
 
   for (const row of rows.slice(h.index + 1)) {
     const symbol = cell(row, c.symbol) || cell(row, c.name);
@@ -49,13 +49,15 @@ export function parseGrowwOrders(rows: string[][]): ParseResult | null {
 
     const isin = cell(row, c.isin);
     const orderId = cell(row, c.orderId);
-    let tradeId: string;
+    // Built from the trade itself (not its row position), so a re-sorted or partial export gives the same ids.
+    // Only fully identical rows get #2, #3...
+    const tradeId = stableId([orderId, isin || symbol, date, side, qty, price.toFixed(4)], seen);
+    // Earlier versions stored the order id itself, suffixed #2, #3 by row order.
+    let legacyTradeId: string | undefined;
     if (orderId) {
-      const n = (idSeen.get(orderId) ?? 0) + 1;
-      idSeen.set(orderId, n);
-      tradeId = n === 1 ? orderId : `${orderId}#${n}`;
-    } else {
-      tradeId = stableId([isin || symbol, date, side, qty, price.toFixed(4)], hashSeen);
+      const n = (legacySeen.get(orderId) ?? 0) + 1;
+      legacySeen.set(orderId, n);
+      legacyTradeId = n === 1 ? orderId : `${orderId}#${n}`;
     }
     trades.push({
       isin: isin || null,
@@ -66,6 +68,7 @@ export function parseGrowwOrders(rows: string[][]): ParseResult | null {
       qty,
       price,
       tradeId,
+      legacyTradeId,
     });
   }
   return { trades, skipped };

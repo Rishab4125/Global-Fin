@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { classifyTrade, type RowStatus } from "../../domain/brokerSync";
 import { allocateFifo, type Lot } from "../../domain/fifo";
+import { parsePnlTradeId } from "./parsers/zerodhaPnl";
 import type { BrokerTrade } from "./types";
 
 const EPS = 1e-9;
@@ -14,12 +15,14 @@ export interface PlanAsset {
 
 export interface ExistingLot extends Lot {
   source: string;
+  brokerTradeId: string | null;
 }
 
 export interface ExistingSale {
   id: string;
   assetId: string;
   source: string;
+  brokerTradeId: string | null;
   allocations: { lotId: string; qty: number }[];
 }
 
@@ -90,6 +93,8 @@ export interface Plan {
   removeSaleIds: string[];
   /** Estimated (kite_sync) entries that exist for the stocks in this import. */
   estimatedCount: number;
+  /** Earlier P&L "still held" entries replaced because this P&L covers the same stocks. */
+  reconciledCount: number;
   lots: PlanLot[];
   sales: PlanSale[];
 }
@@ -190,18 +195,49 @@ export function buildPlan(input: PlanInput): Plan {
     }
   }
 
+  // Zerodha P&L periods already stored per holding, to refuse a report that overlaps one of them.
+  const pnlPeriods = new Map<string, { start: string; end: string }[]>();
+  if (source === "zerodha_pnl") {
+    for (const x of [...input.lots, ...input.sales]) {
+      const p = x.source === "zerodha_pnl" ? parsePnlTradeId(x.brokerTradeId) : null;
+      if (p) pnlPeriods.set(x.assetId, [...(pnlPeriods.get(x.assetId) ?? []), p]);
+    }
+  }
+  const overlapping = (assetId: string | null, tradeId: string | null) => {
+    const mine = parsePnlTradeId(tradeId);
+    if (!assetId || !mine) return null;
+    return (
+      pnlPeriods
+        .get(assetId)
+        ?.find((p) => (p.start !== mine.start || p.end !== mine.end) && p.start <= mine.end && p.end >= mine.start) ?? null
+    );
+  };
+
   const seen = new Set<string>();
   const rows: PlanRow[] = trades.map((trade) => {
     const assetKey = assetKeyOf(trade);
     const tradeKey = tradeKeyOf(source, trade);
     const existingId = matchByKey.get(assetKey)?.assetId ?? null;
-    let status: RowStatus = tradeKey ? classifyTrade(tradeKey, existingId, trade, importedKeys, manualKeys, input.looseKeys) : "new";
+    let status: RowStatus | "error" = tradeKey
+      ? classifyTrade(tradeKey, existingId, trade, importedKeys, manualKeys, input.looseKeys)
+      : "new";
+    if (status !== "imported" && trade.legacyTradeId && importedKeys.has(`${source}:${trade.legacyTradeId}`)) {
+      status = "imported";
+    }
+    let message: string | undefined;
+    if (tradeKey && status !== "imported") {
+      const clash = overlapping(existingId, trade.tradeId);
+      if (clash) {
+        status = "error";
+        message = `Overlaps your earlier P&L for ${clash.start} to ${clash.end}. Delete those entries or download a non-overlapping period.`;
+      }
+    }
     if (tradeKey && status === "new") {
       if (seen.has(tradeKey)) status = "imported";
       seen.add(tradeKey);
     }
     const include = status === "new" || (status === "possible_duplicate" && !!tradeKey && includeDuplicates.has(tradeKey));
-    return { tradeKey, trade, assetKey, status, include };
+    return { tradeKey, trade, assetKey, status, message, include };
   });
 
   const touched = new Set(
@@ -224,6 +260,26 @@ export function buildPlan(input: PlanInput): Plan {
   }
   if (input.replaceEstimated) {
     for (const l of estLots) if ((sold.get(l.id) ?? 0) <= EPS) removeLotIds.add(l.id);
+  }
+
+  // A later P&L lists the stocks held at its end, including units an earlier P&L showed as still held.
+  // Drop those earlier "still held" buys so the same units are not counted twice.
+  let reconciledCount = 0;
+  if (source === "zerodha_pnl") {
+    const firstStart = new Map<string, string>();
+    for (const r of rows) {
+      const p = r.include ? parsePnlTradeId(r.trade.tradeId) : null;
+      const assetId = matchByKey.get(r.assetKey)?.assetId;
+      if (p && assetId && (!firstStart.has(assetId) || p.start < firstStart.get(assetId)!)) firstStart.set(assetId, p.start);
+    }
+    for (const l of input.lots) {
+      const p = l.source === "zerodha_pnl" ? parsePnlTradeId(l.brokerTradeId) : null;
+      const start = firstStart.get(l.assetId);
+      if (p?.leg === "o" && start && p.end < start && (sold.get(l.id) ?? 0) <= EPS && !removeLotIds.has(l.id)) {
+        removeLotIds.add(l.id);
+        reconciledCount++;
+      }
+    }
   }
 
   const lots: Lot[] = input.lots.filter((l) => !removeLotIds.has(l.id));
@@ -267,6 +323,7 @@ export function buildPlan(input: PlanInput): Plan {
     removeLotIds: [...removeLotIds],
     removeSaleIds: [...removeSaleIds],
     estimatedCount,
+    reconciledCount,
     lots: newLots,
     sales: newSales,
   };

@@ -29,6 +29,7 @@ export interface ImportPreview {
   assetOptions: { id: string; name: string }[];
   skipped: string[];
   estimatedCount: number;
+  reconciledCount: number;
   counts: { new: number; imported: number; possible: number; error: number };
 }
 
@@ -70,6 +71,7 @@ export function toPreview(
     assetOptions: assets.map((a) => ({ id: a.id, name: a.name })).sort((a, b) => a.name.localeCompare(b.name)),
     skipped,
     estimatedCount: plan.estimatedCount,
+    reconciledCount: plan.reconciledCount,
     counts: {
       new: count((r) => r.status === "new"),
       imported: count((r) => r.status === "imported"),

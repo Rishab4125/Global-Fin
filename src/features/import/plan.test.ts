@@ -110,7 +110,7 @@ describe("buildPlan sells", () => {
 describe("buildPlan estimated sync entries", () => {
   const assets = [{ id: "a1", name: "RELIANCE", type: "equity", isin: "INE002A01018" }];
   const lots = [
-    { id: "L1", assetId: "a1", buyDate: "2025-06-01", qty: 10, unitPrice: 90, fees: 0, source: "kite_sync" },
+    { id: "L1", assetId: "a1", buyDate: "2025-06-01", qty: 10, unitPrice: 90, fees: 0, source: "kite_sync", brokerTradeId: null },
   ];
 
   it("counts and removes unsold estimated lots when real trades arrive", () => {
@@ -119,5 +119,62 @@ describe("buildPlan estimated sync entries", () => {
     expect(off.removeLotIds).toEqual([]);
     const on = buildPlan(base({ trades: [trade({})], assets, lots, replaceEstimated: true }));
     expect(on.removeLotIds).toEqual(["L1"]);
+  });
+});
+
+describe("buildPlan Zerodha P&L reconciliation", () => {
+  const assets = [{ id: "a1", name: "RELIANCE", type: "equity", isin: "INE002A01018" }];
+  const id = (start: string, end: string, leg: string) => `INE002A01018~${start}~${end}:${leg}`;
+  const pnl = (start: string, end: string, leg: "b" | "s" | "o", over: Partial<BrokerTrade> = {}) =>
+    trade({
+      date: leg === "s" ? end : start,
+      side: leg === "s" ? "sell" : "buy",
+      tradeId: id(start, end, leg),
+      ...over,
+    });
+  const existingOpen = {
+    id: "L1", assetId: "a1", buyDate: "2025-04-01", qty: 4, unitPrice: 100, fees: 0,
+    source: "zerodha_pnl", brokerTradeId: id("2025-04-01", "2026-03-31", "o"),
+  };
+  const run = (trades: BrokerTrade[], lots: PlanInput["lots"] = [], over: Partial<PlanInput> = {}) =>
+    buildPlan(base({ source: "zerodha_pnl", assets, trades, lots, ...over }));
+
+  it("blocks a P&L whose period overlaps one already imported for the same stock", () => {
+    const p = run([pnl("2025-10-01", "2026-09-30", "b")], [existingOpen]);
+    expect(p.rows[0].status).toBe("error");
+    expect(p.rows[0].message).toMatch(/Overlaps/);
+    expect(p.lots).toHaveLength(0);
+  });
+
+  it("allows an adjacent period", () => {
+    const p = run([pnl("2026-04-01", "2027-03-31", "b")], [existingOpen]);
+    expect(p.rows[0].status).toBe("new");
+  });
+
+  it("treats the identical period as already imported, not as an overlap", () => {
+    const p = run([pnl("2025-04-01", "2026-03-31", "o")], [existingOpen], {
+      importedKeys: new Set([`zerodha_pnl:${existingOpen.brokerTradeId}`]),
+    });
+    expect(p.rows[0].status).toBe("imported");
+  });
+
+  it("replaces the earlier 'still held' buy when a later P&L covers the stock", () => {
+    const p = run([pnl("2026-04-01", "2027-03-31", "b"), pnl("2026-04-01", "2027-03-31", "s")], [existingOpen]);
+    expect(p.removeLotIds).toEqual(["L1"]);
+    expect(p.reconciledCount).toBe(1);
+  });
+
+  it("keeps the earlier 'still held' buy when it already has sales", () => {
+    const sale = { id: "S1", assetId: "a1", source: "manual", brokerTradeId: null, allocations: [{ lotId: "L1", qty: 1 }] };
+    const p = run([pnl("2026-04-01", "2027-03-31", "b")], [existingOpen], { sales: [sale] });
+    expect(p.removeLotIds).toEqual([]);
+    expect(p.reconciledCount).toBe(0);
+  });
+
+  it("recognises trades stored under an earlier id format", () => {
+    const p = run([{ ...pnl("2025-04-01", "2026-03-31", "o"), legacyTradeId: "abc123:o" }], [], {
+      importedKeys: new Set(["zerodha_pnl:abc123:o"]),
+    });
+    expect(p.rows[0].status).toBe("imported");
   });
 });

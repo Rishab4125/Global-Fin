@@ -89,7 +89,8 @@ async function makePlan(userId: string, form: FormData) {
       side: a.kind === "add" ? "buy" : "sell",
       qty: a.qty,
       price,
-      tradeId: null,
+      // Deterministic, so a second sync fired at the same moment hits the unique index instead of adding twice.
+      tradeId: `sync:${a.isin}:${today}:${a.kind}:${a.qty.toFixed(4)}:${price.toFixed(2)}`,
     };
   });
 
@@ -97,6 +98,9 @@ async function makePlan(userId: string, form: FormData) {
     trades,
     source: SOURCE,
     ...state,
+    // Sync fixes quantities, so matching other reports' trades by day and size must not hold it back.
+    manualKeys: new Set<string>(),
+    looseKeys: new Set<string>(),
     mapping,
     includeDuplicates: new Set(),
     replaceEstimated: false,

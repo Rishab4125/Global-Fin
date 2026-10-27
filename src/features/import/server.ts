@@ -53,11 +53,13 @@ export async function loadUserState(userId: string): Promise<UserState> {
       unitPrice: Number(l.unitPrice),
       fees: Number(l.fees),
       source: l.source,
+      brokerTradeId: l.brokerTradeId,
     })),
     sales: saleRows.map((s) => ({
       id: s.id,
       assetId: s.assetId,
       source: s.source,
+      brokerTradeId: s.brokerTradeId,
       allocations: allocRows.filter((a) => a.saleId === s.id).map((a) => ({ lotId: a.lotId, qty: Number(a.qty) })),
     })),
     importedKeys,
