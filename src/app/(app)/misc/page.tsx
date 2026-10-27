@@ -1,4 +1,5 @@
 import { Receipt } from "lucide-react";
+import { DeleteButton } from "@/components/DeleteButton";
 import { ListSearch } from "@/components/ListSearch";
 import { SortHeader } from "@/components/SortHeader";
 import { EmptyState, SectionCard } from "@/components/ui";
@@ -14,6 +15,8 @@ import { formatDate, formatINR, gainClass } from "@/lib/format";
 import { parseSort, sortRows } from "@/lib/sort";
 
 const SORT_KEYS = ["date", "type", "amount", "brokerage", "tax", "net", "note"] as const;
+
+export const metadata = { title: "Misc profit / loss" };
 
 export default async function MiscPage({
   searchParams,
@@ -64,8 +67,8 @@ export default async function MiscPage({
   const net = entries.reduce((s, e) => s + (rowById.get(e.id)?.netGain ?? 0), 0);
   const filtered = entries.length !== pf.miscEvents.length;
 
-  const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc") => (
-    <SortHeader label={label} col={col} sort={sort} basePath="/misc" query={`${periodQuery}${withQ}`} align={align} firstDir={firstDir} />
+  const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc", className = "") => (
+    <SortHeader label={label} col={col} sort={sort} basePath="/misc" query={`${periodQuery}${withQ}`} align={align} firstDir={firstDir} className={className} />
   );
 
   return (
@@ -109,14 +112,14 @@ export default async function MiscPage({
             <table className="w-full">
               <thead>
                 <tr>
-                  {head("Date", "date", "left", "desc")}
+                  {head("Date", "date", "left", "desc", "sticky-col")}
                   {head("Type", "type")}
                   {head("Amount", "amount", "right", "desc")}
-                  {head("Brokerage", "brokerage", "right", "desc")}
-                  <th className="th">Tax adjusted</th>
+                  {head("Brokerage", "brokerage", "right", "desc", "hidden md:table-cell")}
+                  <th className="th hidden md:table-cell">Tax adjusted</th>
                   {head("Tax", "tax", "right", "desc")}
                   {head("Net", "net", "right", "desc")}
-                  {head("Note", "note")}
+                  {head("Note", "note", "left", "asc", "hidden md:table-cell")}
                   <th className="th" />
                 </tr>
               </thead>
@@ -125,7 +128,7 @@ export default async function MiscPage({
                   const r = rowById.get(e.id);
                   return (
                     <tr key={e.id}>
-                      <td className="td">{formatDate(e.date)}</td>
+                      <td className="td sticky-col">{formatDate(e.date)}</td>
                       <td className="td">{typeOf(e)}</td>
                       <td className={`td text-right font-medium ${e.entryType === "buyback" ? "" : gainClass(e.amount)}`}>
                         {formatINR(e.amount)}
@@ -133,22 +136,26 @@ export default async function MiscPage({
                           <div className="text-xs font-normal text-muted">cost {formatINR(e.cost)}</div>
                         )}
                       </td>
-                      <td className="td text-right">{formatINR(e.brokerage)}</td>
-                      <td className="td">
-                        <span className={`badge ${e.taxAdjusted ? "bg-primary-soft text-primary-strong" : "bg-surface2 text-muted"}`}>
+                      <td className="td hidden text-right md:table-cell">{e.brokerage ? formatINR(e.brokerage) : "–"}</td>
+                      <td className="td hidden md:table-cell">
+                        <span className={e.taxAdjusted ? "badge-gain" : "badge-muted"}>
                           {e.taxAdjusted ? "Yes" : "No"}
                         </span>
                       </td>
                       <td className="td text-right">{formatINR(r?.tax ?? 0)}</td>
                       <td className={`td text-right ${gainClass(r?.netGain ?? 0)}`}>{formatINR(r?.netGain ?? 0)}</td>
-                      <td className="td max-w-40 truncate text-muted" title={e.note || undefined}>
+                      <td className="td hidden max-w-40 truncate text-muted md:table-cell" title={e.note || undefined}>
                         {e.note || "–"}
                       </td>
                       <td className="td text-right">
-                        <form action={deleteMiscAction}>
-                          <input type="hidden" name="id" value={e.id} />
-                          <button className="text-sm font-medium text-loss hover:underline">Delete</button>
-                        </form>
+                        <DeleteButton
+                          compact
+                          action={deleteMiscAction}
+                          id={e.id}
+                          label="Delete"
+                          ariaLabel={`Delete ${typeOf(e)} entry of ${formatDate(e.date)}`}
+                          confirmText="Delete this entry? This cannot be undone."
+                        />
                       </td>
                     </tr>
                   );

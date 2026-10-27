@@ -9,12 +9,15 @@ export function DeleteButton({
   id,
   confirmText,
   label = "Delete",
+  ariaLabel,
   compact = false,
 }: {
   action: (id: string) => Promise<ActionState>;
   id: string;
   confirmText: string;
   label?: string;
+  /** Names the row for screen readers, e.g. "Delete purchase of RELIANCE". */
+  ariaLabel?: string;
   compact?: boolean;
 }) {
   const [pending, start] = useTransition();
@@ -25,6 +28,7 @@ export function DeleteButton({
       <button
         type="button"
         disabled={pending}
+        aria-label={ariaLabel}
         onClick={() => {
           if (!window.confirm(confirmText)) return;
           setError(undefined);
@@ -40,7 +44,7 @@ export function DeleteButton({
         <Trash2 size={15} />
         {pending ? "Deleting…" : label}
       </button>
-      {error && <span className="mt-1 max-w-56 whitespace-normal text-right text-xs text-loss">{error}</span>}
+      {error && <span role="alert" className="mt-1 max-w-56 whitespace-normal text-right text-xs text-loss">{error}</span>}
     </span>
   );
 }

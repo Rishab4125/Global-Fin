@@ -1,11 +1,11 @@
-import { formatINR, formatQty } from "@/lib/format";
+import { formatDate, formatINR, formatQty } from "@/lib/format";
 import type { ImportPreview, PreviewRow } from "./view";
 
 const STATUS: Record<PreviewRow["status"], { label: string; cls: string }> = {
-  new: { label: "New", cls: "text-gain" },
-  imported: { label: "Already imported", cls: "text-muted" },
-  possible_duplicate: { label: "Possible duplicate", cls: "text-loss" },
-  error: { label: "Can't import", cls: "text-loss" },
+  new: { label: "New", cls: "badge-gain" },
+  imported: { label: "Already imported", cls: "badge-muted" },
+  possible_duplicate: { label: "Possible duplicate", cls: "badge-warn" },
+  error: { label: "Can't import", cls: "badge-loss" },
 };
 
 const KIND_LABEL = {
@@ -62,7 +62,7 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
 
       {!sync && preview.estimatedCount > 0 && (
         <label className="flex items-start gap-2 rounded-xl border border-line p-3 text-sm">
-          <input type="checkbox" name="replaceEstimated" defaultChecked className="mt-1" />
+          <input type="checkbox" name="replaceEstimated" defaultChecked className="mt-1 accent-[var(--primary)]" />
           <span>
             Replace {preview.estimatedCount} estimated entr{preview.estimatedCount === 1 ? "y" : "ies"} created by
             Zerodha sync for these stocks with the real trades from this file. Keeping them would count the same
@@ -95,20 +95,22 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
               {preview.rows.map((r) => (
                 <tr key={r.key}>
                   <td className="td font-medium">{r.symbol}</td>
-                  <td className="td">{r.date}</td>
+                  <td className="td">{formatDate(r.date)}</td>
                   <td className="td">{r.side === "buy" ? "Buy" : "Sell"}</td>
                   <td className="td text-right">{formatQty(r.qty)}</td>
                   <td className="td text-right">{formatINR(r.price)}</td>
                   <td className="td">
                     {r.status === "possible_duplicate" && r.tradeKey ? (
                       <label className="flex items-center gap-2 text-xs">
-                        <input type="checkbox" name={`dup:${r.tradeKey}`} />
-                        <span className={STATUS[r.status].cls}>Same stock, day and quantity as an existing entry. Import anyway</span>
+                        <input type="checkbox" name={`dup:${r.tradeKey}`} className="accent-[var(--primary)]" />
+                        <span className="text-accent-strong">Same stock, day and quantity as an existing entry. Import anyway</span>
                       </label>
                     ) : (
-                      <span className={`text-xs ${STATUS[r.status].cls}`}>
-                        {sync && r.status === "new" ? "Estimated" : STATUS[r.status].label}
-                        {r.message ? `: ${r.message}` : ""}
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        <span className={STATUS[r.status].cls}>
+                          {sync && r.status === "new" ? "Estimated" : STATUS[r.status].label}
+                        </span>
+                        {r.message && <span className="whitespace-normal text-xs text-muted">{r.message}</span>}
                       </span>
                     )}
                   </td>

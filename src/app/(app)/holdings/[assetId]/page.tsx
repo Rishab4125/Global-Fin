@@ -12,6 +12,8 @@ import { deleteSaleAction } from "@/features/sales/actions";
 import { formatDate, formatINR, formatQty, gainClass } from "@/lib/format";
 import { ArrowLeftRight } from "lucide-react";
 
+export const metadata = { title: "Holding" };
+
 export default async function HoldingDetailPage({ params }: { params: Promise<{ assetId: string }> }) {
   const { assetId } = await params;
   const user = await requireUser();
@@ -68,10 +70,10 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="th">Date</th>
+                  <th className="th sticky-col">Date</th>
                   <th className="th text-right">Quantity</th>
                   <th className="th text-right">Price</th>
-                  <th className="th text-right">Fees</th>
+                  <th className="th hidden text-right md:table-cell">Fees</th>
                   <th className="th text-right">Sold</th>
                   <th className="th text-right">Remaining</th>
                   <th className="th" />
@@ -82,15 +84,15 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
                   const sold = pf.sold.get(l.id) ?? 0;
                   return (
                     <tr key={l.id}>
-                      <td className="td">{formatDate(l.buyDate)}</td>
+                      <td className="td sticky-col">{formatDate(l.buyDate)}</td>
                       <td className="td text-right">{formatQty(l.qty)}</td>
                       <td className="td text-right">{formatINR(l.unitPrice)}</td>
-                      <td className="td text-right">{formatINR(l.fees)}</td>
+                      <td className="td hidden text-right md:table-cell">{l.fees ? formatINR(l.fees) : "–"}</td>
                       <td className="td text-right">{formatQty(sold)}</td>
                       <td className="td text-right font-medium">{formatQty(l.qty - sold)}</td>
                       <td className="td">
                         <div className="flex justify-end gap-2">
-                          <Link href={`/holdings/${asset.id}/lots/${l.id}`} aria-label="Edit" title="Edit" className="btn-ghost !h-8 !px-2.5">
+                          <Link href={`/holdings/${asset.id}/lots/${l.id}`} aria-label={`Edit purchase on ${formatDate(l.buyDate)}`} title="Edit" className="btn-ghost !h-8 !px-2.5">
                             <Pencil size={14} />
                             <span className="hidden sm:inline">Edit</span>
                           </Link>
@@ -101,6 +103,7 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
                           ) : (
                             <DeleteButton
                               compact
+                              ariaLabel={`Delete purchase on ${formatDate(l.buyDate)}`}
                               action={deleteLotAction}
                               id={l.id}
                               confirmText="Delete this purchase? This cannot be undone."
@@ -123,11 +126,11 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="th">Date</th>
+                  <th className="th sticky-col">Date</th>
                   <th className="th text-right">Quantity</th>
                   <th className="th text-right">Price</th>
-                  <th className="th text-right">Fees</th>
-                  <th className="th">Tax</th>
+                  <th className="th hidden text-right md:table-cell">Fees</th>
+                  <th className="th hidden md:table-cell">Tax</th>
                   <th className="th text-right">Gain</th>
                   <th className="th text-right">Tax</th>
                   <th className="th text-right">Net</th>
@@ -139,12 +142,12 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
                   const r = rowById.get(s.id);
                   return (
                     <tr key={s.id}>
-                      <td className="td">{formatDate(s.date)}</td>
+                      <td className="td sticky-col">{formatDate(s.date)}</td>
                       <td className="td text-right">{formatQty(s.qty)}</td>
                       <td className="td text-right">{formatINR(s.price)}</td>
-                      <td className="td text-right">{formatINR(s.fees)}</td>
-                      <td className="td">
-                        <span className={`badge ${s.applyTax ? "bg-primary-soft text-primary-strong" : "bg-surface2 text-muted"}`}>
+                      <td className="td hidden text-right md:table-cell">{s.fees ? formatINR(s.fees) : "–"}</td>
+                      <td className="td hidden md:table-cell">
+                        <span className={s.applyTax ? "badge-gain" : "badge-muted"}>
                           {s.applyTax ? "Applied" : "Not applied"}
                         </span>
                       </td>
@@ -153,12 +156,13 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
                       <td className={`td text-right font-medium ${gainClass(r?.netGain ?? 0)}`}>{formatINR(r?.netGain ?? 0)}</td>
                       <td className="td">
                         <div className="flex justify-end gap-2">
-                          <Link href={`/holdings/${asset.id}/sales/${s.id}`} aria-label="Edit" title="Edit" className="btn-ghost !h-8 !px-2.5">
+                          <Link href={`/holdings/${asset.id}/sales/${s.id}`} aria-label={`Edit sale on ${formatDate(s.date)}`} title="Edit" className="btn-ghost !h-8 !px-2.5">
                             <Pencil size={14} />
                             <span className="hidden sm:inline">Edit</span>
                           </Link>
                           <DeleteButton
                             compact
+                            ariaLabel={`Delete sale on ${formatDate(s.date)}`}
                             action={deleteSaleAction}
                             id={s.id}
                             confirmText="Delete this sale? The units return to your holding."

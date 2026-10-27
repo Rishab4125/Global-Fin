@@ -1,8 +1,8 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { LoaderCircle, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 /** Search box for a list page. Updates ?q= after a short pause and keeps the other filters in `query`. */
 export function ListSearch({
@@ -19,22 +19,29 @@ export function ListSearch({
 }) {
   const router = useRouter();
   const [value, setValue] = useState(q);
+  const [pending, start] = useTransition();
 
   useEffect(() => {
     const next = value.trim();
     if (next === q) return;
     const id = setTimeout(() => {
-      router.replace(`${basePath}?${query}${next ? `${query ? "&" : ""}q=${encodeURIComponent(next)}` : ""}`);
+      start(() => router.replace(`${basePath}?${query}${next ? `${query ? "&" : ""}q=${encodeURIComponent(next)}` : ""}`));
     }, 300);
     return () => clearTimeout(id);
   }, [value, q, basePath, query, router]);
 
   return (
     <div className="relative w-full sm:w-72">
-      <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      {pending ? (
+        <LoaderCircle size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 animate-spin text-muted" />
+      ) : (
+        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      )}
       <input
         type="search"
         aria-label="Search"
+        aria-busy={pending}
+        autoComplete="off"
         placeholder={placeholder}
         className="input !h-9 !pl-9 !pr-9"
         value={value}

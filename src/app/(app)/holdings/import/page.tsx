@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/ui";
 import { requireUser } from "@/features/auth/session";
 import { UploadCard } from "@/features/import/UploadCard";
 
+export const metadata = { title: "Import trades" };
+
 export default async function ImportPage() {
   await requireUser();
   return (

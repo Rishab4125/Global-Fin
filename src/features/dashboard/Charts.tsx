@@ -29,7 +29,9 @@ const tooltipStyle = {
 };
 
 export function GainByYearChart({ data }: { data: { fy: string; net: number; gain: number }[] }) {
+  const summary = data.map((d) => `FY ${d.fy}: ${full.format(d.net)} after tax`).join(". ");
   return (
+    <div role="img" aria-label={`Post-tax gain by financial year. ${summary || "No data yet."}`}>
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
@@ -48,11 +50,14 @@ export function GainByYearChart({ data }: { data: { fy: string; net: number; gai
         </Bar>
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
 export function AllocationChart({ data }: { data: { group: string; cost: number }[] }) {
+  const summary = data.map((d) => `${d.group}: ${full.format(d.cost)} invested`).join(". ");
   return (
+    <div role="img" aria-label={`Amount invested by asset class. ${summary || "No data yet."}`}>
     <ResponsiveContainer width="100%" height={Math.max(160, data.length * 44 + 20)}>
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
         <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" horizontal={false} />
@@ -66,5 +71,6 @@ export function AllocationChart({ data }: { data: { group: string; cost: number 
         <Bar dataKey="cost" fill="var(--primary)" radius={[0, 4, 4, 0]} maxBarSize={26} />
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }

@@ -96,6 +96,17 @@ tbody tr {
 tbody tr:hover {
   background: var(--surface-2);
 }
+/* Keeps the first column visible while a wide table scrolls sideways on phones */
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+tbody tr:hover .sticky-col {
+  background: var(--surface-2);
+}
+
 tbody tr:last-child td {
   border-bottom: 0;
 }
@@ -114,7 +125,7 @@ tbody tr:last-child td {
   @apply text-[13px] font-medium text-muted;
 }
 @utility input {
-  @apply h-10 w-full min-w-0 max-w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none transition placeholder:text-muted/70 hover:border-muted/50 focus:border-primary focus:ring-[3px] focus:ring-primary/20;
+  @apply h-10 w-full min-w-0 max-w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none transition placeholder:text-muted hover:border-muted/50 focus:border-primary focus:ring-[3px] focus:ring-primary/20;
 }
 @utility btn {
   @apply inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-60;
@@ -136,4 +147,16 @@ tbody tr:last-child td {
 }
 @utility badge {
   @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+}
+@utility badge-gain {
+  @apply badge bg-primary-soft text-primary-strong;
+}
+@utility badge-warn {
+  @apply badge bg-accent/15 text-accent-strong;
+}
+@utility badge-muted {
+  @apply badge bg-surface2 text-muted;
+}
+@utility badge-loss {
+  @apply badge bg-loss/10 text-loss;
 }

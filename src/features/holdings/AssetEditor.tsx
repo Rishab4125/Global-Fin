@@ -18,14 +18,14 @@ export function AssetEditor({ assetId, name, type }: { assetId: string; name: st
         <input type="hidden" name="assetId" value={assetId} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Name">
-            <input name="name" required defaultValue={name} className="input" />
+            <input name="name" required autoComplete="off" maxLength={100} defaultValue={name} className="input" />
           </Field>
           <Field label="Type" hint="Changing the type changes how gains on this holding are taxed.">
             <AssetTypeSelect defaultValue={type} />
           </Field>
         </div>
         <FormError message={state.error} />
-        {state.ok && <p className="text-sm text-gain">Saved.</p>}
+        {state.ok && <p role="status" className="text-sm text-gain">Saved.</p>}
         <button className="btn-primary" disabled={pending}>
           {pending ? "Saving…" : "Save"}
         </button>

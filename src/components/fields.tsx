@@ -4,11 +4,23 @@ export function Field({
   label,
   children,
   hint,
+  group = false,
 }: {
   label: string;
   children: React.ReactNode;
   hint?: string;
+  /** For radio groups: renders a labelled group instead of a <label>, which can't contain several inputs. */
+  group?: boolean;
 }) {
+  if (group) {
+    return (
+      <div role="radiogroup" aria-label={label}>
+        <span className="label">{label}</span>
+        {children}
+        {hint && <span className="mt-1.5 block text-xs text-muted">{hint}</span>}
+      </div>
+    );
+  }
   return (
     <label className="block">
       <span className="label">{label}</span>
@@ -64,6 +76,16 @@ export function FormError({ message }: { message?: string }) {
   if (!message) return null;
   return (
     <p role="alert" className="rounded-lg border border-loss/25 bg-loss/10 px-3 py-2.5 text-sm text-loss">
+      {message}
+    </p>
+  );
+}
+
+/** Polite confirmation message, e.g. after a save. Screen readers announce it when it appears. */
+export function FormNotice({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p role="status" className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-primary-strong">
       {message}
     </p>
   );

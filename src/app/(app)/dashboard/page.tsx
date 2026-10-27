@@ -11,6 +11,8 @@ import { loadPortfolio } from "@/features/portfolio/data";
 import { byFinancialYear, totals } from "@/features/reports/summary";
 import { formatDate, formatINR } from "@/lib/format";
 
+export const metadata = { title: "Dashboard" };
+
 export default async function DashboardPage({
   searchParams,
 }: {

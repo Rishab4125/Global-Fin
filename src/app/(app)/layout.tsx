@@ -1,4 +1,5 @@
 import { LogOut, TrendingUp } from "lucide-react";
+import Link from "next/link";
 import { signOut } from "@/auth";
 import { BottomNav, SideNav } from "@/components/Nav";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -56,9 +57,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Logo />
           <div className="flex items-center gap-1.5">
             <ThemeToggle />
-            <span className="grid size-8 place-items-center rounded-full bg-primary-soft text-sm font-semibold text-primary-strong">
+            <Link
+              href="/settings"
+              aria-label="Settings"
+              className="grid size-8 place-items-center rounded-full bg-primary-soft text-sm font-semibold text-primary-strong"
+            >
               {initial}
-            </span>
+            </Link>
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:py-9 lg:pb-12">

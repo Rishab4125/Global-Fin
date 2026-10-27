@@ -9,6 +9,8 @@ import { loadPortfolio } from "@/features/portfolio/data";
 import { SellForm } from "@/features/sales/SellForm";
 import { formatQty } from "@/lib/format";
 
+export const metadata = { title: "Sell" };
+
 export default async function SellPage({ params }: { params: Promise<{ assetId: string }> }) {
   const { assetId } = await params;
   const user = await requireUser();

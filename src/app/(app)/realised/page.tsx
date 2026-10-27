@@ -7,6 +7,8 @@ import { loadPortfolio } from "@/features/portfolio/data";
 import { byAssetGroup, totals } from "@/features/reports/summary";
 import { formatDate, formatINR, formatQty, gainClass } from "@/lib/format";
 
+export const metadata = { title: "Realised gains" };
+
 export default async function RealisedPage({
   searchParams,
 }: {
@@ -91,11 +93,11 @@ export default async function RealisedPage({
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="th">Date</th>
+                  <th className="th sticky-col">Date</th>
                   <th className="th">Asset</th>
-                  <th className="th text-right">Qty</th>
-                  <th className="th text-right">Proceeds</th>
-                  <th className="th text-right">Cost</th>
+                  <th className="th hidden text-right md:table-cell">Qty</th>
+                  <th className="th hidden text-right md:table-cell">Proceeds</th>
+                  <th className="th hidden text-right md:table-cell">Cost</th>
                   <th className="th text-right">Short term</th>
                   <th className="th text-right">Long term</th>
                   <th className="th text-right">Tax</th>
@@ -105,7 +107,7 @@ export default async function RealisedPage({
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id}>
-                    <td className="td">{formatDate(r.date)}</td>
+                    <td className="td sticky-col">{formatDate(r.date)}</td>
                     <td className="td">
                       <div className="font-medium">{r.label}</div>
                       <div
@@ -117,9 +119,9 @@ export default async function RealisedPage({
                         {r.note && ` · ${r.note}`}
                       </div>
                     </td>
-                    <td className="td text-right">{r.qty === null ? "–" : formatQty(r.qty)}</td>
-                    <td className="td text-right">{r.proceeds === null ? "–" : formatINR(r.proceeds)}</td>
-                    <td className="td text-right">{r.cost === null ? "–" : formatINR(r.cost)}</td>
+                    <td className="td hidden text-right md:table-cell">{r.qty === null ? "–" : formatQty(r.qty)}</td>
+                    <td className="td hidden text-right md:table-cell">{r.proceeds === null ? "–" : formatINR(r.proceeds)}</td>
+                    <td className="td hidden text-right md:table-cell">{r.cost === null ? "–" : formatINR(r.cost)}</td>
                     <td className={`td text-right ${gainClass(r.stcg)}`}>{formatINR(r.stcg)}</td>
                     <td className={`td text-right ${gainClass(r.ltcg)}`}>{formatINR(r.ltcg)}</td>
                     <td className="td text-right">{formatINR(r.tax)}</td>

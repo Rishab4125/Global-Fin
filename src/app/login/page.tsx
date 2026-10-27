@@ -9,6 +9,8 @@ const points = [
   { icon: ShieldCheck, title: "Private to you", text: "Sign in with Google. Your data is only visible to your account." },
 ];
 
+export const metadata = { title: "Sign in" };
+
 export default async function LoginPage() {
   const session = await auth();
   if (session?.user?.id) redirect("/dashboard");
@@ -50,7 +52,7 @@ export default async function LoginPage() {
             ))}
           </ul>
         </div>
-        <p className="mt-auto pt-5 text-xs text-white/40 lg:mt-0 lg:pt-0">Estimates only. Not tax advice.</p>
+        <p className="mt-auto pt-5 text-xs text-white/60 lg:mt-0 lg:pt-0">Estimates only. Not tax advice.</p>
       </div>
 
       <div className="relative flex items-center justify-center bg-bg px-6 py-5 lg:py-12">

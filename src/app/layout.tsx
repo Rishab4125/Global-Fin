@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Global Fin",
+  title: { default: "Global Fin", template: "%s · Global Fin" },
   description: "Investment portfolio and realised gain tracker for India",
 };
 

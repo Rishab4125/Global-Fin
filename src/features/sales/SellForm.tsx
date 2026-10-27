@@ -63,7 +63,8 @@ export function SellForm({
             name="qty"
             type="number"
             step="any"
-            min="0"
+            inputMode="decimal"
+            min="0.0001"
             max={maxQty}
             required
             defaultValue={initial?.qty}
@@ -76,7 +77,7 @@ export function SellForm({
         <Field label="Brokerage / fees (₹)">
           <input name="fees" type="number" step="any" min="0" defaultValue={initial?.fees ?? 0} className="input" />
         </Field>
-        <Field label="Include tax effect?">
+        <Field group label="Include tax effect?">
           <YesNo name="applyTax" defaultValue={initial && !initial.applyTax ? "no" : "yes"} />
         </Field>
         <label className="flex items-start gap-2 text-sm sm:col-span-2 lg:col-span-3">

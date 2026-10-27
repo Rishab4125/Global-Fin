@@ -22,7 +22,7 @@ export function SlabForm({ slabPercent }: { slabPercent: number }) {
         />
       </Field>
       <FormError message={state.error} />
-      {state.ok && <p className="text-sm text-gain">Saved.</p>}
+      {state.ok && <p role="status" className="text-sm text-gain">Saved.</p>}
       <button className="btn-primary" disabled={pending}>
         {pending ? "Saving…" : "Save"}
       </button>

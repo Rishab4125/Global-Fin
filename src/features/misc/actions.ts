@@ -58,9 +58,13 @@ export async function addMiscAction(_: ActionState, form: FormData): Promise<Act
   return { ok: true, nonce: Date.now() };
 }
 
-export async function deleteMiscAction(formData: FormData): Promise<void> {
+export async function deleteMiscAction(id: string): Promise<ActionState> {
   const user = await requireUser();
-  const id = String(formData.get("id") ?? "");
-  await db.delete(miscEntries).where(and(eq(miscEntries.id, id), eq(miscEntries.userId, user.id)));
+  try {
+    await db.delete(miscEntries).where(and(eq(miscEntries.id, id), eq(miscEntries.userId, user.id)));
+  } catch {
+    return { error: "Couldn't delete this entry. Please try again." };
+  }
   revalidatePath("/", "layout");
+  return { ok: true, nonce: Date.now() };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import type { ActionState } from "@/features/portfolio/actionState";
 
 type Action = (prev: ActionState, form: FormData) => Promise<ActionState>;
@@ -13,6 +13,13 @@ export function useServerForm(action: Action, resetOnOk = false) {
   const formRef = useRef<HTMLFormElement>(null);
   const [state, setState] = useState<ActionState>({});
   const [pending, startTransition] = useTransition();
+
+  // A saved-confirmation should disappear on its own.
+  useEffect(() => {
+    if (!state.ok || !resetOnOk) return;
+    const id = setTimeout(() => setState((s) => ({ ...s, ok: false })), 4000);
+    return () => clearTimeout(id);
+  }, [state, resetOnOk]);
 
   const run = (customAction: Action = action) => {
     if (!formRef.current) return;

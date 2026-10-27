@@ -24,7 +24,7 @@ export function EditBuyForm({
           <input name="buyDate" type="date" required defaultValue={initial.buyDate} max={today} className="input" />
         </Field>
         <Field label="Quantity" hint={minQty > 0 ? `At least ${minQty} (already sold)` : undefined}>
-          <input name="qty" type="number" step="any" min={minQty || 0} required defaultValue={initial.qty} className="input" />
+          <input name="qty" type="number" step="any" inputMode="decimal" min={Math.max(minQty || 0, 0.0001)} required defaultValue={initial.qty} className="input" />
         </Field>
         <Field label="Price per unit (₹)">
           <input name="price" type="number" step="any" min="0" required defaultValue={initial.price} className="input" />

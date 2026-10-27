@@ -27,6 +27,8 @@ interface Row {
   avgCost: number;
 }
 
+export const metadata = { title: "Holdings" };
+
 export default async function HoldingsPage({
   searchParams,
 }: {
@@ -107,8 +109,8 @@ export default async function HoldingsPage({
 
   const filterNote = period.value !== "all" || q;
   const baseQuery = `${periodQuery}${withQ}`;
-  const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc") => (
-    <SortHeader label={label} col={col} sort={sort} basePath="/holdings" query={baseQuery} align={align} firstDir={firstDir} />
+  const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc", className = "") => (
+    <SortHeader label={label} col={col} sort={sort} basePath="/holdings" query={baseQuery} align={align} firstDir={firstDir} className={className} />
   );
 
   return (
@@ -172,9 +174,9 @@ export default async function HoldingsPage({
             <table className="w-full">
               <thead>
                 <tr>
-                  {head("Name", "name")}
-                  {head("Type", "type")}
-                  {head("Platform", "platform")}
+                  {head("Name", "name", "left", "asc", "sticky-col")}
+                  {head("Type", "type", "left", "asc", "hidden md:table-cell")}
+                  {head("Platform", "platform", "left", "asc", "hidden md:table-cell")}
                   {head("Quantity", "qty", "right", "desc")}
                   {head("Avg cost", "avg", "right", "desc")}
                   {head("Invested", "invested", "right", "desc")}
@@ -184,13 +186,13 @@ export default async function HoldingsPage({
               <tbody>
                 {rows.map((h) => (
                   <tr key={h.id}>
-                    <td className="td font-medium">
+                    <td className="td sticky-col font-medium">
                       <Link href={`/holdings/${h.id}`} className="hover:text-primary hover:underline">
                         {h.name}
                       </Link>
                     </td>
-                    <td className="td text-muted">{h.typeLabel}</td>
-                    <td className="td text-muted">{h.platform}</td>
+                    <td className="td hidden text-muted md:table-cell">{h.typeLabel}</td>
+                    <td className="td hidden text-muted md:table-cell">{h.platform}</td>
                     <td className="td text-right">{formatQty(h.qty)}</td>
                     <td className="td text-right">{formatINR(h.avgCost)}</td>
                     <td className="td text-right font-medium">{formatINR(h.cost)}</td>

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface NavLink {
   href: string;
@@ -48,7 +48,7 @@ export function SideNav() {
     <nav className="flex flex-col gap-5">
       {sections.map((s) => (
         <div key={s.title}>
-          <p className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wider text-white/40">{s.title}</p>
+          <p className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wider text-white/60">{s.title}</p>
           <ul className="space-y-0.5">
             {s.links.map((l) => {
               const active = isActive(path, l.href);
@@ -57,7 +57,7 @@ export function SideNav() {
                   <Link
                     href={l.href}
                     aria-current={active ? "page" : undefined}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-emerald-300/70 ${
                       active
                         ? "bg-white/12 text-white"
                         : "text-white/70 hover:bg-white/7 hover:text-white"
@@ -83,6 +83,18 @@ export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
 
   useEffect(() => setOpen(false), [path]);
 
+  const moreBtn = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      moreBtn.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const moreActive = more.some((l) => isActive(path, l.href));
 
   return (
@@ -91,6 +103,8 @@ export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
         <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <div
+            role="dialog"
+            aria-label="More pages"
             className="absolute inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] mx-3 rounded-2xl border border-line bg-surface p-2 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -98,7 +112,7 @@ export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
               <Link
                 key={l.href}
                 href={l.href}
-                className="flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium hover:bg-surface2"
+                className="flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium outline-none hover:bg-surface2 focus-visible:bg-surface2"
               >
                 <l.icon size={20} className="text-primary" />
                 {l.label}
@@ -121,9 +135,11 @@ export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
           ))}
           <li>
             <button
+              ref={moreBtn}
               onClick={() => setOpen((o) => !o)}
               aria-expanded={open}
-              className={`flex h-full w-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
+              aria-haspopup="dialog"
+              className={`flex h-full w-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium outline-none focus-visible:bg-surface2 ${
                 open || moreActive ? "text-primary" : "text-muted"
               }`}
             >
@@ -144,7 +160,7 @@ function TabLink({ link, active }: { link: NavLink; active: boolean }) {
     <Link
       href={link.href}
       aria-current={active ? "page" : undefined}
-      className={`flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
+      className={`flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium outline-none focus-visible:bg-surface2 ${
         active ? "text-primary" : "text-muted"
       }`}
     >

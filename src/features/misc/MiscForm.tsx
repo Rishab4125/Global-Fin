@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AssetTypeSelect, Field, FormError, YesNo } from "@/components/fields";
+import { AssetTypeSelect, Field, FormError, FormNotice, YesNo } from "@/components/fields";
 import { useServerForm } from "@/components/useServerForm";
 import { addMiscAction } from "./actions";
 
@@ -58,7 +58,7 @@ export function MiscForm({ today }: { today: string }) {
         <Field label="Brokerage / charges (₹)" hint="Reduces a profit or adds to a loss">
           <input name="brokerage" type="number" step="any" min="0" defaultValue={0} className="input" />
         </Field>
-        <Field label="Tax already adjusted?" hint="Yes: amount is final, no tax added. No: tax is applied on a profit.">
+        <Field group label="Tax already adjusted?" hint="Yes: amount is final, no tax added. No: tax is applied on a profit.">
           <YesNo name="taxAdjusted" defaultValue="no" />
         </Field>
         <Field label={buyback ? "Holding period of the shares" : "Holding period"} hint="Only used when tax is not adjusted">
@@ -69,11 +69,12 @@ export function MiscForm({ today }: { today: string }) {
         </Field>
         <div className="sm:col-span-2 lg:col-span-3">
           <Field label="Note (optional)">
-            <input name="note" maxLength={200} className="input" />
+            <input name="note" maxLength={200} autoComplete="off" className="input" />
           </Field>
         </div>
       </div>
       <FormError message={state.error} />
+      <FormNotice message={state.ok ? "Entry saved." : undefined} />
       <button className="btn-primary" disabled={pending}>
         {pending ? "Saving…" : "Save entry"}
       </button>

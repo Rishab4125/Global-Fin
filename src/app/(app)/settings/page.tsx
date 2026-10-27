@@ -11,6 +11,8 @@ import { SlabForm } from "@/features/settings/SlabForm";
 const rateText = (r: Rate) =>
   r.kind === "slab" ? "Slab rate" : r.kind === "exempt" ? "Exempt" : `${+(r.rate * 100).toFixed(2)}%`;
 
+export const metadata = { title: "Settings" };
+
 export default async function SettingsPage() {
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);

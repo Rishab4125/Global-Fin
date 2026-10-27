@@ -8,6 +8,8 @@ import { loadConnection, tokenValid } from "@/features/kite/connection";
 import { KiteCard } from "@/features/kite/KiteCard";
 import { KiteSetup } from "@/features/kite/KiteSetup";
 
+export const metadata = { title: "Sync holdings" };
+
 export default async function SyncPage({ searchParams }: { searchParams: Promise<{ kite?: string }> }) {
   const user = await requireUser();
   const { kite } = await searchParams;

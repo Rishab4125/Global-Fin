@@ -11,6 +11,7 @@ export function SortHeader<K extends string>({
   query,
   align = "left",
   firstDir = "asc",
+  className = "",
 }: {
   label: string;
   col: K;
@@ -21,6 +22,8 @@ export function SortHeader<K extends string>({
   align?: "left" | "right";
   /** Direction used the first time this column is clicked. */
   firstDir?: "asc" | "desc";
+  /** Extra classes for the cell, e.g. "hidden md:table-cell" to drop the column on phones. */
+  className?: string;
 }) {
   const active = sort.key === col;
   const next = active ? (sort.dir === "asc" ? "desc" : "asc") : firstDir;
@@ -29,7 +32,7 @@ export function SortHeader<K extends string>({
 
   return (
     <th
-      className={`th ${align === "right" ? "text-right" : ""}`}
+      className={`th ${align === "right" ? "text-right" : ""} ${className}`}
       aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
     >
       <Link

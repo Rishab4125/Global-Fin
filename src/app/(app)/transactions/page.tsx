@@ -35,11 +35,13 @@ interface Txn {
 }
 
 const badge: Record<Kind, { label: string; className: string }> = {
-  buy: { label: "Buy", className: "bg-primary-soft text-primary-strong" },
-  sell: { label: "Sell", className: "bg-accent/15 text-accent-strong" },
-  misc: { label: "Misc P/L", className: "bg-surface2 text-muted" },
-  buyback: { label: "Buyback", className: "bg-accent/15 text-accent-strong" },
+  buy: { label: "Buy", className: "badge-gain" },
+  sell: { label: "Sell", className: "badge-warn" },
+  misc: { label: "Misc P/L", className: "badge-muted" },
+  buyback: { label: "Buyback", className: "badge-warn" },
 };
+
+export const metadata = { title: "Transactions" };
 
 export default async function TransactionsPage({
   searchParams,
@@ -145,8 +147,8 @@ export default async function TransactionsPage({
     amount: (t) => t.amount,
   };
   const rows = sortRows(shown, getters[sort.key], sort.dir);
-  const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc") => (
-    <SortHeader label={label} col={col} sort={sort} basePath="/transactions" query={`${periodQuery}${withQ}`} align={align} firstDir={firstDir} />
+  const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc", className = "") => (
+    <SortHeader label={label} col={col} sort={sort} basePath="/transactions" query={`${periodQuery}${withQ}`} align={align} firstDir={firstDir} className={className} />
   );
 
   return (
@@ -192,13 +194,13 @@ export default async function TransactionsPage({
           <table className="w-full">
             <thead>
               <tr>
-                {head("Date", "date", "left", "desc")}
+                {head("Date", "date", "left", "desc", "sticky-col")}
                 {head("Action", "action")}
                 {head("Asset", "asset")}
-                {head("Platform", "platform")}
+                {head("Platform", "platform", "left", "asc", "hidden md:table-cell")}
                 {head("Qty", "qty", "right", "desc")}
                 {head("Price", "price", "right", "desc")}
-                {head("Fees", "fees", "right", "desc")}
+                {head("Fees", "fees", "right", "desc", "hidden md:table-cell")}
                 {head("Amount", "amount", "right", "desc")}
                 <th className="th" />
               </tr>
@@ -206,9 +208,9 @@ export default async function TransactionsPage({
             <tbody>
               {rows.map((t) => (
                 <tr key={t.key}>
-                  <td className="td">{formatDate(t.date)}</td>
+                  <td className="td sticky-col">{formatDate(t.date)}</td>
                   <td className="td">
-                    <span className={`badge ${badge[t.kind].className}`}>{badge[t.kind].label}</span>
+                    <span className={badge[t.kind].className}>{badge[t.kind].label}</span>
                   </td>
                   <td className="td">
                     {t.assetId ? (
@@ -220,10 +222,10 @@ export default async function TransactionsPage({
                     )}
                     <span className="ml-2 text-xs text-muted">{t.typeLabel}</span>
                   </td>
-                  <td className="td text-muted">{t.platform}</td>
+                  <td className="td hidden text-muted md:table-cell">{t.platform}</td>
                   <td className="td text-right">{t.qty === null ? "–" : formatQty(t.qty)}</td>
                   <td className="td text-right">{t.price === null ? "–" : formatINR(t.price)}</td>
-                  <td className="td text-right">{formatINR(t.fees)}</td>
+                  <td className="td hidden text-right md:table-cell">{t.fees ? formatINR(t.fees) : "–"}</td>
                   <td className={`td text-right font-medium ${t.kind === "misc" ? gainClass(t.amount) : ""}`}>
                     {formatINR(t.amount)}
                   </td>
@@ -231,7 +233,7 @@ export default async function TransactionsPage({
                     {t.assetId ? (
                       <Link
                         href={`/holdings/${t.assetId}/${t.kind === "buy" ? "lots" : "sales"}/${t.id}`}
-                        aria-label="Edit"
+                        aria-label={`Edit ${t.kind === "buy" ? "purchase" : "sale"} of ${t.name} on ${formatDate(t.date)}`}
                         title="Edit"
                         className="btn-ghost !h-8 !px-2.5"
                       >
