@@ -83,6 +83,12 @@ export const csvMoney = (n: number) => (Math.abs(n) < 0.005 ? 0 : n).toFixed(2);
 /** Quantity for a CSV file: up to eight decimals, trailing zeros dropped, no commas. */
 export const csvQty = (n: number) => String(Number(n.toFixed(8)));
 
+/** Day and month only ("02 Apr"), for lists already grouped by month. */
+export function formatDayMonth(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "UTC" });
+}
+
 export function formatDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-IN", {

@@ -1,51 +1,36 @@
-import { ArrowLeftRight, Pencil } from "lucide-react";
+import { ArrowLeftRight, ChevronRight, Pencil } from "lucide-react";
 import Link from "next/link";
+import { Amount } from "@/components/Amount";
 import { FilterBar } from "@/components/FilterBar";
 import { ListSearch } from "@/components/ListSearch";
 import { SortHeader } from "@/components/SortHeader";
 import { EmptyState, PageHeader, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
 import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
-import { ASSET_RULES, type AssetTypeId } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
+import { buildFeed, groupByMonth, KIND_BADGE, KIND_LABEL, type FeedItem } from "@/features/activity/feed";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { loadPortfolio } from "@/features/portfolio/data";
 import { filterQs, passes, readFilters } from "@/lib/filters";
-import { formatDate, formatINR, formatQty, gainClass } from "@/lib/format";
+import { formatDate, formatDayMonth, formatINR, formatINRWhole, formatPrice, formatQty, gainClass, MINUS } from "@/lib/format";
 import { parseSort, sortRows } from "@/lib/sort";
 
 const SORT_KEYS = ["date", "action", "asset", "platform", "qty", "price", "fees", "amount"] as const;
 
-type Kind = "buy" | "sell" | "misc" | "buyback";
+export const metadata = { title: "Activity" };
 
-interface Txn {
-  key: string;
-  id: string;
-  kind: Kind;
-  date: string;
-  assetId?: string;
-  name: string;
-  typeLabel: string;
-  group: string;
-  platform: string;
-  qty: number | null;
-  price: number | null;
-  fees: number;
-  /** Signed amount: cost for buys, proceeds for sells, gain/loss for misc, proceeds for buybacks. */
-  amount: number;
-  note?: string;
+/** Where tapping an entry goes: its edit page, or the place it is managed. */
+function hrefFor(t: FeedItem): string {
+  if (t.kind === "misc") return "/gains/misc";
+  if (!t.assetId) return "/holdings";
+  if (t.kind === "buy") return `/holdings/${t.assetId}/lots/${t.id}`;
+  if (t.kind === "sell" || t.kind === "buyback") return `/holdings/${t.assetId}/sales/${t.id}`;
+  return `/holdings/${t.assetId}?tab=events`;
 }
 
-const badge: Record<Kind, { label: string; className: string }> = {
-  buy: { label: "Buy", className: "badge-gain" },
-  sell: { label: "Sell", className: "badge-warn" },
-  misc: { label: "Misc P/L", className: "badge-muted" },
-  buyback: { label: "Buyback", className: "badge-warn" },
-};
+const signedWhole = (n: number) => (n > 0 ? `+${formatINRWhole(n)}` : n < 0 ? `${MINUS}${formatINRWhole(Math.abs(n))}` : formatINRWhole(0));
 
-export const metadata = { title: "Transactions" };
-
-export default async function TransactionsPage({
+export default async function ActivityPage({
   searchParams,
 }: {
   searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string; act?: string; ty?: string; pf?: string }>;
@@ -53,64 +38,14 @@ export default async function TransactionsPage({
   const query = await searchParams;
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);
-  const assetMap = new Map(pf.assets.map((a) => [a.id, a]));
-  const typeLabel = (t: AssetTypeId) => ASSET_RULES[t].label;
 
-  const txns: Txn[] = [
-    ...pf.lots.map((l): Txn => {
-      const a = assetMap.get(l.assetId);
-      return {
-        key: `buy-${l.id}`,
-        id: l.id,
-        kind: "buy",
-        date: l.buyDate,
-        assetId: l.assetId,
-        name: a?.name ?? "Unknown",
-        typeLabel: a ? typeLabel(a.type) : "",
-        group: a ? ASSET_RULES[a.type].category : "",
-        platform: l.platform ?? "Other",
-        qty: l.qty,
-        price: l.unitPrice,
-        fees: l.fees,
-        amount: l.qty * l.unitPrice,
-      };
-    }),
-    ...pf.saleEvents.map((s): Txn => {
-      const a = assetMap.get(s.assetId);
-      return {
-        key: `sell-${s.id}`,
-        id: s.id,
-        kind: s.buyback ? "buyback" : "sell",
-        date: s.date,
-        assetId: s.assetId,
-        name: a?.name ?? "Unknown",
-        typeLabel: a ? typeLabel(a.type) : "",
-        group: a ? ASSET_RULES[a.type].category : "",
-        platform: s.platforms?.join(", ") || "Other",
-        qty: s.qty,
-        price: s.price,
-        fees: s.fees,
-        amount: s.qty * s.price,
-      };
-    }),
-    ...pf.miscEvents.map((m): Txn => {
-      return {
-        key: `misc-${m.id}`,
-        id: m.id,
-        kind: "misc",
-        date: m.date,
-        name: "Misc profit / loss",
-        typeLabel: typeLabel(m.assetType),
-        group: ASSET_RULES[m.assetType].category,
-        platform: "–",
-        qty: null,
-        price: null,
-        fees: m.brokerage,
-        amount: m.amount,
-        note: m.note,
-      };
-    }),
-  ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  const txns = buildFeed({
+    assets: pf.assets,
+    lots: pf.lots,
+    sales: pf.saleEvents,
+    misc: pf.miscEvents,
+    actions: pf.actions,
+  });
 
   const today = todayIso();
   const earliest = txns.length ? txns[txns.length - 1].date : today;
@@ -127,10 +62,10 @@ export default async function TransactionsPage({
       ? `period=custom&from=${period.from}&to=${period.to}`
       : `period=${encodeURIComponent(period.value)}`;
 
-  const groupOptions = [...new Set(txns.map((t) => t.group).filter(Boolean))].sort();
+  const categoryOptions = [...new Set(txns.map((t) => t.category).filter(Boolean))].sort();
   const filters = readFilters(query, ["act", "ty", "pf"], {
-    act: Object.values(badge).map((b) => b.label),
-    ty: groupOptions,
+    act: Object.values(KIND_LABEL),
+    ty: categoryOptions,
     pf: pf.platforms,
   });
   const fq = filterQs(filters);
@@ -139,21 +74,22 @@ export default async function TransactionsPage({
   const shown = txns.filter(
     (t) =>
       inPeriod(t.date, period) &&
-      passes(filters.act, badge[t.kind].label) &&
-      passes(filters.ty, t.group) &&
+      passes(filters.act, KIND_LABEL[t.kind]) &&
+      passes(filters.ty, t.category) &&
       passes(filters.pf, t.platform.split(", ")) &&
       (!needle ||
-        [t.name, t.typeLabel, t.platform, badge[t.kind].label, t.note ?? ""].some((s) => s.toLowerCase().includes(needle))),
+        [t.name, t.typeLabel, t.platform, KIND_LABEL[t.kind], t.note ?? "", t.detail ?? ""].some((s) => s.toLowerCase().includes(needle))),
   );
   const filtered = shown.length !== txns.length;
+  const months = groupByMonth(shown);
 
   const sort = parseSort(query, SORT_KEYS, { key: "date", dir: "desc" });
   const sortQuery = `sort=${sort.key}&dir=${sort.dir}`;
   const withQ = q ? `&q=${encodeURIComponent(q)}` : "";
   const withF = fq ? `&${fq}` : "";
-  const getters: Record<(typeof SORT_KEYS)[number], (t: Txn) => string | number> = {
+  const getters: Record<(typeof SORT_KEYS)[number], (t: FeedItem) => string | number> = {
     date: (t) => t.date,
-    action: (t) => badge[t.kind].label,
+    action: (t) => KIND_LABEL[t.kind],
     asset: (t) => t.name,
     platform: (t) => t.platform,
     qty: (t) => t.qty ?? Number.NEGATIVE_INFINITY,
@@ -165,12 +101,13 @@ export default async function TransactionsPage({
   const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc", className = "") => (
     <SortHeader label={label} col={col} sort={sort} basePath="/transactions" query={`${periodQuery}${withQ}${withF}`} align={align} firstDir={firstDir} className={className} />
   );
+  const priceText = (t: FeedItem) => (t.price === null ? "–" : formatPrice(t.price, { crypto: t.typeLabel === "Crypto" }));
 
   return (
     <div>
       <PageHeader
-        title="Transactions"
-        description="Every purchase, sale and misc entry. Open a holding to edit or delete its entries."
+        title="Activity"
+        description="Every purchase, sale, dividend and event, newest first. Open an entry to edit it."
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <ListSearch
@@ -193,89 +130,137 @@ export default async function TransactionsPage({
           basePath="/transactions"
           selected={filters}
           groups={[
-            { id: "act", label: "Action", options: Object.values(badge).map((b) => b.label) },
-            { id: "ty", label: "Category", options: groupOptions.length > 1 ? groupOptions : [] },
+            { id: "act", label: "Action", options: Object.values(KIND_LABEL) },
+            { id: "ty", label: "Category", options: categoryOptions.length > 1 ? categoryOptions : [] },
             { id: "pf", label: "Platform", options: pf.platforms },
           ]}
         />
       </div>
       {txns.length > 0 && (
-        <p className="mb-3 text-sm text-muted">
-          {shown.length} transaction{shown.length === 1 ? "" : "s"}
+        <p className="t-caption mb-3">
+          {shown.length} entr{shown.length === 1 ? "y" : "ies"}
           {filtered ? ` of ${txns.length}` : ""}
         </p>
       )}
-      <SectionCard flush>
-        {txns.length === 0 ? (
-          <EmptyState icon={ArrowLeftRight} title="No transactions yet" text="Add an investment to get started." />
-        ) : shown.length === 0 ? (
-          <EmptyState
-            icon={ArrowLeftRight}
-            title="No transactions match"
-            text="Try a different period or clear the search and filters."
-          />
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr>
-                {head("Date", "date", "left", "desc", "sticky-col")}
-                {head("Action", "action")}
-                {head("Asset", "asset")}
-                {head("Platform", "platform", "left", "asc", "hidden md:table-cell")}
-                {head("Qty", "qty", "right", "desc")}
-                {head("Price", "price", "right", "desc")}
-                {head("Fees", "fees", "right", "desc", "hidden md:table-cell")}
-                {head("Amount", "amount", "right", "desc")}
-                <th className="th" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((t) => (
-                <tr key={t.key}>
-                  <td className="td sticky-col">{formatDate(t.date)}</td>
-                  <td className="td">
-                    <span className={badge[t.kind].className}>{badge[t.kind].label}</span>
-                  </td>
-                  <td className="td">
-                    {t.assetId ? (
-                      <Link href={`/holdings/${t.assetId}`} className="font-medium hover:text-primary hover:underline">
-                        {t.name}
-                      </Link>
-                    ) : (
-                      <span className="font-medium">{t.name}</span>
-                    )}
-                    <span className="ml-2 text-xs text-muted">{t.typeLabel}</span>
-                  </td>
-                  <td className="td hidden text-muted md:table-cell">{t.platform}</td>
-                  <td className="td text-right">{t.qty === null ? "–" : formatQty(t.qty)}</td>
-                  <td className="td text-right">{t.price === null ? "–" : formatINR(t.price)}</td>
-                  <td className="td hidden text-right md:table-cell">{t.fees ? formatINR(t.fees) : "–"}</td>
-                  <td className={`td text-right font-medium ${t.kind === "misc" ? gainClass(t.amount) : ""}`}>
-                    {formatINR(t.amount)}
-                  </td>
-                  <td className="td text-right">
-                    {t.assetId ? (
+
+      {txns.length === 0 ? (
+        <SectionCard flush>
+          <EmptyState icon={ArrowLeftRight} title="No activity yet" text="Add an investment to get started." />
+        </SectionCard>
+      ) : shown.length === 0 ? (
+        <SectionCard flush>
+          <EmptyState icon={ArrowLeftRight} title="Nothing matches" text="Try a different period or clear the search and filters." />
+        </SectionCard>
+      ) : (
+        <>
+          {/* Phones and tablets: a feed grouped by month. */}
+          <div className="space-y-5 lg:hidden">
+            {months.map((m) => (
+              <section key={m.key} aria-label={m.label} className="card !p-0 overflow-hidden">
+                <div className="flex items-baseline justify-between gap-3 border-b border-line bg-surface2 px-4 py-3">
+                  <h2 className="t-title">{m.label}</h2>
+                  <p className="t-caption num">
+                    {m.count} entr{m.count === 1 ? "y" : "ies"} · net cash{" "}
+                    <span className={`font-medium ${gainClass(m.net)}`}>
+                      <Amount>{signedWhole(m.net)}</Amount>
+                    </span>
+                  </p>
+                </div>
+                <ul className="divide-y divide-line">
+                  {m.items.map((t) => (
+                    <li key={t.key}>
                       <Link
-                        href={`/holdings/${t.assetId}/${t.kind === "buy" ? "lots" : "sales"}/${t.id}`}
-                        aria-label={`Edit ${t.kind === "buy" ? "purchase" : "sale"} of ${t.name} on ${formatDate(t.date)}`}
-                        title="Edit"
-                        className="btn-ghost !h-8 !px-2.5"
+                        href={hrefFor(t)}
+                        aria-label={`Open ${KIND_LABEL[t.kind]} of ${t.name} on ${formatDate(t.date)}`}
+                        className="flex items-center gap-3 px-4 py-3 outline-none hover:bg-surface2 focus-visible:bg-surface2"
                       >
-                        <Pencil size={14} />
-                        <span className="hidden sm:inline">Edit</span>
+                        <div className="t-caption w-14 shrink-0">{formatDayMonth(t.date)}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`${KIND_BADGE[t.kind]} shrink-0`}>{KIND_LABEL[t.kind]}</span>
+                            <span className="t-body-strong truncate">{t.name}</span>
+                          </div>
+                          <div className="t-caption num mt-0.5 truncate">
+                            {t.detail ??
+                              (t.qty === null
+                                ? t.note || t.typeLabel
+                                : `${formatQty(t.qty)} × ${priceText(t)}${t.platform !== "–" ? ` · ${t.platform}` : ""}${t.fees ? ` · fees ${formatINR(t.fees)}` : ""}`)}
+                          </div>
+                        </div>
+                        <div className={`t-body-strong num shrink-0 text-right ${t.kind === "misc" ? gainClass(t.amount) : ""}`}>
+                          {t.kind === "event" ? "–" : <Amount>{formatINR(t.amount)}</Amount>}
+                        </div>
+                        <ChevronRight size={16} className="shrink-0 text-muted" aria-hidden />
                       </Link>
-                    ) : (
-                      <Link href="/gains/misc" className="btn-ghost !h-8 !px-2.5">
-                        Manage
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </SectionCard>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+
+          {/* Desktop: the sortable table. */}
+          <div className="hidden lg:block">
+            <SectionCard flush>
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    {head("Date", "date", "left", "desc", "sticky-col")}
+                    {head("Action", "action")}
+                    {head("Asset", "asset")}
+                    {head("Platform", "platform")}
+                    {head("Qty", "qty", "right", "desc")}
+                    {head("Price", "price", "right", "desc")}
+                    {head("Fees", "fees", "right", "desc")}
+                    {head("Amount", "amount", "right", "desc")}
+                    <th className="th" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((t) => (
+                    <tr key={t.key}>
+                      <td className="td sticky-col">{formatDate(t.date)}</td>
+                      <td className="td">
+                        <span className={KIND_BADGE[t.kind]}>{KIND_LABEL[t.kind]}</span>
+                        {t.detail && <span className="t-caption ml-2">{t.detail}</span>}
+                      </td>
+                      <td className="td">
+                        {t.assetId ? (
+                          <Link href={`/holdings/${t.assetId}`} className="font-medium hover:text-primary hover:underline">
+                            {t.name}
+                          </Link>
+                        ) : (
+                          <span className="font-medium">{t.name}</span>
+                        )}
+                        <span className="t-caption ml-2">{t.typeLabel}</span>
+                      </td>
+                      <td className="td text-muted">{t.platform}</td>
+                      <td className="td num text-right">{t.qty === null ? "–" : formatQty(t.qty)}</td>
+                      <td className="td num text-right">
+                        <Amount>{priceText(t)}</Amount>
+                      </td>
+                      <td className="td num text-right">{t.fees ? <Amount>{formatINR(t.fees)}</Amount> : "–"}</td>
+                      <td className={`td text-right font-medium ${t.kind === "misc" ? gainClass(t.amount) : ""}`}>
+                        {t.kind === "event" ? "–" : <Amount>{formatINR(t.amount)}</Amount>}
+                      </td>
+                      <td className="td text-right">
+                        <Link
+                          href={hrefFor(t)}
+                          aria-label={`Open ${KIND_LABEL[t.kind]} of ${t.name} on ${formatDate(t.date)}`}
+                          className="btn-ghost !h-8 !px-2.5"
+                        >
+                          <Pencil size={14} />
+                          <span>{t.kind === "buy" || t.kind === "sell" || t.kind === "buyback" ? "Edit" : "Open"}</span>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </SectionCard>
+          </div>
+        </>
+      )}
     </div>
   );
 }

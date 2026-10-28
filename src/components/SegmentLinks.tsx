@@ -31,13 +31,14 @@ export function SegmentLinks({
   );
 }
 
-/** Sales and Misc are two views of the same Gains section. */
-export function GainsTabs({ active }: { active: "sales" | "misc" }) {
+/** Summary, Sales and Misc are three views of the same Gains section. */
+export function GainsTabs({ active }: { active: "summary" | "sales" | "misc" }) {
   return (
     <SegmentLinks
       label="Gains sections"
       items={[
-        { href: "/gains", label: "Sales", active: active === "sales" },
+        { href: "/gains", label: "Summary", active: active === "summary" },
+        { href: "/gains/sales", label: "Sales", active: active === "sales" },
         { href: "/gains/misc", label: "Misc", active: active === "misc" },
       ]}
     />

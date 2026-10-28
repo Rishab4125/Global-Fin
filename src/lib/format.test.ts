@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   csvMoney,
   csvQty,
+  formatDayMonth,
   formatINR,
   formatINRCompact,
   formatINRWhole,
@@ -123,5 +124,12 @@ describe("csv numbers", () => {
     expect(csvQty(120)).toBe("120");
     expect(csvQty(0.00001234)).toBe("0.00001234");
     expect(csvQty(10.5)).toBe("10.5");
+  });
+});
+
+describe("formatDayMonth", () => {
+  it("shows day and month without the year", () => {
+    expect(formatDayMonth("2025-04-02")).toBe("02 Apr");
+    expect(formatDayMonth("2026-03-31")).toBe("31 Mar");
   });
 });

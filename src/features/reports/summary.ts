@@ -86,3 +86,50 @@ export function toCsv(rows: RealisedRow[]): string {
   );
   return [header.join(","), ...lines].join("\n");
 }
+
+export interface TermSplit {
+  short: number;
+  long: number;
+  /** Dividend income, which is neither short- nor long-term. */
+  income: number;
+  /** What is left of the gain after the three above; non-zero only when a buyback's dividend part is in the gain. */
+  other: number;
+  total: number;
+}
+
+/** How the gain divides into short term, long term and dividend income. The parts always add up to the total. */
+export function termSplit(rows: RealisedRow[]): TermSplit {
+  const sum = (f: (r: RealisedRow) => number) => r2(rows.reduce((s, r) => s + f(r), 0));
+  const short = sum((r) => r.stcg);
+  const long = sum((r) => r.ltcg);
+  const income = sum((r) => r.income);
+  const total = sum((r) => r.gain);
+  return { short, long, income, other: r2(total - short - long - income), total };
+}
+
+export interface MiscGroup {
+  label: string;
+  count: number;
+  gain: number;
+  net: number;
+  rows: RealisedRow[];
+}
+
+/** Misc entries grouped by type, Dividends first, then the largest groups. Each group has its subtotal. */
+export function groupMisc(rows: RealisedRow[], typeOf: (r: RealisedRow) => string): MiscGroup[] {
+  const map = new Map<string, RealisedRow[]>();
+  for (const r of rows) {
+    const k = typeOf(r);
+    map.set(k, [...(map.get(k) ?? []), r]);
+  }
+  return [...map.entries()]
+    .map(([label, rs]) => {
+      const t = totals(rs);
+      return { label, count: rs.length, gain: t.gain, net: t.net, rows: rs };
+    })
+    .sort((a, b) => {
+      if (a.label === "Dividends") return -1;
+      if (b.label === "Dividends") return 1;
+      return Math.abs(b.gain) - Math.abs(a.gain) || (a.label < b.label ? -1 : 1);
+    });
+}

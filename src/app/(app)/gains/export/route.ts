@@ -1,7 +1,7 @@
 import { todayIso } from "@/domain/dates";
 import { requireUser } from "@/features/auth/session";
 import { loadPortfolio } from "@/features/portfolio/data";
-import { realisedView } from "@/features/reports/realisedFilter";
+import { miscView, realisedView } from "@/features/reports/realisedFilter";
 import { toCsv } from "@/features/reports/summary";
 
 /** Exports exactly what the Realised gains page shows for the same period and filters. */
@@ -22,14 +22,29 @@ export async function GET(req: Request) {
     },
     todayIso(),
   );
-  const rows = [...view.rows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  // From the Misc segment the export holds only misc rows and follows that page's type and result filters.
+  const misc = sp.get("kind") === "misc";
+  const miscRows = misc
+    ? miscView(
+        pf,
+        {
+          period: sp.get("period") ?? undefined,
+          from: sp.get("from") ?? undefined,
+          to: sp.get("to") ?? undefined,
+          mt: sp.get("mt") ?? undefined,
+          sign: sp.get("sign") ?? undefined,
+        },
+        todayIso(),
+      ).rows
+    : null;
+  const rows = [...(miscRows ?? view.rows)].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   // The period was validated by resolvePeriod, so it is safe to use in the file name.
   const { period } = view;
   const label = period.value === "custom" ? `${period.from}_to_${period.to}` : period.value.replace(":", "-");
   return new Response(`﻿${toCsv(rows)}`, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="realised-gains-${label}.csv"`,
+      "Content-Disposition": `attachment; filename="${misc ? "misc-gains" : "realised-gains"}-${label}.csv"`,
     },
   });
 }

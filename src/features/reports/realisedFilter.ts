@@ -7,6 +7,10 @@ import type { Portfolio } from "@/features/portfolio/data";
 export const TERMS = ["Short term", "Long term"];
 export const RESULTS = ["Profit", "Loss"];
 
+/** The Misc type of a misc row: Dividends, or the asset type the entry was recorded under. */
+export const miscTypeOf = (r: RealisedRow, dividendIds: Set<string>) =>
+  dividendIds.has(r.id) ? "Dividends" : ASSET_RULES[r.assetType].label;
+
 export type RealisedQuery = {
   period?: string;
   from?: string;
@@ -43,4 +47,28 @@ export function realisedView(pf: Portfolio, query: RealisedQuery, today: string)
   const periodQuery =
     period.value === "custom" ? `period=custom&from=${period.from}&to=${period.to}` : `period=${encodeURIComponent(period.value)}`;
   return { period, periodQuery, groups, filters, fq: filterQs(filters), rows };
+}
+
+export type MiscQuery = { period?: string; from?: string; to?: string; q?: string; mt?: string; sign?: string };
+
+/** Misc rows (entries and dividends) with the Misc page's period, type, result and search; the CSV export reuses it. */
+export function miscView(pf: Portfolio, query: MiscQuery, today: string) {
+  const period = resolvePeriod({ ...query, period: query.period ?? "all" }, today);
+  const dividendIds = new Set(pf.dividendEvents.map((d) => d.id));
+  const typeOf = (r: RealisedRow) => miscTypeOf(r, dividendIds);
+  const all = pf.rows.filter((r) => r.kind === "misc");
+  const typeOptions = [...new Set(all.map(typeOf))].sort();
+  const filters: Filters = readFilters(query, ["mt", "sign"], { mt: typeOptions, sign: RESULTS });
+  const noteOf = new Map(pf.miscEvents.map((m) => [m.id, m.note]));
+  const needle = (query.q ?? "").trim().toLowerCase();
+  const rows = all.filter(
+    (r) =>
+      inPeriod(r.date, period) &&
+      passes(filters.mt, typeOf(r)) &&
+      passes(filters.sign, r.netGain >= 0 ? "Profit" : "Loss") &&
+      (!needle || [typeOf(r), r.label, noteOf.get(r.id) ?? ""].some((s) => s.toLowerCase().includes(needle))),
+  );
+  const periodQuery =
+    period.value === "custom" ? `period=custom&from=${period.from}&to=${period.to}` : `period=${encodeURIComponent(period.value)}`;
+  return { period, periodQuery, filters, fq: filterQs(filters), typeOptions, all, rows, typeOf };
 }

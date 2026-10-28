@@ -10,7 +10,7 @@ describe("old addresses redirect to where the content moved", () => {
     const r = await nextConfig.redirects!();
     const map = Object.fromEntries(r.map((x) => [x.source, x.destination]));
     expect(map).toEqual({
-      "/realised": "/gains",
+      "/realised": "/gains/sales",
       "/realised/export": "/gains/export",
       "/misc": "/gains/misc",
       "/settings": "/profile/tax",
@@ -55,7 +55,7 @@ describe("account menu", () => {
 });
 
 describe("primary pages exist", () => {
-  it.each(["/dashboard", "/holdings", "/transactions", "/gains", "/gains/misc", "/sell", "/holdings/import", "/holdings/sync"])(
+  it.each(["/dashboard", "/holdings", "/transactions", "/gains", "/gains/sales", "/gains/misc", "/sell", "/holdings/import", "/holdings/sync"])(
     "%s",
     (p) => expect(existsSync(pageFor(p))).toBe(true),
   );

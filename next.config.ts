@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   // Old addresses keep working: Misc and Realised moved into Gains, Settings into the account menu.
   async redirects() {
     return [
-      { source: "/realised", destination: "/gains", permanent: false },
+      { source: "/realised", destination: "/gains/sales", permanent: false },
       { source: "/realised/export", destination: "/gains/export", permanent: false },
       { source: "/misc", destination: "/gains/misc", permanent: false },
       { source: "/settings", destination: "/profile/tax", permanent: false },

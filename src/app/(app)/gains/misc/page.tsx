@@ -1,86 +1,53 @@
-import { Receipt } from "lucide-react";
+import { Download, Receipt } from "lucide-react";
+import Link from "next/link";
+import { Amount } from "@/components/Amount";
 import { DeleteButton } from "@/components/DeleteButton";
 import { FilterBar } from "@/components/FilterBar";
 import { ListSearch } from "@/components/ListSearch";
-import { SortHeader } from "@/components/SortHeader";
 import { GainsTabs } from "@/components/SegmentLinks";
 import { EmptyState, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
-import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
-import { ASSET_RULES } from "@/domain/taxRules";
+import { fyOptions } from "@/domain/period";
 import { requireUser } from "@/features/auth/session";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { AddMisc } from "@/features/misc/AddMisc";
 import { deleteMiscAction } from "@/features/misc/actions";
 import { loadPortfolio } from "@/features/portfolio/data";
-import { filterQs, passes, readFilters } from "@/lib/filters";
-import { formatDate, formatINR, gainClass } from "@/lib/format";
-import { parseSort, sortRows } from "@/lib/sort";
-
-const SORT_KEYS = ["date", "type", "amount", "brokerage", "tax", "net", "note"] as const;
+import { miscView } from "@/features/reports/realisedFilter";
+import { groupMisc } from "@/features/reports/summary";
+import { formatDate, formatINR, formatINRWhole, gainClass } from "@/lib/format";
 
 export const metadata = { title: "Gains: Misc" };
 
 export default async function MiscPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string; ty?: string; sign?: string; adj?: string; add?: string }>;
+  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; mt?: string; sign?: string; add?: string }>;
 }) {
   const query = await searchParams;
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);
   const today = todayIso();
-  const rowById = new Map(pf.rows.map((r) => [r.id, r]));
-  const typeOf = (e: (typeof pf.miscEvents)[number]) => ASSET_RULES[e.assetType].label;
 
-  const earliest = pf.miscEvents.map((e) => e.date).sort()[0] ?? today;
-  const period = resolvePeriod({ ...query, period: query.period ?? "all" }, today);
-  const options = fyOptions(pf.miscEvents.length ? earliest : null, today).map((fy, i) => ({
+  const view = miscView(pf, query, today);
+  const { period, filters, typeOptions, all, rows, typeOf } = view;
+  const dividendAsset = new Map(pf.dividendEvents.map((d) => [d.id, d.assetId]));
+  const noteOf = new Map(pf.miscEvents.map((m) => [m.id, m.note]));
+
+  const earliest = all.map((r) => r.date).sort()[0] ?? today;
+  const options = fyOptions(all.length ? earliest : null, today).map((fy, i) => ({
     value: `fy:${fy}`,
     label: i === 0 ? `FY ${fy} (current)` : `FY ${fy}`,
   }));
   if (period.value.startsWith("fy:") && !options.some((o) => o.value === period.value)) {
     options.push({ value: period.value, label: period.label });
   }
-  const periodQuery =
-    period.value === "custom"
-      ? `period=custom&from=${period.from}&to=${period.to}`
-      : `period=${encodeURIComponent(period.value)}`;
 
-  const typeOptions = [...new Set(pf.miscEvents.map(typeOf))].sort();
-  const filters = readFilters(query, ["ty", "sign", "adj"], { ty: typeOptions, sign: ["Profit", "Loss"], adj: ["Yes", "No"] });
-  const fq = filterQs(filters);
-  const withF = fq ? `&${fq}` : "";
   const q = (query.q ?? "").trim();
-  const needle = q.toLowerCase();
-  const sort = parseSort(query, SORT_KEYS, { key: "date", dir: "desc" });
-  const sortQuery = `sort=${sort.key}&dir=${sort.dir}`;
-  const withQ = q ? `&q=${encodeURIComponent(q)}` : "";
-
-  const shown = pf.miscEvents.filter(
-    (e) =>
-      inPeriod(e.date, period) &&
-      passes(filters.ty, typeOf(e)) &&
-      passes(filters.sign, (rowById.get(e.id)?.netGain ?? 0) >= 0 ? "Profit" : "Loss") &&
-      passes(filters.adj, e.taxAdjusted ? "Yes" : "No") &&
-      (!needle || [typeOf(e), e.note ?? ""].some((s) => s.toLowerCase().includes(needle))),
-  );
-  const getters: Record<(typeof SORT_KEYS)[number], (e: (typeof shown)[number]) => string | number> = {
-    date: (e) => e.date,
-    type: (e) => typeOf(e),
-    amount: (e) => e.amount,
-    brokerage: (e) => e.brokerage,
-    tax: (e) => rowById.get(e.id)?.tax ?? 0,
-    net: (e) => rowById.get(e.id)?.netGain ?? 0,
-    note: (e) => e.note ?? "",
-  };
-  const entries = sortRows(shown, getters[sort.key], sort.dir);
-  const net = entries.reduce((s, e) => s + (rowById.get(e.id)?.netGain ?? 0), 0);
-  const filtered = entries.length !== pf.miscEvents.length;
-
-  const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc", className = "") => (
-    <SortHeader label={label} col={col} sort={sort} basePath="/gains/misc" query={`${periodQuery}${withQ}${withF}`} align={align} firstDir={firstDir} className={className} />
-  );
+  const groups = groupMisc(rows, typeOf);
+  const keep = [view.periodQuery, view.fq].filter(Boolean).join("&");
+  const exportQs = [view.periodQuery, "kind=misc", view.fq].filter(Boolean).join("&");
+  const overview = groups.map((g) => `${g.label} ${formatINRWhole(g.gain)}`).join(" · ");
 
   return (
     <div>
@@ -89,12 +56,12 @@ export default async function MiscPage({
         defaultOpen={!!query.add}
         today={today}
         title="Gains"
-        description="One-off gains and losses without a buy and sell, such as F&O or interest. Dividends are recorded on the holding."
+        description="One-off gains and losses without a buy and sell, such as F&O or interest, and dividends from your holdings."
         tabs={<GainsTabs active="misc" />}
       >
-        {pf.miscEvents.length > 0 && (
+        {all.length > 0 && (
           <>
-            <ListSearch q={q} basePath="/gains/misc" query={`${periodQuery}&${sortQuery}${withF}`} placeholder="Search type or note" />
+            <ListSearch q={q} basePath="/gains/misc" query={keep} placeholder="Search type, holding or note" />
             <PeriodFilter
               options={options}
               value={period.value}
@@ -103,86 +70,105 @@ export default async function MiscPage({
               earliest={earliest}
               today={today}
               basePath="/gains/misc"
-              extraQuery={`${sortQuery}${withQ}${withF}`}
+              extraQuery={[q ? `q=${encodeURIComponent(q)}` : "", view.fq].filter(Boolean).join("&")}
             />
             <FilterBar
               basePath="/gains/misc"
               selected={filters}
               groups={[
-                { id: "ty", label: "Type", options: typeOptions.length > 1 ? typeOptions : [] },
+                { id: "mt", label: "Type", options: typeOptions.length > 1 ? typeOptions : [] },
                 { id: "sign", label: "Result", options: ["Profit", "Loss"] },
-                { id: "adj", label: "Tax adjusted", options: ["Yes", "No"] },
               ]}
             />
+            <a href={`/gains/export?${exportQs}`} aria-label="Export CSV" title="Export CSV" className="btn-ghost shrink-0">
+              <Download size={16} />
+              <span className="hidden sm:inline">Export CSV</span>
+            </a>
           </>
         )}
       </AddMisc>
-      <div className="space-y-5">
-        <SectionCard
-          title="Entries"
-          description={
-            pf.miscEvents.length
-              ? `${entries.length} entr${entries.length === 1 ? "y" : "ies"}${filtered ? ` of ${pf.miscEvents.length}` : ""} · net ${formatINR(net)}`
-              : undefined
-          }
-          flush
-        >
-          {pf.miscEvents.length === 0 ? (
-            <EmptyState icon={Receipt} title="No entries yet" text="Press Add misc P/L to record your first one." />
-          ) : entries.length === 0 ? (
-            <EmptyState icon={Receipt} title="No entries match" text="Try a different period or clear the search and filters." />
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr>
-                  {head("Date", "date", "left", "desc", "sticky-col")}
-                  {head("Type", "type")}
-                  {head("Amount", "amount", "right", "desc")}
-                  {head("Brokerage", "brokerage", "right", "desc", "hidden md:table-cell")}
-                  <th className="th hidden md:table-cell">Tax adjusted</th>
-                  {head("Tax", "tax", "right", "desc")}
-                  {head("Net", "net", "right", "desc")}
-                  {head("Note", "note", "left", "asc", "hidden md:table-cell")}
-                  <th className="th" />
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((e) => {
-                  const r = rowById.get(e.id);
-                  return (
-                    <tr key={e.id}>
-                      <td className="td sticky-col">{formatDate(e.date)}</td>
-                      <td className="td">{typeOf(e)}</td>
-                      <td className={`td text-right font-medium ${gainClass(e.amount)}`}>{formatINR(e.amount)}</td>
-                      <td className="td hidden text-right md:table-cell">{e.brokerage ? formatINR(e.brokerage) : "–"}</td>
-                      <td className="td hidden md:table-cell">
-                        <span className={e.taxAdjusted ? "badge-gain" : "badge-muted"}>
-                          {e.taxAdjusted ? "Yes" : "No"}
-                        </span>
-                      </td>
-                      <td className="td text-right">{formatINR(r?.tax ?? 0)}</td>
-                      <td className={`td text-right ${gainClass(r?.netGain ?? 0)}`}>{formatINR(r?.netGain ?? 0)}</td>
-                      <td className="td hidden max-w-40 truncate text-muted md:table-cell" title={e.note || undefined}>
-                        {e.note || "–"}
-                      </td>
-                      <td className="td text-right">
-                        <DeleteButton
-                          compact
-                          action={deleteMiscAction}
-                          id={e.id}
-                          label="Delete"
-                          ariaLabel={`Delete ${typeOf(e)} entry of ${formatDate(e.date)}`}
-                          confirmText="Delete this entry? This cannot be undone."
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+
+      {all.length === 0 ? (
+        <SectionCard flush>
+          <EmptyState icon={Receipt} title="No entries yet" text="Press Add misc P/L, or record a dividend on a holding." />
         </SectionCard>
-      </div>
+      ) : rows.length === 0 ? (
+        <SectionCard flush>
+          <EmptyState icon={Receipt} title="No entries match" text="Try a different period or clear the search and filters." />
+        </SectionCard>
+      ) : (
+        <div className="space-y-5">
+          <p className="t-body">
+            <span className="t-label mr-2">Gross</span>
+            <Amount>{overview}</Amount>
+          </p>
+          {groups.map((g) => (
+            <SectionCard
+              key={g.label}
+              title={g.label}
+              description={`${g.count} entr${g.count === 1 ? "y" : "ies"}`}
+              action={
+                <div className="num text-right">
+                  <div className={`t-value ${gainClass(g.gain)}`}>
+                    <Amount>{formatINRWhole(g.gain)}</Amount>
+                  </div>
+                  <div className="t-caption">
+                    after tax <Amount>{formatINRWhole(g.net)}</Amount>
+                  </div>
+                </div>
+              }
+              flush
+            >
+              <ul className="divide-y divide-line">
+                {[...g.rows]
+                  .sort((a, b) => (a.date < b.date ? 1 : -1))
+                  .map((r) => {
+                    const assetId = dividendAsset.get(r.id);
+                    const note = noteOf.get(r.id);
+                    return (
+                      <li key={r.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                        <div className="t-caption w-20 shrink-0 sm:w-24">{formatDate(r.date)}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={assetId ? "badge-gain" : "badge-muted"}>{assetId ? "Dividend" : g.label}</span>
+                            {assetId ? (
+                              <Link href={`/holdings/${assetId}?tab=events`} className="t-body-strong truncate hover:text-primary hover:underline">
+                                {r.label.replace("Dividend: ", "")}
+                              </Link>
+                            ) : (
+                              note && <span className="t-body truncate">{note}</span>
+                            )}
+                          </div>
+                          {!r.taxApplied && <div className="t-caption">Tax already adjusted</div>}
+                        </div>
+                        <div className="num shrink-0 text-right">
+                          <div className={`t-body-strong ${gainClass(r.gain)}`}>
+                            <Amount>{formatINR(r.gain)}</Amount>
+                          </div>
+                          <div className="t-caption">
+                            net <Amount>{formatINR(r.netGain)}</Amount>
+                          </div>
+                        </div>
+                        {assetId ? (
+                          <span className="w-9 shrink-0" />
+                        ) : (
+                          <DeleteButton
+                            compact
+                            action={deleteMiscAction}
+                            id={r.id}
+                            label="Delete"
+                            ariaLabel={`Delete ${g.label} entry of ${formatDate(r.date)}`}
+                            confirmText="Delete this entry? This cannot be undone."
+                          />
+                        )}
+                      </li>
+                    );
+                  })}
+              </ul>
+            </SectionCard>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
