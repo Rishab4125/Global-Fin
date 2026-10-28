@@ -40,6 +40,8 @@ export interface Portfolio {
   slabRate: number;
   /** Every platform the user can pick or filter by. */
   platforms: string[];
+  /** Platform of the most recently added purchase, to pre-select in the Add form. */
+  lastPlatform: string;
   rows: RealisedRow[];
   holdings: HoldingView[];
 }
@@ -172,5 +174,8 @@ export async function loadPortfolio(userId: string): Promise<Portfolio> {
     lots.map((l) => l.platform ?? "Other"),
   );
 
-  return { assets: assetViews, lots, sold, saleEvents, miscEvents, actions, dividendEvents, slabRate, platforms, rows, holdings };
+  const newest = [...lotRows].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0];
+  const lastPlatform = newest?.platform ?? platforms[0];
+
+  return { assets: assetViews, lots, sold, saleEvents, miscEvents, actions, dividendEvents, slabRate, platforms, lastPlatform, rows, holdings };
 }

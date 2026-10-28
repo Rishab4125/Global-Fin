@@ -118,6 +118,8 @@ export default async function HoldingsPage({
     <div>
       <AddInvestment
         today={today}
+        platforms={pf.platforms}
+        defaultPlatform={pf.lastPlatform}
         title="Holdings"
         description={
           pf.holdings.length

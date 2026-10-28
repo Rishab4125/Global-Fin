@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { todayIso } from "../domain/dates";
 import { decimalsMessage, MONEY_DECIMALS, placesOf } from "../domain/limits";
+import { cleanNumeric } from "./numeric";
 
 const blank = (v: unknown) => (v === "" || v === null || v === undefined ? undefined : v);
 
-/** "₹1,25,000.50" -> "125000.50". Pasted amounts often carry the symbol, commas or spaces. */
-export const cleanNumeric = (v: unknown) => (typeof v === "string" ? v.replace(/[₹,\s]/g, "") : v);
+export { cleanNumeric };
 
 /** A real calendar day (rejects 2025-02-31) that is not in the future. */
 export const pastDate = z

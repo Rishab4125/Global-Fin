@@ -8,12 +8,16 @@ import { AddBuyForm } from "./AddBuyForm";
 /** Page header with an Add investment button (left of the other actions) that reveals the form, then the filters. */
 export function AddInvestment({
   today,
+  platforms,
+  defaultPlatform,
   title,
   description,
   actions,
   children,
 }: {
   today: string;
+  platforms: string[];
+  defaultPlatform: string;
   title: string;
   description: string;
   actions: React.ReactNode;
@@ -43,7 +47,7 @@ export function AddInvestment({
       />
       {open && (
         <div className="mb-5">
-          <AddBuyForm today={today} />
+          <AddBuyForm today={today} platforms={platforms} defaultPlatform={defaultPlatform} />
         </div>
       )}
       <div className="mb-4 flex flex-wrap items-center gap-3">{children}</div>

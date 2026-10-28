@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, notExists, sql } from "drizzle-orm";
+import { and, eq, inArray, notExists, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -9,9 +9,10 @@ import { db } from "@/db/client";
 import { assets, buyLots, sales, userPlatforms } from "@/db/schema";
 import { reallocate, type Lot } from "@/domain/fifo";
 import { unitsAt } from "@/domain/corporateActions";
+import { TYPE_FIELDS, validateDetails, platformKindFor } from "@/domain/investmentFields";
 import { limitError } from "@/domain/limits";
 import { DEFAULT_PLATFORMS, MAX_PLATFORM_LENGTH } from "@/domain/platform";
-import { ASSET_TYPE_IDS, type AssetTypeId } from "@/domain/taxRules";
+import { ASSET_RULES, ASSET_TYPE_IDS, type AssetTypeId } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import type { ActionState } from "@/features/portfolio/actionState";
 import { loadPortfolio, type Portfolio } from "@/features/portfolio/data";
@@ -28,8 +29,16 @@ const buySchema = z.object({
   qty: qty(),
   price: number("price"),
   fees: money("fees"),
-  platform: z.string().trim().min(1).max(MAX_PLATFORM_LENGTH, "Platform name is too long").default("Other"),
+  platform: z.string().trim().min(1, "Choose where it is held").max(MAX_PLATFORM_LENGTH, "Platform name is too long").default("Other"),
+  tags: z.string().trim().max(300).default(""),
+  notes: z.string().trim().max(500).default(""),
+  nickname: z.string().trim().max(60).default(""),
 });
+
+/** "Retirement, Kid's fund" -> ["Retirement", "Kid's fund"], without blanks, repeats or very long tags. */
+function parseTags(text: string): string[] {
+  return [...new Set(text.split(",").map((t) => t.trim()).filter(Boolean))].slice(0, 10).map((t) => t.slice(0, 30));
+}
 
 export async function addBuyAction(_: ActionState, form: FormData): Promise<ActionState> {
   const user = await requireUser();
@@ -41,11 +50,23 @@ export async function addBuyAction(_: ActionState, form: FormData): Promise<Acti
     price: form.get("price"),
     fees: form.get("fees") || 0,
     platform: form.get("platform") || undefined,
+    tags: form.get("tags") || "",
+    notes: form.get("notes") || "",
+    nickname: form.get("nickname") || "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const v = parsed.data;
-  const tooPrecise = limitError(v.type as AssetTypeId, { qty: v.qty, price: v.price });
+  const type = v.type as AssetTypeId;
+  const tooPrecise = limitError(type, { qty: v.qty, price: v.price });
   if (tooPrecise) return { error: tooPrecise };
+
+  // Type-specific fields (rate, maturity, exchange, ...) arrive as d:<key>.
+  const rawDetails: Record<string, string> = {};
+  for (const f of TYPE_FIELDS[type] ?? []) rawDetails[f.key] = String(form.get(`d:${f.key}`) ?? "");
+  const checked = validateDetails(type, rawDetails, v.buyDate);
+  if (checked.error !== undefined) return { error: checked.error };
+  const { isin, ...details } = checked.details as Record<string, string | number>;
+  if (v.nickname) details.nickname = v.nickname;
 
   const existing = await db
     .select({ id: assets.id })
@@ -53,8 +74,11 @@ export async function addBuyAction(_: ActionState, form: FormData): Promise<Acti
     .where(
       and(
         eq(assets.userId, user.id),
-        eq(assets.type, v.type),
-        sql`lower(${assets.name}) = ${v.name.toLowerCase()}`,
+        or(
+          and(eq(assets.type, v.type), sql`lower(${assets.name}) = ${v.name.toLowerCase()}`),
+          // The same ISIN is the same holding, whatever it was named.
+          isin ? eq(assets.isin, String(isin)) : undefined,
+        ),
       ),
     )
     .limit(1);
@@ -63,7 +87,15 @@ export async function addBuyAction(_: ActionState, form: FormData): Promise<Acti
   if (!assetId) {
     const [created] = await db
       .insert(assets)
-      .values({ userId: user.id, type: v.type, name: v.name })
+      .values({
+        userId: user.id,
+        type: v.type,
+        name: v.name,
+        isin: isin ? String(isin) : null,
+        tags: parseTags(v.tags),
+        notes: v.notes,
+        details,
+      })
       .returning({ id: assets.id });
     assetId = created.id;
   }
@@ -94,7 +126,12 @@ export async function addBuyAction(_: ActionState, form: FormData): Promise<Acti
       // A platform typed here becomes part of the user's own list.
       ...(DEFAULT_PLATFORMS.includes(v.platform)
         ? []
-        : [db.insert(userPlatforms).values({ userId: user.id, name: v.platform }).onConflictDoNothing()]),
+        : [
+            db
+              .insert(userPlatforms)
+              .values({ userId: user.id, name: v.platform, kind: platformKindFor(ASSET_RULES[type].category) })
+              .onConflictDoNothing(),
+          ]),
       ...moved,
     ] as unknown as Parameters<typeof db.batch>[0]);
   } catch {
@@ -118,6 +155,7 @@ function reassign(pf: Portfolio, assetId: string, change: (lots: Lot[]) => Lot[]
 
 const updateLotSchema = z.object({
   lotId: z.string().uuid(),
+  platform: z.string().trim().min(1, "Choose where it is held").max(MAX_PLATFORM_LENGTH, "Platform name is too long").optional(),
   buyDate: iso,
   qty: qty(),
   price: number("price"),
@@ -128,6 +166,7 @@ export async function updateLotAction(_: ActionState, form: FormData): Promise<A
   const user = await requireUser();
   const parsed = updateLotSchema.safeParse({
     lotId: form.get("lotId"),
+    platform: form.get("platform") || undefined,
     buyDate: form.get("buyDate"),
     qty: form.get("qty"),
     price: form.get("price"),
@@ -168,8 +207,17 @@ export async function updateLotAction(_: ActionState, form: FormData): Promise<A
     await db.batch([
       db
         .update(buyLots)
-        .set({ buyDate: v.buyDate, qty: String(v.qty), unitPrice: String(v.price), fees: String(v.fees) })
+        .set({
+          buyDate: v.buyDate,
+          qty: String(v.qty),
+          unitPrice: String(v.price),
+          fees: String(v.fees),
+          ...(v.platform ? { platform: v.platform } : {}),
+        })
         .where(and(eq(buyLots.id, v.lotId), eq(buyLots.userId, user.id))),
+      ...(v.platform && !DEFAULT_PLATFORMS.includes(v.platform)
+        ? [db.insert(userPlatforms).values({ userId: user.id, name: v.platform }).onConflictDoNothing()]
+        : []),
       ...re.statements,
     ] as unknown as Parameters<typeof db.batch>[0]);
   } catch {

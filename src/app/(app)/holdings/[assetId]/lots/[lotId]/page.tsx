@@ -38,9 +38,11 @@ export default async function EditLotPage({ params }: { params: Promise<{ assetI
       />
       <EditBuyForm
         lotId={lot.id}
+        type={asset.type}
         today={todayIso()}
+        platforms={pf.platforms}
         minQty={sold}
-        initial={{ buyDate: lot.buyDate, qty: lot.qty, price: lot.unitPrice, fees: lot.fees }}
+        initial={{ buyDate: lot.buyDate, qty: lot.qty, price: lot.unitPrice, fees: lot.fees, platform: lot.platform ?? "Other" }}
       />
     </div>
   );
