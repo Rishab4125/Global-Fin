@@ -277,6 +277,85 @@ export async function deleteHoldingsAction(ids: string[]): Promise<ActionState> 
   return { ok: true, nonce: Date.now() };
 }
 
+const detailsSchema = z.object({
+  assetId: z.string().uuid(),
+  tags: z.string().trim().max(300).default(""),
+  notes: z.string().trim().max(500).default(""),
+  nickname: z.string().trim().max(60).default(""),
+});
+
+/** Save the optional facts about a holding: type-specific details, tags, notes and account nickname. */
+export async function updateAssetDetailsAction(_: ActionState, form: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const parsed = detailsSchema.safeParse({
+    assetId: form.get("assetId"),
+    tags: form.get("tags") || "",
+    notes: form.get("notes") || "",
+    nickname: form.get("nickname") || "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const v = parsed.data;
+
+  const [asset] = await db
+    .select()
+    .from(assets)
+    .where(and(eq(assets.id, v.assetId), eq(assets.userId, user.id)))
+    .limit(1);
+  if (!asset) return { error: "Holding not found" };
+  const type = asset.type as AssetTypeId;
+
+  const firstLot = await db
+    .select({ d: buyLots.buyDate })
+    .from(buyLots)
+    .where(and(eq(buyLots.assetId, asset.id), eq(buyLots.userId, user.id)))
+    .orderBy(buyLots.buyDate)
+    .limit(1);
+  const raw: Record<string, string> = {};
+  for (const f of TYPE_FIELDS[type] ?? []) raw[f.key] = String(form.get(`d:${f.key}`) ?? "");
+  const checked = validateDetails(type, raw, firstLot[0]?.d ?? "0000-01-01");
+  if (checked.error !== undefined) return { error: checked.error };
+  const { isin, ...fields } = checked.details as Record<string, string | number>;
+
+  // Keep anything saved that this form doesn't manage; replace what it does.
+  const managed = new Set([...(TYPE_FIELDS[type] ?? []).map((f) => f.key), "nickname"]);
+  const kept = Object.fromEntries(Object.entries((asset.details ?? {}) as Record<string, unknown>).filter(([k]) => !managed.has(k)));
+  const details: Record<string, unknown> = { ...kept, ...fields };
+  if (v.nickname) details.nickname = v.nickname;
+
+  const hasIsinField = (TYPE_FIELDS[type] ?? []).some((f) => f.key === "isin");
+  if (hasIsinField && isin) {
+    const [clash] = await db
+      .select({ id: assets.id })
+      .from(assets)
+      .where(and(eq(assets.userId, user.id), eq(assets.isin, String(isin))))
+      .limit(1);
+    if (clash && clash.id !== asset.id) return { error: "Another holding already has this ISIN." };
+  }
+
+  try {
+    await db
+      .update(assets)
+      .set({
+        tags: parseTags(v.tags),
+        notes: v.notes,
+        details,
+        ...(hasIsinField ? { isin: isin ? String(isin) : null } : {}),
+      })
+      .where(and(eq(assets.id, asset.id), eq(assets.userId, user.id)));
+  } catch {
+    return { error: "Couldn't save changes. Please try again." };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true, nonce: Date.now() };
+}
+
+/** Delete one holding with everything under it, then go back to the list. */
+export async function deleteHoldingAction(id: string): Promise<ActionState> {
+  const res = await deleteHoldingsAction([id]);
+  if (res.error) return res;
+  redirect("/holdings");
+}
+
 const assetSchema = z.object({
   assetId: z.string().uuid(),
   name: z.string().trim().min(1, "Name is required").max(100),

@@ -1,22 +1,34 @@
 import { BriefcaseBusiness, RefreshCw, Upload } from "lucide-react";
 import Link from "next/link";
+import { Amount } from "@/components/Amount";
 import { FilterBar } from "@/components/FilterBar";
+import { HideAmountsButton } from "@/components/HideAmountsButton";
 import { ListSearch } from "@/components/ListSearch";
+import { ParamSelect } from "@/components/ParamSelect";
+import { SegmentLinks } from "@/components/SegmentLinks";
 import { SortSelect } from "@/components/SortSelect";
-import { EmptyState, Kpi, SectionCard } from "@/components/ui";
+import { EmptyState, SectionCard } from "@/components/ui";
+import { unitsNow } from "@/domain/corporateActions";
 import { todayIso } from "@/domain/dates";
-import { lotUnitCost } from "@/domain/fifo";
 import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { AddInvestment } from "@/features/holdings/AddInvestment";
-import { HoldingsGrid } from "@/features/holdings/HoldingsGrid";
+import { HoldingsGrid, type HoldingGroupData } from "@/features/holdings/HoldingsGrid";
+import {
+  buildHoldingRows,
+  filterOptions,
+  GROUP_OPTIONS,
+  groupHoldingRows,
+  searchRows,
+  SORT_KEYS,
+  sortHoldingRows,
+  type GroupBy,
+} from "@/features/holdings/list";
 import { loadPortfolio } from "@/features/portfolio/data";
-import { filterQs, joinQs, passes, readFilters } from "@/lib/filters";
-import { unitsNow } from "@/domain/corporateActions";
-import { formatDate, formatINR, formatQty } from "@/lib/format";
-import { parseSort, sortRows } from "@/lib/sort";
+import { filterQs, joinQs, readFilters } from "@/lib/filters";
+import { formatINRWhole, formatPercent, formatPrice, formatQty } from "@/lib/format";
+import { parseSort } from "@/lib/sort";
 
-const SORT_KEYS = ["invested", "name", "qty", "avg", "recent"] as const;
 const SORT_OPTIONS = [
   { value: "invested:desc", label: "Invested: high to low" },
   { value: "invested:asc", label: "Invested: low to high" },
@@ -26,93 +38,80 @@ const SORT_OPTIONS = [
   { value: "recent:desc", label: "Recently bought" },
 ];
 
-interface Row {
-  id: string;
-  name: string;
-  typeLabel: string;
-  platforms: string[];
-  qty: number;
-  cost: number;
-  avgCost: number;
-  since: string;
-  lastBuy: string;
-}
-
 export const metadata = { title: "Holdings" };
 
-export default async function HoldingsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; sort?: string; dir?: string; pf?: string; ty?: string; add?: string }>;
-}) {
+type Query = {
+  q?: string;
+  sort?: string;
+  dir?: string;
+  pf?: string;
+  ty?: string;
+  ex?: string;
+  tag?: string;
+  group?: string;
+  view?: string;
+  add?: string;
+};
+
+export default async function HoldingsPage({ searchParams }: { searchParams: Promise<Query> }) {
   const query = await searchParams;
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);
   const today = todayIso();
 
   const q = (query.q ?? "").trim();
-  const needle = q.toLowerCase();
   const sort = parseSort(query, SORT_KEYS, { key: "invested", dir: "desc" });
-  const groupOptions = [...new Set(pf.holdings.map((h) => ASSET_RULES[h.type].category))].sort();
-  const filters = readFilters(query, ["pf", "ty"], { pf: pf.platforms, ty: groupOptions });
+  const groupBy: GroupBy = GROUP_OPTIONS.some((o) => o.value === query.group) ? (query.group as GroupBy) : "none";
+  const table = query.view === "table";
+
+  const listAssets = pf.assets.map((a) => ({ id: a.id, type: a.type, name: a.name, tags: a.tags }));
+  const options = filterOptions(listAssets);
+  const filters = readFilters(query, ["pf", "ty", "ex", "tag"], {
+    pf: pf.platforms,
+    ty: options.categories,
+    ex: options.exposures,
+    tag: options.tags,
+  });
   const fq = filterQs(filters);
-  const withQ = joinQs(q ? `q=${encodeURIComponent(q)}` : "", fq);
 
-  const assetMap = new Map(pf.assets.map((a) => [a.id, a]));
-  const splitsNow = unitsNow(pf.actions, today);
-  const acc = new Map<string, Row & { platformSet: Set<string> }>();
-  const byPlatform = new Map<string, number>();
-  for (const l of pf.lots) {
-    const rem = l.qty - (pf.sold.get(l.id) ?? 0);
-    const a = assetMap.get(l.assetId);
-    if (rem <= 1e-9 || !a) continue;
-    if (!passes(filters.pf, l.platform) || !passes(filters.ty, ASSET_RULES[a.type].category)) continue;
-    const r = acc.get(a.id) ?? {
-      id: a.id,
-      name: a.name,
-      typeLabel: ASSET_RULES[a.type].label,
-      platforms: [],
-      platformSet: new Set<string>(),
-      qty: 0,
-      cost: 0,
-      avgCost: 0,
-      since: l.buyDate,
-      lastBuy: l.buyDate,
-    };
-    const part = rem * lotUnitCost(l);
-    const remNow = (rem * (splitsNow.get(l.assetId) ?? 1)) / (l.u ?? 1);
-    const platform = l.platform ?? "Other";
-    r.qty += remNow;
-    r.cost += part;
-    r.platformSet.add(platform);
-    r.since = l.buyDate < r.since ? l.buyDate : r.since;
-    r.lastBuy = l.buyDate > r.lastBuy ? l.buyDate : r.lastBuy;
-    byPlatform.set(platform, (byPlatform.get(platform) ?? 0) + part);
-    acc.set(a.id, r);
-  }
-  const all: Row[] = [...acc.values()].map(({ platformSet, ...r }) => ({
-    ...r,
-    platforms: [...platformSet].sort(),
-    avgCost: r.qty > 0 ? r.cost / r.qty : 0,
-  }));
-  const filtered = all.filter(
-    (r) => !needle || [r.name, r.typeLabel, ...r.platforms].some((s) => s.toLowerCase().includes(needle)),
+  const { rows: built, portfolioTotal } = buildHoldingRows(
+    pf.lots,
+    pf.sold,
+    new Map(listAssets.map((a) => [a.id, a])),
+    unitsNow(pf.actions, today),
+    { platform: filters.pf, category: filters.ty, exposure: filters.ex, tag: filters.tag },
   );
-
-  const getters: Record<(typeof SORT_KEYS)[number], (r: Row) => string | number> = {
-    name: (r) => r.name,
-    qty: (r) => r.qty,
-    avg: (r) => r.avgCost,
-    invested: (r) => r.cost,
-    recent: (r) => r.lastBuy,
-  };
-  const rows = sortRows(filtered, getters[sort.key], sort.dir);
-  const totalCost = all.reduce((s, r) => s + r.cost, 0);
+  const rows = sortHoldingRows(searchRows(built, q), sort.key, sort.dir);
   const shownCost = rows.reduce((s, r) => s + r.cost, 0);
-  const platformSplit = [...byPlatform.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([p, c]) => `${p} ${formatINR(c)}`)
-    .join(" · ");
+  const groups = groupHoldingRows(rows, groupBy);
+  const share = (cost: number) => (portfolioTotal > 0 ? formatPercent((cost / portfolioTotal) * 100) : "–");
+
+  const data: HoldingGroupData[] = groups.map((g) => ({
+    title: g.key,
+    subtotal: formatINRWhole(g.cost),
+    share: share(g.cost),
+    rows: g.rows.map((h) => ({
+      id: h.id,
+      name: h.name,
+      category: ASSET_RULES[h.type].category,
+      platforms: h.platforms,
+      qty: formatQty(h.qty, h.type),
+      avgCost: formatPrice(h.avgCost, { crypto: h.type === "crypto" }),
+      cost: formatINRWhole(h.cost),
+      share: share(h.cost),
+      tags: h.tags,
+    })),
+  }));
+
+  // Every control keeps the others' choices in the address.
+  const qQs = q ? `q=${encodeURIComponent(q)}` : "";
+  const groupQs = groupBy === "none" ? "" : `group=${groupBy}`;
+  const viewQs = table ? "view=table" : "";
+  const sortQs = `sort=${sort.key}&dir=${sort.dir}`;
+  const viewHref = (view: "cards" | "table") =>
+    `/holdings?${joinQs(qQs, fq, groupQs, sortQs, view === "table" ? "view=table" : "")}`;
+
+  const hasAny = pf.holdings.length > 0;
 
   return (
     <div>
@@ -123,11 +122,7 @@ export default async function HoldingsPage({
         platforms={pf.platforms}
         defaultPlatform={pf.lastPlatform}
         title="Holdings"
-        description={
-          pf.holdings.length
-            ? `${rows.length} holding${rows.length === 1 ? "" : "s"}${q || fq ? ` of ${all.length}` : ""} · ${formatINR(shownCost)} invested`
-            : "Record what you own."
-        }
+        description={hasAny ? "What you hold, where, and what it cost." : "Record what you own."}
         actions={
           <>
             <Link href="/holdings/import" aria-label="Import trades" title="Import trades" className="btn-ghost shrink-0 max-sm:!w-10 max-sm:!min-w-10 max-sm:!px-0">
@@ -141,51 +136,75 @@ export default async function HoldingsPage({
           </>
         }
       >
-        <ListSearch
-          q={q}
-          basePath="/holdings"
-          query={joinQs(`sort=${sort.key}&dir=${sort.dir}`, fq)}
-          placeholder="Search name, type or platform"
-        />
-        <SortSelect options={SORT_OPTIONS} value={`${sort.key}:${sort.dir}`} basePath="/holdings" query={withQ} />
-        <FilterBar
-          basePath="/holdings"
-          selected={filters}
-          groups={[
-            { id: "pf", label: "Platform", options: pf.platforms },
-            { id: "ty", label: "Category", options: groupOptions.length > 1 ? groupOptions : [] },
-          ]}
-        />
+        {hasAny && (
+          <>
+            <ListSearch
+              q={q}
+              basePath="/holdings"
+              query={joinQs(sortQs, fq, groupQs, viewQs)}
+              placeholder="Search name, platform or tag"
+            />
+            <SortSelect options={SORT_OPTIONS} value={`${sort.key}:${sort.dir}`} basePath="/holdings" query={joinQs(qQs, fq, groupQs, viewQs)} />
+            <ParamSelect param="group" label="Group holdings" value={groupBy} defaultValue="none" options={GROUP_OPTIONS} />
+            <div className="hidden lg:block">
+              <SegmentLinks
+                label="Holdings layout"
+                className=""
+                items={[
+                  { href: viewHref("cards"), label: "Cards", active: !table },
+                  { href: viewHref("table"), label: "Table", active: table },
+                ]}
+              />
+            </div>
+            <FilterBar
+              basePath="/holdings"
+              selected={filters}
+              groups={[
+                { id: "ty", label: "Category", options: options.categories.length > 1 ? options.categories : [] },
+                { id: "pf", label: "Platform", options: pf.platforms },
+                { id: "ex", label: "Exposure", options: options.exposures.length > 1 ? options.exposures : [] },
+                { id: "tag", label: "Tag", options: options.tags },
+              ]}
+            />
+          </>
+        )}
       </AddInvestment>
 
-      {all.length > 0 && (
-        <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4">
-          <Kpi label="Total invested" value={formatINR(totalCost)} icon={BriefcaseBusiness} hint={`${all.length} holding${all.length === 1 ? "" : "s"}`} />
-          <Kpi label="By platform" value={String(byPlatform.size)} hint={platformSplit} />
+      {hasAny && (
+        <div className="mb-4 flex flex-wrap items-end gap-x-8 gap-y-3">
+          <div>
+            <p className="t-label">Total invested · by cost</p>
+            <p className="t-kpi mt-1">
+              <Amount>{formatINRWhole(shownCost)}</Amount>
+            </p>
+          </div>
+          <div>
+            <p className="t-label">Holdings</p>
+            <p className="t-kpi num mt-1">
+              {rows.length}
+              {rows.length !== pf.holdings.length && <span className="t-caption"> of {pf.holdings.length}</span>}
+            </p>
+          </div>
+          <div className="ml-auto">
+            <HideAmountsButton />
+          </div>
         </div>
       )}
 
       <SectionCard flush>
-        {pf.holdings.length === 0 ? (
+        {!hasAny ? (
           <EmptyState icon={BriefcaseBusiness} title="No holdings yet" text="Press Add investment to record your first one." />
         ) : rows.length === 0 ? (
           <EmptyState icon={BriefcaseBusiness} title="No holdings match" text="Clear the search or filters to see all your holdings." />
         ) : (
-          <HoldingsGrid
-            rows={rows.map((h) => ({
-              id: h.id,
-              name: h.name,
-              typeLabel: h.typeLabel,
-              platforms: h.platforms,
-              qty: formatQty(h.qty),
-              avgCost: formatINR(h.avgCost),
-              cost: formatINR(h.cost),
-              since: formatDate(h.since),
-              share: totalCost > 0 ? `${((h.cost / totalCost) * 100).toFixed(1)}%` : "–",
-            }))}
-          />
+          <HoldingsGrid groups={data} table={table} />
         )}
       </SectionCard>
+      {hasAny && (
+        <p className="t-caption mt-3">
+          Amounts are what you paid. Current value and profit or loss appear once prices are added.
+        </p>
+      )}
     </div>
   );
 }

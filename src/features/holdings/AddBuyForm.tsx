@@ -5,10 +5,11 @@ import { Field, FormError, FormNotice } from "@/components/fields";
 import { NumberField } from "@/components/NumberField";
 import { PlatformField } from "@/components/PlatformField";
 import { useServerForm } from "@/components/useServerForm";
-import { LUMP_SUM, labelsFor, TYPE_FIELDS, typesByCategory, type FieldDef } from "@/domain/investmentFields";
+import { LUMP_SUM, labelsFor, TYPE_FIELDS, typesByCategory } from "@/domain/investmentFields";
 import { MONEY_DECIMALS, priceDecimals, qtyDecimals } from "@/domain/limits";
 import { ASSET_RULES, CATEGORIES, type AssetTypeId, type Category } from "@/domain/taxRules";
 import { addBuyAction } from "./actions";
+import { TypeField } from "./TypeFields";
 
 const BY_CATEGORY = typesByCategory();
 
@@ -127,39 +128,5 @@ export function AddBuyForm({
         {pending ? "Saving…" : "Save investment"}
       </button>
     </form>
-  );
-}
-
-/** One type-specific field. Submitted as d:<key>. */
-function TypeField({ def }: { def: FieldDef }) {
-  const name = `d:${def.key}`;
-  if (def.kind === "select") {
-    return (
-      <Field label={def.label}>
-        <select name={name} required={def.required} defaultValue={def.required ? def.options?.[0] : ""} className="input">
-          {!def.required && <option value="">Not set</option>}
-          {def.options?.map((o) => (
-            <option key={o}>{o}</option>
-          ))}
-        </select>
-      </Field>
-    );
-  }
-  if (def.kind === "number") {
-    return (
-      <NumberField name={name} label={def.label} decimals={def.decimals ?? 2} required={def.required} placeholder={def.placeholder} hint={def.hint} />
-    );
-  }
-  if (def.kind === "date") {
-    return (
-      <Field label={def.label} hint={def.hint}>
-        <input name={name} type="date" required={def.required} className="input" />
-      </Field>
-    );
-  }
-  return (
-    <Field label={def.label} hint={def.hint}>
-      <input name={name} required={def.required} maxLength={100} autoComplete="off" placeholder={def.placeholder} className="input" />
-    </Field>
   );
 }

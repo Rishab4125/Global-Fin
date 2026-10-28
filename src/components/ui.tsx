@@ -28,8 +28,9 @@ export function Kpi({
   icon: Icon,
 }: {
   label: string;
-  value: string;
-  hint?: string;
+  /** Text, or an <Amount> so the eye icon can hide it. */
+  value: React.ReactNode;
+  hint?: React.ReactNode;
   tone?: "default" | "gain" | "loss";
   icon?: LucideIcon;
 }) {
@@ -44,8 +45,8 @@ export function Kpi({
           </span>
         )}
       </div>
-      <div className={`num mt-2 text-[26px] font-semibold leading-none tracking-tight ${color}`}>{value}</div>
-      {hint && <div className="mt-2 text-xs text-muted">{hint}</div>}
+      <div className={`t-kpi num mt-2 ${color}`}>{value}</div>
+      {hint && <div className="t-caption mt-2">{hint}</div>}
     </div>
   );
 }

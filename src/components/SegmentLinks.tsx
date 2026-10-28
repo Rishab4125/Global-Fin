@@ -4,12 +4,15 @@ import Link from "next/link";
 export function SegmentLinks({
   label,
   items,
+  className = "mb-5",
 }: {
   label: string;
   items: { href: string; label: string; active: boolean }[];
+  /** Spacing around the row; the default leaves room below it. */
+  className?: string;
 }) {
   return (
-    <nav aria-label={label} className="mb-5 max-w-full overflow-x-auto">
+    <nav aria-label={label} className={`${className} max-w-full overflow-x-auto`}>
       <div className="inline-flex gap-0.5 rounded-lg bg-surface2 p-0.5">
         {items.map((i) => (
           <Link
