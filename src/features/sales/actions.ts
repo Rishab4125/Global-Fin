@@ -9,6 +9,7 @@ import { db } from "@/db/client";
 import { sales } from "@/db/schema";
 import { reallocate, type Allocation } from "@/domain/fifo";
 import { computeRealised, type SaleEvent } from "@/domain/gains";
+import { unitsAt } from "@/domain/corporateActions";
 import { limitError } from "@/domain/limits";
 import { requireUser } from "@/features/auth/session";
 import type { ActionState } from "@/features/portfolio/actionState";
@@ -28,6 +29,8 @@ const saleSchema = z.object({
   applyTax: z.boolean(),
   exemptRedemption: z.boolean(),
   isBuyback: z.boolean(),
+  /** Shares tendered in a buyback. `qty` is the accepted part, the only part that becomes a sale. */
+  tenderedQty: qty("tendered shares").optional(),
 });
 
 function parse(form: FormData) {
@@ -41,6 +44,7 @@ function parse(form: FormData) {
     applyTax: form.get("applyTax") === "yes",
     exemptRedemption: form.get("exemptRedemption") === "on",
     isBuyback: form.get("isBuyback") === "on",
+    tenderedQty: form.get("tenderedQty") || undefined,
   });
 }
 
@@ -55,6 +59,13 @@ async function plan(userId: string, form: FormData) {
   if (!asset) return { error: "Holding not found" } as const;
   const tooPrecise = limitError(asset.type, { qty: v.qty, price: v.price });
   if (tooPrecise) return { error: tooPrecise } as const;
+  if (v.isBuyback) {
+    if (v.tenderedQty === undefined) return { error: "Enter the shares you tendered in the buyback" } as const;
+    const tenderedTooPrecise = limitError(asset.type, { qty: v.tenderedQty });
+    if (tenderedTooPrecise) return { error: tenderedTooPrecise } as const;
+    if (v.qty > v.tenderedQty) return { error: "Accepted shares can't be more than the shares tendered" } as const;
+  }
+  const sellU = unitsAt(pf.actions, asset.id, v.sellDate);
 
   const existing = v.saleId ? pf.saleEvents.find((s) => s.id === v.saleId) : undefined;
   if (v.saleId && (!existing || existing.assetId !== asset.id)) return { error: "Sale not found" } as const;
@@ -63,19 +74,15 @@ async function plan(userId: string, form: FormData) {
   // existing sale that has to shift to other lots is re-matched too.
   const assetLots = pf.lots.filter((l) => l.assetId === asset.id);
   const assetSales = pf.saleEvents.filter((s) => s.assetId === asset.id && s.id !== v.saleId);
-  const { allocations: matched, short } = reallocate(assetLots, [
-    ...assetSales.map((s) => ({ id: s.id, date: s.date, qty: s.qty })),
-    { id: NEW_SALE, date: v.sellDate, qty: v.qty },
+  const { allocations: matched, short, shortBy } = reallocate(assetLots, [
+    ...assetSales.map((s) => ({ id: s.id, date: s.date, qty: s.qty, u: s.u })),
+    { id: NEW_SALE, date: v.sellDate, qty: v.qty, u: sellU },
   ]);
   if (short) {
     if (short.id !== NEW_SALE) {
       return { error: `This would leave your ${short.date} sale of ${short.qty} units without enough units.` } as const;
     }
-    const have = Math.max(
-      0,
-      assetLots.filter((l) => l.buyDate <= v.sellDate).reduce((s, l) => s + l.qty, 0) -
-        assetSales.filter((s) => s.date <= v.sellDate).reduce((s, x) => s + x.qty, 0),
-    );
+    const have = Math.max(0, v.qty - shortBy);
     return { error: `Only ${have} units available to sell on or before ${v.sellDate}` } as const;
   }
   const allocations = matched.get(NEW_SALE)!;
@@ -98,6 +105,8 @@ async function plan(userId: string, form: FormData) {
     applyTax: v.applyTax,
     exemptRedemption: asset.type === "sgb" && v.exemptRedemption,
     buyback: v.isBuyback,
+    tenderedQty: v.isBuyback ? (v.tenderedQty ?? null) : null,
+    u: sellU,
     allocations,
   };
   const others = pf.saleEvents
@@ -144,6 +153,7 @@ export async function recordSaleAction(_: ActionState, form: FormData): Promise<
         applyTax: p.v.applyTax,
         exemptRedemption: p.hypo.exemptRedemption,
         isBuyback: p.v.isBuyback,
+        tenderedQty: p.hypo.tenderedQty == null ? null : String(p.hypo.tenderedQty),
       }),
       ...allocationStatements(mine),
     ] as unknown as Parameters<typeof db.batch>[0]);
@@ -182,6 +192,7 @@ export async function updateSaleAction(_: ActionState, form: FormData): Promise<
           applyTax: p.v.applyTax,
           exemptRedemption: p.hypo.exemptRedemption,
           isBuyback: p.v.isBuyback,
+          tenderedQty: p.hypo.tenderedQty == null ? null : String(p.hypo.tenderedQty),
         })
         .where(and(eq(sales.id, saleId), eq(sales.userId, user.id))),
       ...allocationStatements(mine),
@@ -204,7 +215,7 @@ export async function deleteSaleAction(id: string): Promise<ActionState> {
   const rest = pf.saleEvents.filter((s) => s.assetId === sale.assetId && s.id !== id);
   const { allocations, short } = reallocate(
     pf.lots.filter((l) => l.assetId === sale.assetId),
-    rest.map((s) => ({ id: s.id, date: s.date, qty: s.qty })),
+    rest.map((s) => ({ id: s.id, date: s.date, qty: s.qty, u: s.u })),
   );
   if (short) return { error: "Couldn't re-match your other sales after this delete." };
 

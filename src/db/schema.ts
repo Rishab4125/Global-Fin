@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   date,
   index,
@@ -37,6 +38,29 @@ export const assets = pgTable(
   ],
 );
 
+/** Split, bonus and dividend events on a holding. Lots stay as entered; events adjust them on read. */
+export const corporateActions = pgTable(
+  "corporate_actions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    assetId: uuid("asset_id")
+      .notNull()
+      .references(() => assets.id, { onDelete: "cascade" }),
+    /** split, bonus or dividend */
+    type: text("type").notNull(),
+    actionDate: date("action_date", { mode: "string" }).notNull(),
+    /** New units per old unit: 1:5 split is ratioOld 1, ratioNew 5. A 1:1 bonus is 1 and 1. */
+    ratioNew: numeric("ratio_new", { precision: 12, scale: 4 }).notNull().default("1"),
+    ratioOld: numeric("ratio_old", { precision: 12, scale: 4 }).notNull().default("1"),
+    amount: money("amount").notNull().default("0"),
+    tds: money("tds").notNull().default("0"),
+    note: text("note").notNull().default(""),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("actions_user_idx").on(t.userId), index("actions_asset_idx").on(t.assetId)],
+);
+
 export const buyLots = pgTable(
   "buy_lots",
   {
@@ -49,6 +73,8 @@ export const buyLots = pgTable(
     qty: precise("qty").notNull(),
     unitPrice: precise("unit_price").notNull(),
     fees: money("fees").notNull().default("0"),
+    /** Set when a bonus event created this lot; reversing the event removes it. */
+    eventId: uuid("event_id").references((): AnyPgColumn => corporateActions.id, { onDelete: "cascade" }),
     /** Where this purchase is held (Zerodha, HDFC Bank, ...). One holding can span several platforms. */
     platform: text("platform").notNull().default("Other"),
     source: text("source").notNull().default("manual"),
@@ -79,6 +105,8 @@ export const sales = pgTable(
     applyTax: boolean("apply_tax").notNull().default(true),
     exemptRedemption: boolean("exempt_redemption").notNull().default(false),
     isBuyback: boolean("is_buyback").notNull().default(false),
+    /** Shares tendered in a buyback; `qty` is the accepted part that became this sale. */
+    tenderedQty: precise("tendered_qty"),
     source: text("source").notNull().default("manual"),
     brokerTradeId: text("broker_trade_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -11,11 +11,10 @@ import type { ActionState } from "@/features/portfolio/actionState";
 import { money, pastDate } from "@/lib/validation";
 
 const schema = z.object({
-  assetType: z.enum(["buyback", ...ASSET_TYPE_IDS]),
+  assetType: z.enum(ASSET_TYPE_IDS as [string, ...string[]]),
   entryDate: pastDate,
   amount: money("amount", { min: -1e12 }).refine((n) => n !== 0, "Enter a non-zero amount"),
   kind: z.enum(["profit", "loss"]),
-  cost: money("cost"),
   brokerage: money("brokerage"),
   taxAdjusted: z.boolean(),
   term: z.enum(["STCG", "LTCG"]),
@@ -29,7 +28,6 @@ export async function addMiscAction(_: ActionState, form: FormData): Promise<Act
     entryDate: form.get("entryDate"),
     amount: form.get("amount"),
     kind: form.get("kind") || "profit",
-    cost: form.get("cost") || 0,
     brokerage: form.get("brokerage") || 0,
     taxAdjusted: form.get("taxAdjusted") === "yes",
     term: form.get("term") || "STCG",
@@ -38,10 +36,7 @@ export async function addMiscAction(_: ActionState, form: FormData): Promise<Act
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const v = parsed.data;
 
-  // "Share buyback" is one of the investment types; the stored asset_type "buyback" marks the entry.
-  const buyback = v.assetType === "buyback";
-  if (buyback && v.amount < 0) return { error: "Buyback proceeds must be positive" };
-  const signed = buyback ? Math.abs(v.amount) : v.kind === "loss" ? -Math.abs(v.amount) : Math.abs(v.amount);
+  const signed = v.kind === "loss" ? -Math.abs(v.amount) : Math.abs(v.amount);
 
   await db.insert(miscEntries).values({
     userId: user.id,
@@ -50,7 +45,6 @@ export async function addMiscAction(_: ActionState, form: FormData): Promise<Act
     amount: String(signed),
     taxAdjusted: v.taxAdjusted,
     term: v.term,
-    cost: String(buyback ? v.cost : 0),
     brokerage: String(v.brokerage),
     note: v.note,
   });

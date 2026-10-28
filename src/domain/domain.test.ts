@@ -164,7 +164,6 @@ describe("realised gains and tax", () => {
       taxAdjusted: false,
       term: "STCG",
       entryType: "general",
-      cost: 0,
       brokerage: 0,
       note: "",
       ...p,
@@ -193,7 +192,6 @@ describe("misc brokerage and buyback", () => {
     taxAdjusted: false,
     term: "STCG",
     entryType: "general",
-    cost: 0,
     brokerage: 0,
     note: "",
     ...p,
@@ -211,35 +209,77 @@ describe("misc brokerage and buyback", () => {
     expect(r.tax).toBe(0);
   });
 
-  it("buyback after 1 Oct 2024 is taxed as dividend at slab rate on full proceeds", () => {
+  it("dividend income is taxed at slab rate, shown per stock, and not touched by brokerage", () => {
     const [r] = computeRealised(
-      [misc({ entryType: "buyback", amount: 100000, cost: 40000, brokerage: 200 })],
+      [misc({ entryType: "dividend", assetName: "RELIANCE", amount: 3600 })],
       [],
       0.3,
     );
-    expect(r.gain).toBe(59800); // proceeds - cost - brokerage
-    expect(r.tax).toBe(31200); // 100000 * 30% * 1.04
-    expect(r.proceeds).toBe(100000);
-    expect(r.cost).toBe(40000);
+    expect(r.label).toBe("Dividend: RELIANCE");
+    expect(r.income).toBe(3600);
+    expect(r.gain).toBe(3600);
+    expect(r.stcg + r.ltcg).toBe(0);
+    expect(r.tax).toBe(1123.2); // 3600 * 30% * 1.04, not the 20% equity STCG rate
   });
 
-  it("buyback before 1 Oct 2024 is tax-free for the shareholder", () => {
-    const [r] = computeRealised(
-      [misc({ entryType: "buyback", date: "2024-09-15", amount: 100000, cost: 40000 })],
+  it("dividend is not reduced by capital losses", () => {
+    const lots = [lot("a", "2025-01-01", 100, 100)];
+    const rows = computeRealised(
+      [
+        sale({ id: "loss", date: "2025-07-01", qty: 100, price: 50, allocations: [{ lotId: "a", qty: 100 }] }),
+        misc({ id: "div", entryType: "dividend", assetName: "X", amount: 1000 }),
+      ],
+      lots,
+      0.3,
+    );
+    expect(rows.find((r) => r.id === "div")!.tax).toBe(312);
+  });
+
+  it("dividends add up in the period total", () => {
+    const rows = computeRealised(
+      [
+        misc({ id: "d1", entryType: "dividend", assetName: "A", amount: 3600 }),
+        misc({ id: "d2", entryType: "dividend", assetName: "B", amount: 5200, date: "2025-08-01" }),
+      ],
       [],
       0.3,
     );
-    expect(r.gain).toBe(60000);
+    expect(rows.reduce((s, r) => s + r.income, 0)).toBe(8800);
+  });
+
+  it("dividend marked tax adjusted has no tax", () => {
+    const [r] = computeRealised([misc({ entryType: "dividend", assetName: "A", amount: 1000, taxAdjusted: true })], [], 0.3);
+    expect(r.tax).toBe(0);
+  });
+});
+
+describe("share buyback (a sale flagged as a buyback)", () => {
+  const lots = [lot("a", "2024-01-01", 100, 400)];
+  const bb = (p: Partial<SaleEvent>) =>
+    sale({ buyback: true, date: "2025-06-01", qty: 60, price: 1000, allocations: [{ lotId: "a", qty: 60 }], ...p });
+
+  it("after 1 Oct 2024 is taxed as dividend at slab rate on full proceeds, cost is a loss", () => {
+    const [r] = computeRealised([bb({ date: "2025-06-01", fees: 200 })], lots, 0.3);
+    expect(r.proceeds).toBe(59800);
+    expect(r.cost).toBe(24000);
+    expect(r.gain).toBe(35800);
+    expect(r.tax).toBe(18720); // 60 * 1000 * 30% * 1.04, on the full proceeds before fees
+  });
+
+  it("before 1 Oct 2024 is tax-free for the shareholder", () => {
+    const [r] = computeRealised([bb({ date: "2024-09-15" })], lots, 0.3);
+    expect(r.gain).toBe(36000);
     expect(r.tax).toBe(0);
   });
 
-  it("buyback marked tax adjusted has no tax", () => {
-    const [r] = computeRealised(
-      [misc({ entryType: "buyback", amount: 100000, cost: 40000, taxAdjusted: true })],
-      [],
-      0.3,
-    );
+  it("marked tax not applied has no tax", () => {
+    const [r] = computeRealised([bb({ date: "2025-06-01", applyTax: false })], lots, 0.3);
     expect(r.tax).toBe(0);
+  });
+
+  it("notes how many of the tendered shares were accepted", () => {
+    const [r] = computeRealised([bb({ date: "2025-06-01", tenderedQty: 100 })], lots, 0.3);
+    expect(r.note).toContain("60 of 100");
   });
 });
 

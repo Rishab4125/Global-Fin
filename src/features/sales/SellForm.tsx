@@ -15,6 +15,7 @@ export interface SaleInitial {
   applyTax: boolean;
   exemptRedemption: boolean;
   isBuyback: boolean;
+  tenderedQty?: number | null;
 }
 
 export function SellForm({
@@ -36,6 +37,9 @@ export function SellForm({
   const { formRef, state, pending, onSubmit } = useServerForm(editing ? updateSaleAction : recordSaleAction);
   const [preview, setPreview] = useState<ActionState>({});
   const [previewing, startPreview] = useTransition();
+  const [buyback, setBuyback] = useState(!!initial?.isBuyback);
+  const [tendered, setTendered] = useState(initial?.tenderedQty ? String(initial.tenderedQty) : "");
+  const [accepted, setAccepted] = useState(initial?.qty ? String(initial.qty) : "");
   const error = state.error ?? preview.error;
   const p = preview.preview;
 
@@ -58,7 +62,29 @@ export function SellForm({
         <Field label="Sale date">
           <input name="sellDate" type="date" required defaultValue={initial?.sellDate ?? today} max={today} className="input" />
         </Field>
-        <Field label="Quantity" hint={`Available: ${maxQty}`}>
+        {buyback && (
+          <Field label="Shares tendered" hint="How many you offered to the company">
+            <input
+              name="tenderedQty"
+              type="number"
+              step="any"
+              inputMode="decimal"
+              min="0"
+              required
+              value={tendered}
+              onChange={(e) => setTendered(e.target.value)}
+              className="input"
+            />
+          </Field>
+        )}
+        <Field
+          label={buyback ? "Shares accepted" : "Quantity"}
+          hint={
+            buyback && Number(tendered) > 0 && Number(accepted) > 0 && Number(accepted) <= Number(tendered)
+              ? `Only the ${accepted} accepted shares become a sale. ${Number(tendered) - Number(accepted)} stay in your holding.`
+              : `Available: ${maxQty}`
+          }
+        >
           <input
             name="qty"
             type="number"
@@ -67,7 +93,8 @@ export function SellForm({
             min="0.0001"
             max={maxQty}
             required
-            defaultValue={initial?.qty}
+            value={accepted}
+            onChange={(e) => setAccepted(e.target.value)}
             className="input"
           />
         </Field>
@@ -84,7 +111,8 @@ export function SellForm({
           <input
             type="checkbox"
             name="isBuyback"
-            defaultChecked={initial?.isBuyback}
+            checked={buyback}
+            onChange={(e) => setBuyback(e.target.checked)}
             className="mt-0.5 size-4 accent-[var(--primary)]"
           />
           <span>

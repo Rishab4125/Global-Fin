@@ -12,6 +12,7 @@ import { AddInvestment } from "@/features/holdings/AddInvestment";
 import { HoldingsGrid } from "@/features/holdings/HoldingsGrid";
 import { loadPortfolio } from "@/features/portfolio/data";
 import { filterQs, joinQs, passes, readFilters } from "@/lib/filters";
+import { unitsNow } from "@/domain/corporateActions";
 import { formatDate, formatINR, formatQty } from "@/lib/format";
 import { parseSort, sortRows } from "@/lib/sort";
 
@@ -58,6 +59,7 @@ export default async function HoldingsPage({
   const withQ = joinQs(q ? `q=${encodeURIComponent(q)}` : "", fq);
 
   const assetMap = new Map(pf.assets.map((a) => [a.id, a]));
+  const splitsNow = unitsNow(pf.actions, today);
   const acc = new Map<string, Row & { platformSet: Set<string> }>();
   const byPlatform = new Map<string, number>();
   for (const l of pf.lots) {
@@ -78,8 +80,9 @@ export default async function HoldingsPage({
       lastBuy: l.buyDate,
     };
     const part = rem * lotUnitCost(l);
+    const remNow = (rem * (splitsNow.get(l.assetId) ?? 1)) / (l.u ?? 1);
     const platform = l.platform ?? "Other";
-    r.qty += rem;
+    r.qty += remNow;
     r.cost += part;
     r.platformSet.add(platform);
     r.since = l.buyDate < r.since ? l.buyDate : r.since;

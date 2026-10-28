@@ -29,14 +29,19 @@ export interface SaleEvent {
   source?: string;
   /** Platforms of the lots this sale consumed. */
   platforms?: string[];
+  /** Units factor of the sale date (splits on or before it). */
+  u?: number;
+  /** Shares tendered in a buyback; `qty` is the accepted part. */
+  tenderedQty?: number | null;
 }
 
 export interface MiscEvent {
   kind: "misc";
-  /** "general" is a plain profit/loss; "buyback" has proceeds (amount) and a cost of shares. */
-  entryType: "general" | "buyback";
-  /** Cost of the shares bought back (buyback only). */
-  cost: number;
+  /** "general" is a plain profit/loss; "dividend" is income from a holding, taxed at slab rate. */
+  entryType: "general" | "dividend";
+  /** The holding a dividend belongs to. */
+  assetId?: string;
+  assetName?: string;
   brokerage: number;
   id: string;
   assetType: AssetTypeId;
@@ -62,6 +67,8 @@ export interface RealisedRow {
   gain: number;
   stcg: number;
   ltcg: number;
+  /** Dividend income. It is part of `gain` but is neither short- nor long-term capital gain. */
+  income: number;
   tax: number;
   netGain: number;
   taxApplied: boolean;
@@ -105,8 +112,10 @@ function salePieces(sale: SaleEvent, lots: Map<string, Lot>) {
   for (const a of sale.allocations) {
     const lot = lots.get(a.lotId);
     if (!lot) continue;
+    // Allocations are in lot units; the sale and its price are in the units of the sale date (after any splits).
+    const saleUnits = a.qty * ((sale.u ?? 1) / (lot.u ?? 1));
     const allocCost = a.qty * lotUnitCost(lot);
-    const proceeds = a.qty * sale.price - saleFees * (a.qty / sale.qty);
+    const proceeds = saleUnits * sale.price - saleFees * (saleUnits / sale.qty);
     const gain = proceeds - allocCost;
     cost += allocCost;
     const isLong =
@@ -222,9 +231,10 @@ export function computeRealised(
     stcg: number;
     ltcg: number;
     taxApplied: boolean;
+    income: number;
     row: Omit<
       RealisedRow,
-      | "gain" | "stcg" | "ltcg" | "tax" | "netGain" | "taxApplied" | "exemptionUsed" | "taxableGain"
+      | "gain" | "stcg" | "ltcg" | "income" | "tax" | "netGain" | "taxApplied" | "exemptionUsed" | "taxableGain"
       | "exemptionLeft" | "offsetByLosses" | "lossUsed" | "taxSaved" | "buyback"
     >;
     tax: number;
@@ -246,6 +256,8 @@ export function computeRealised(
     let row: Draft["row"];
     let buyback = false;
     let dividend = 0;
+    let income = 0;
+    let isDividend = false;
     let costS = 0;
     let costL = 0;
 
@@ -268,21 +280,18 @@ export function computeRealised(
         qty: e.qty,
         proceeds: round2(p.proceeds),
         cost: round2(p.cost),
-        note: [e.exemptRedemption && e.assetType === "sgb" ? "Tax-free RBI redemption" : "", e.buyback ? "Share buyback." : ""]
+        note: [e.exemptRedemption && e.assetType === "sgb" ? "Tax-free RBI redemption" : "", e.buyback ? (e.tenderedQty ? `Share buyback: ${e.qty} of ${e.tenderedQty} tendered shares accepted.` : "Share buyback.") : ""]
           .filter(Boolean)
           .join(" "),
       };
     } else {
-      const isLong = e.term === "LTCG" && rule.longTermMonths !== null;
-      buyback = e.entryType === "buyback";
-      dividend = e.amount;
-      if (buyback) {
-        if (isLong) costL = e.cost;
-        else costS = e.cost;
-      }
-      const net = (buyback ? e.amount - e.cost : e.amount) - e.brokerage;
-      stcg = isLong ? 0 : net;
-      ltcg = isLong ? net : 0;
+      isDividend = e.entryType === "dividend";
+      const isLong = !isDividend && e.term === "LTCG" && rule.longTermMonths !== null;
+      const net = e.amount - e.brokerage;
+      // A dividend is income, not a capital gain, so it sits outside the short/long-term split.
+      income = isDividend ? e.amount : 0;
+      stcg = isDividend || isLong ? 0 : net;
+      ltcg = !isDividend && isLong ? net : 0;
       taxApplied = !e.taxAdjusted;
       row = {
         id: e.id,
@@ -290,17 +299,17 @@ export function computeRealised(
         date: e.date,
         fy,
         assetType: e.assetType,
-        label: buyback ? "Buyback" : "Misc P/L",
+        label: isDividend ? `Dividend: ${e.assetName ?? "holding"}` : "Misc P/L",
         qty: null,
-        proceeds: buyback ? round2(e.amount) : null,
-        cost: buyback ? round2(e.cost) : null,
+        proceeds: null,
+        cost: null,
         note: [e.taxAdjusted ? "Tax already adjusted." : "", e.brokerage > 0 ? `Brokerage ${inr(e.brokerage)}.` : "", e.note]
           .filter(Boolean)
           .join(" "),
       };
     }
 
-    const draft: Draft = { e, fy, stcg, ltcg, taxApplied, row, tax: 0, taxableGain: 0, extraNote: "", buyback };
+    const draft: Draft = { e, fy, stcg, ltcg, income, taxApplied, row, tax: 0, taxableGain: 0, extraNote: "", buyback };
     const eventIndex = drafts.length;
     drafts.push(draft);
 
@@ -329,6 +338,13 @@ export function computeRealised(
             piecesByFy.set(fy, list);
           }
         }
+      }
+    } else if (isDividend) {
+      // Dividend income is taxed at slab rate. It is not a capital gain, so losses are not set off against it.
+      draft.extraNote = "Dividend taxed at slab rate. TDS already deducted, if any, is not subtracted here.";
+      if (taxApplied && income > 0) {
+        draft.taxableGain = income;
+        draft.tax = income * slabRate * (1 + CESS);
       }
     } else if (taxApplied) {
       for (const [term, gain] of [["STCG", stcg], ["LTCG", ltcg]] as const) {
@@ -379,7 +395,7 @@ export function computeRealised(
   return drafts.map((d, i) => {
     const rule = ASSET_RULES[d.e.assetType];
     exemptionUsedInFy.set(d.fy, (exemptionUsedInFy.get(d.fy) ?? 0) + exemptBy[i]);
-    const gain = d.stcg + d.ltcg;
+    const gain = d.stcg + d.ltcg + d.income;
 
     const notes = [d.row.note, d.extraNote];
     if (lossUsedBy[i] > 0.005) {
@@ -395,6 +411,7 @@ export function computeRealised(
       gain: round2(gain),
       stcg: round2(d.stcg),
       ltcg: round2(d.ltcg),
+      income: round2(d.income),
       tax: round2(d.tax),
       netGain: round2(gain - d.tax),
       taxApplied: d.taxApplied,

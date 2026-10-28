@@ -9,6 +9,10 @@ export interface Lot {
   source?: string;
   /** Where the units are held, e.g. "Zerodha" or "HDFC Bank". */
   platform?: string;
+  /** Units factor of the buy date: product of the holding's splits on or before it. 1 when there are none. */
+  u?: number;
+  /** Set when a bonus event created this lot. */
+  eventId?: string | null;
 }
 
 export interface Allocation {
@@ -32,6 +36,8 @@ export function allocateFifo(
   remaining: Map<string, number>,
   sellQty: number,
   sellDate: string,
+  /** Units factor of the sale date. A sale after a split is in newer units than a lot bought before it. */
+  sellU = 1,
 ): { allocations: Allocation[]; shortfall: number } {
   const eligible = lots
     .filter((l) => l.buyDate <= sellDate && (remaining.get(l.id) ?? 0) > EPS)
@@ -41,9 +47,11 @@ export function allocateFifo(
   const allocations: Allocation[] = [];
   for (const lot of eligible) {
     if (need <= EPS) break;
-    const take = Math.min(need, remaining.get(lot.id) ?? 0);
-    allocations.push({ lotId: lot.id, qty: take });
-    need -= take;
+    // One lot unit is `ratio` sale units. Allocations are stored in lot units; `need` is in sale units.
+    const ratio = sellU / (lot.u ?? 1);
+    const takeSale = Math.min(need, (remaining.get(lot.id) ?? 0) * ratio);
+    allocations.push({ lotId: lot.id, qty: takeSale / ratio });
+    need -= takeSale;
   }
   return { allocations, shortfall: Math.max(0, need) };
 }
@@ -52,6 +60,8 @@ export interface SaleSlice {
   id: string;
   date: string;
   qty: number;
+  /** Units factor of the sale date. */
+  u?: number;
 }
 
 /**
@@ -62,17 +72,17 @@ export interface SaleSlice {
 export function reallocate(
   lots: Lot[],
   sales: SaleSlice[],
-): { allocations: Map<string, Allocation[]>; short: SaleSlice | null } {
+): { allocations: Map<string, Allocation[]>; short: SaleSlice | null; shortBy: number } {
   const remaining = new Map(lots.map((l) => [l.id, l.qty]));
   const allocations = new Map<string, Allocation[]>();
   const ordered = [...sales].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   for (const sale of ordered) {
-    const r = allocateFifo(lots, remaining, sale.qty, sale.date);
-    if (r.shortfall > EPS) return { allocations, short: sale };
+    const r = allocateFifo(lots, remaining, sale.qty, sale.date, sale.u ?? 1);
+    if (r.shortfall > EPS) return { allocations, short: sale, shortBy: r.shortfall };
     for (const a of r.allocations) remaining.set(a.lotId, (remaining.get(a.lotId) ?? 0) - a.qty);
     allocations.set(sale.id, r.allocations);
   }
-  return { allocations, short: null };
+  return { allocations, short: null, shortBy: 0 };
 }
 
 export interface Holding {
@@ -82,16 +92,21 @@ export interface Holding {
   avgCost: number;
 }
 
+/**
+ * Holdings from the lots still unsold. `unitsNow` gives each holding's units factor today (splits), so quantity and
+ * average cost are in current units while total cost stays what was paid.
+ */
 export function computeHoldings(
   lots: Lot[],
   sold: Map<string, number>,
+  unitsNow: Map<string, number> = new Map(),
 ): Map<string, Holding> {
   const out = new Map<string, Holding>();
   for (const lot of lots) {
     const rem = lot.qty - (sold.get(lot.id) ?? 0);
     if (rem <= EPS) continue;
     const h = out.get(lot.assetId) ?? { assetId: lot.assetId, qty: 0, cost: 0, avgCost: 0 };
-    h.qty += rem;
+    h.qty += (rem * (unitsNow.get(lot.assetId) ?? 1)) / (lot.u ?? 1);
     h.cost += rem * lotUnitCost(lot);
     out.set(lot.assetId, h);
   }

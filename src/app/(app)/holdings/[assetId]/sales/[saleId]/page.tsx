@@ -56,6 +56,7 @@ export default async function EditSalePage({ params }: { params: Promise<{ asset
           applyTax: sale.applyTax,
           exemptRedemption: sale.exemptRedemption,
           isBuyback: !!sale.buyback,
+          tenderedQty: sale.tenderedQty,
         }}
       />
     </div>

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { assets, buyLots, sales, userPlatforms } from "@/db/schema";
 import { reallocate, type Lot } from "@/domain/fifo";
+import { unitsAt } from "@/domain/corporateActions";
 import { limitError } from "@/domain/limits";
 import { DEFAULT_PLATFORMS, MAX_PLATFORM_LENGTH } from "@/domain/platform";
 import { ASSET_TYPE_IDS, type AssetTypeId } from "@/domain/taxRules";
@@ -72,7 +73,9 @@ export async function addBuyAction(_: ActionState, form: FormData): Promise<Acti
   let moved: ReturnType<typeof allocationStatements> = [];
   if (existing[0]) {
     // A purchase dated before an existing sale becomes that sale's oldest lot, so its matching may change.
-    const re = reassign(await loadPortfolio(user.id), assetId, (lots) => [...lots, newLot]);
+    const pfNow = await loadPortfolio(user.id);
+    newLot.u = unitsAt(pfNow.actions, assetId, v.buyDate);
+    const re = reassign(pfNow, assetId, (lots) => [...lots, newLot]);
     if ("error" in re) return { error: re.error };
     moved = re.statements;
   }
@@ -107,7 +110,7 @@ function reassign(pf: Portfolio, assetId: string, change: (lots: Lot[]) => Lot[]
   const assetSales = pf.saleEvents.filter((s) => s.assetId === assetId);
   const { allocations, short } = reallocate(
     change(pf.lots.filter((l) => l.assetId === assetId)),
-    assetSales.map((s) => ({ id: s.id, date: s.date, qty: s.qty })),
+    assetSales.map((s) => ({ id: s.id, date: s.date, qty: s.qty, u: s.u })),
   );
   if (short) return { error: `This would leave your ${short.date} sale of ${short.qty} units without enough units.` } as const;
   return { statements: allocationStatements(changedAllocations(assetSales, allocations)) } as const;
@@ -136,6 +139,7 @@ export async function updateLotAction(_: ActionState, form: FormData): Promise<A
   const pf = await loadPortfolio(user.id);
   const lot = pf.lots.find((l) => l.id === v.lotId);
   if (!lot) return { error: "Purchase not found" };
+  if (lot.eventId) return { error: "This purchase comes from a bonus event. Reverse the event on the holding page instead." };
   const lotType = pf.assets.find((a) => a.id === lot.assetId)?.type;
   const tooPrecise = lotType && limitError(lotType, { qty: v.qty, price: v.price });
   if (tooPrecise) return { error: tooPrecise };
@@ -153,7 +157,11 @@ export async function updateLotAction(_: ActionState, form: FormData): Promise<A
   }
 
   const re = reassign(pf, lot.assetId, (lots) =>
-    lots.map((l) => (l.id === lot.id ? { ...l, buyDate: v.buyDate, qty: v.qty, unitPrice: v.price, fees: v.fees } : l)),
+    lots.map((l) =>
+      l.id === lot.id
+        ? { ...l, buyDate: v.buyDate, qty: v.qty, unitPrice: v.price, fees: v.fees, u: unitsAt(pf.actions, lot.assetId, v.buyDate) }
+        : l,
+    ),
   );
   if ("error" in re) return { error: re.error };
   try {
@@ -177,6 +185,7 @@ export async function deleteLotAction(id: string): Promise<ActionState> {
   const pf = await loadPortfolio(user.id);
   const lot = pf.lots.find((l) => l.id === id);
   if (!lot) return { error: "Purchase not found" };
+  if (lot.eventId) return { error: "This purchase comes from a bonus event. Reverse the event on the holding page instead." };
   if ((pf.sold.get(lot.id) ?? 0) > 0) {
     return { error: "This purchase has sales against it. Delete or edit those sales first." };
   }

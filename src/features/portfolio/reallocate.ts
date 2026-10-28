@@ -1,7 +1,8 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { db } from "@/db/client";
-import { buyLots, saleAllocations, sales } from "@/db/schema";
+import { buyLots, corporateActions, saleAllocations, sales } from "@/db/schema";
+import { unitsAt, withUnits, type ActionType } from "@/domain/corporateActions";
 import { reallocate, type Allocation } from "@/domain/fifo";
 
 /** Statements that replace the stored allocations of these sales. Append them to the batch that changes the data. */
@@ -21,20 +22,35 @@ export function allocationStatements(allocations: Map<string, Allocation[]>): Ba
  * Returns the id of the first sale left without enough units, or null when everything matched.
  */
 export async function rebuildAssetAllocations(userId: string, assetId: string): Promise<string | null> {
-  const [lotRows, saleRows] = await Promise.all([
+  const [lotRows, saleRows, actionRows] = await Promise.all([
     db.select().from(buyLots).where(and(eq(buyLots.userId, userId), eq(buyLots.assetId, assetId))),
     db.select().from(sales).where(and(eq(sales.userId, userId), eq(sales.assetId, assetId))).orderBy(sales.createdAt),
+    db.select().from(corporateActions).where(and(eq(corporateActions.userId, userId), eq(corporateActions.assetId, assetId))),
   ]);
+  const actions = actionRows.map((a) => ({
+    id: a.id,
+    assetId: a.assetId,
+    type: a.type as ActionType,
+    date: a.actionDate,
+    ratioNew: Number(a.ratioNew),
+    ratioOld: Number(a.ratioOld),
+    amount: Number(a.amount),
+    tds: Number(a.tds),
+    note: a.note,
+  }));
   const { allocations, short } = reallocate(
-    lotRows.map((l) => ({
-      id: l.id,
-      assetId: l.assetId,
-      buyDate: l.buyDate,
-      qty: Number(l.qty),
-      unitPrice: Number(l.unitPrice),
-      fees: Number(l.fees),
-    })),
-    saleRows.map((s) => ({ id: s.id, date: s.sellDate, qty: Number(s.qty) })),
+    withUnits(
+      lotRows.map((l) => ({
+        id: l.id,
+        assetId: l.assetId,
+        buyDate: l.buyDate,
+        qty: Number(l.qty),
+        unitPrice: Number(l.unitPrice),
+        fees: Number(l.fees),
+      })),
+      actions,
+    ),
+    saleRows.map((s) => ({ id: s.id, date: s.sellDate, qty: Number(s.qty), u: unitsAt(actions, assetId, s.sellDate) })),
   );
   if (short) return short.id;
   const stmts = allocationStatements(allocations);

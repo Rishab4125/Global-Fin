@@ -3,8 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/DeleteButton";
 import { EmptyState, Kpi, PageHeader, SectionCard } from "@/components/ui";
+import { todayIso } from "@/domain/dates";
+import { EVENT_TYPES, splitFactor, unitsNow } from "@/domain/corporateActions";
 import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
+import { deleteEventAction } from "@/features/events/actions";
+import { AddEventForm } from "@/features/events/AddEventForm";
 import { AssetEditor } from "@/features/holdings/AssetEditor";
 import { deleteLotAction } from "@/features/holdings/actions";
 import { loadPortfolio } from "@/features/portfolio/data";
@@ -29,6 +33,18 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
   const holding = pf.holdings.find((h) => h.id === assetId);
   const realised = sales.reduce((s, x) => s + (rowById.get(x.id)?.gain ?? 0), 0);
   const tax = sales.reduce((s, x) => s + (rowById.get(x.id)?.tax ?? 0), 0);
+  const today = todayIso();
+  const factorNow = unitsNow(pf.actions, today).get(assetId) ?? 1;
+  const events = pf.actions.filter((a) => a.assetId === assetId).sort((a, b) => (a.date < b.date ? 1 : -1));
+  const eventTypes = EVENT_TYPES[asset.type] ?? [];
+  const dividendTotal = events.filter((e) => e.type === "dividend").reduce((s, e) => s + e.amount, 0);
+  const hasSplit = factorNow !== 1;
+  const describe = (e: (typeof events)[number]) =>
+    e.type === "split"
+      ? `Split ${e.ratioOld}:${e.ratioNew}. Each share became ${splitFactor(e)}. Total cost and buy dates are unchanged.`
+      : e.type === "bonus"
+        ? `Bonus ${e.ratioNew} for every ${e.ratioOld} held. The new shares cost nothing and their holding period starts on this date.`
+        : `Dividend of ${formatINR(e.amount)}${e.tds > 0 ? `, TDS ${formatINR(e.tds)}` : ""}. Taxed at your slab rate.`;
 
   return (
     <div>
@@ -64,6 +80,11 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
         <AssetEditor assetId={asset.id} name={asset.name} type={asset.type} />
 
         <SectionCard title="Purchases" description="Click Edit to change a purchase" flush>
+          {hasSplit && (
+            <p className="border-b border-line bg-surface2 px-5 py-2 text-xs text-muted">
+              Quantities and prices are shown in today&apos;s units, after your splits. Edit shows what you originally entered.
+            </p>
+          )}
           {lots.length === 0 ? (
             <EmptyState icon={ArrowLeftRight} title="No purchases" />
           ) : (
@@ -82,16 +103,26 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
               <tbody>
                 {lots.map((l) => {
                   const sold = pf.sold.get(l.id) ?? 0;
+                  const f = factorNow / (l.u ?? 1);
                   return (
                     <tr key={l.id}>
-                      <td className="td sticky-col">{formatDate(l.buyDate)}</td>
-                      <td className="td text-right">{formatQty(l.qty)}</td>
-                      <td className="td text-right">{formatINR(l.unitPrice)}</td>
+                      <td className="td sticky-col">
+                        {formatDate(l.buyDate)}
+                        {l.eventId && <span className="badge-warn ml-2">Bonus</span>}
+                      </td>
+                      <td className="td text-right">{formatQty(l.qty * f, asset.type)}</td>
+                      <td className="td text-right">{formatINR(l.unitPrice / f)}</td>
                       <td className="td hidden text-right md:table-cell">{l.fees ? formatINR(l.fees) : "–"}</td>
-                      <td className="td text-right">{formatQty(sold)}</td>
-                      <td className="td text-right font-medium">{formatQty(l.qty - sold)}</td>
+                      <td className="td text-right">{formatQty(sold * f, asset.type)}</td>
+                      <td className="td text-right font-medium">{formatQty((l.qty - sold) * f, asset.type)}</td>
                       <td className="td">
                         <div className="flex justify-end gap-2">
+                          {l.eventId ? (
+                            <span className="grid h-8 place-items-center px-2 text-xs text-muted" title="Reverse the bonus event to remove these shares">
+                              From event
+                            </span>
+                          ) : (
+                            <>
                           <Link href={`/holdings/${asset.id}/lots/${l.id}`} aria-label={`Edit purchase on ${formatDate(l.buyDate)}`} title="Edit" className="btn-ghost !h-8 !px-2.5">
                             <Pencil size={14} />
                             <span className="hidden sm:inline">Edit</span>
@@ -109,6 +140,8 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
                               confirmText="Delete this purchase? This cannot be undone."
                             />
                           )}
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -117,6 +150,51 @@ export default async function HoldingDetailPage({ params }: { params: Promise<{ 
               </tbody>
             </table>
           )}
+        </SectionCard>
+
+        <SectionCard
+          title="Events"
+          description={
+            eventTypes.length
+              ? `Splits, bonus issues and dividends${dividendTotal > 0 ? ` · dividends so far ${formatINR(dividendTotal)}` : ""}. Each can be reversed.`
+              : "Splits, bonus issues and dividends are recorded on stocks and ETFs."
+          }
+          flush
+        >
+          {events.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-muted">No events recorded yet.</p>
+          ) : (
+            <ul>
+              {events.map((e) => (
+                <li key={e.id} className="flex items-start justify-between gap-3 border-b border-line px-5 py-3 last:border-0">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={e.type === "dividend" ? "badge-gain" : "badge-warn"}>
+                        {e.type === "split" ? "Split" : e.type === "bonus" ? "Bonus" : "Dividend"}
+                      </span>
+                      <span className="text-sm font-medium">{formatDate(e.date)}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-muted">{describe(e)}</p>
+                  </div>
+                  <DeleteButton
+                    compact
+                    label="Reverse"
+                    ariaLabel={`Reverse ${e.type} on ${formatDate(e.date)}`}
+                    action={deleteEventAction}
+                    id={e.id}
+                    confirmText={
+                      e.type === "bonus"
+                        ? "Reverse this bonus? The bonus shares are removed."
+                        : e.type === "split"
+                          ? "Reverse this split? Quantities and prices return to what you entered."
+                          : "Delete this dividend?"
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+          {eventTypes.length > 0 && <AddEventForm assetId={asset.id} today={today} types={eventTypes} />}
         </SectionCard>
 
         <SectionCard title="Sales" description="Gains use FIFO matching and your slab rate" flush>

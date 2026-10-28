@@ -30,8 +30,7 @@ export default async function MiscPage({
   const pf = await loadPortfolio(user.id);
   const today = todayIso();
   const rowById = new Map(pf.rows.map((r) => [r.id, r]));
-  const typeOf = (e: (typeof pf.miscEvents)[number]) =>
-    e.entryType === "buyback" ? "Share buyback" : ASSET_RULES[e.assetType].label;
+  const typeOf = (e: (typeof pf.miscEvents)[number]) => ASSET_RULES[e.assetType].label;
 
   const earliest = pf.miscEvents.map((e) => e.date).sort()[0] ?? today;
   const period = resolvePeriod({ ...query, period: query.period ?? "all" }, today);
@@ -150,12 +149,7 @@ export default async function MiscPage({
                     <tr key={e.id}>
                       <td className="td sticky-col">{formatDate(e.date)}</td>
                       <td className="td">{typeOf(e)}</td>
-                      <td className={`td text-right font-medium ${e.entryType === "buyback" ? "" : gainClass(e.amount)}`}>
-                        {formatINR(e.amount)}
-                        {e.entryType === "buyback" && (
-                          <div className="text-xs font-normal text-muted">cost {formatINR(e.cost)}</div>
-                        )}
-                      </td>
+                      <td className={`td text-right font-medium ${gainClass(e.amount)}`}>{formatINR(e.amount)}</td>
                       <td className="td hidden text-right md:table-cell">{e.brokerage ? formatINR(e.brokerage) : "–"}</td>
                       <td className="td hidden md:table-cell">
                         <span className={e.taxAdjusted ? "badge-gain" : "badge-muted"}>

@@ -56,6 +56,8 @@ export interface PlanInput {
   includeDuplicates: Set<string>;
   /** Remove unsold/estimated kite_sync entries for the stocks being imported. */
   replaceEstimated: boolean;
+  /** Holdings with a split or bonus event; trades for them are refused for now. */
+  splitAssetIds?: Set<string>;
 }
 
 export interface PlanRow {
@@ -242,6 +244,10 @@ export function buildPlan(input: PlanInput): Plan {
         status = "error";
         message = tooPrecise;
       }
+    }
+    if (status !== "imported" && existingId && input.splitAssetIds?.has(existingId)) {
+      status = "error";
+      message = "This holding has a split or bonus event, and imports can't adjust for it yet. Add these trades by hand.";
     }
     if (tradeKey && status === "new") {
       if (seen.has(tradeKey)) status = "imported";

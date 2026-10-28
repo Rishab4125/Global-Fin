@@ -193,3 +193,20 @@ describe("buildPlan whole-share rule", () => {
     expect(p.lots).toHaveLength(1);
   });
 });
+
+describe("buildPlan holdings with a split or bonus", () => {
+  const assets = [{ id: "a1", name: "Reliance Industries", type: "equity", isin: "INE002A01018" }];
+
+  it("refuses trades for a holding that has a split or bonus instead of writing wrong quantities", () => {
+    const p = buildPlan(base({ trades: [trade({})], assets, splitAssetIds: new Set(["a1"]) }));
+    expect(p.rows[0].status).toBe("error");
+    expect(p.rows[0].message).toMatch(/split or bonus/i);
+    expect(p.lots).toHaveLength(0);
+  });
+
+  it("leaves other holdings alone", () => {
+    const p = buildPlan(base({ trades: [trade({})], assets, splitAssetIds: new Set(["other"]) }));
+    expect(p.rows[0].status).toBe("new");
+    expect(p.lots).toHaveLength(1);
+  });
+});

@@ -94,14 +94,13 @@ export default async function TransactionsPage({
       };
     }),
     ...pf.miscEvents.map((m): Txn => {
-      const buyback = m.entryType === "buyback";
       return {
         key: `misc-${m.id}`,
         id: m.id,
-        kind: buyback ? "buyback" : "misc",
+        kind: "misc",
         date: m.date,
-        name: buyback ? "Share buyback" : "Misc profit / loss",
-        typeLabel: buyback ? `Cost ${formatINR(m.cost)}` : typeLabel(m.assetType),
+        name: "Misc profit / loss",
+        typeLabel: typeLabel(m.assetType),
         group: ASSET_RULES[m.assetType].category,
         platform: "–",
         qty: null,

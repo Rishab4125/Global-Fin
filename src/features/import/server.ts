@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { db } from "@/db/client";
-import { assets, buyLots, saleAllocations, sales } from "@/db/schema";
+import { assets, buyLots, corporateActions, saleAllocations, sales } from "@/db/schema";
 import { looseKey, manualKey } from "@/domain/brokerSync";
 import { platformOf } from "@/domain/platform";
 import type { ExistingLot, ExistingSale, Plan, PlanAsset } from "./plan";
@@ -13,13 +13,16 @@ export interface UserState {
   importedKeys: Set<string>;
   manualKeys: Set<string>;
   looseKeys: Set<string>;
+  /** Holdings with a split or bonus. Broker quantities don't line up with them yet, so imports skip them. */
+  splitAssetIds: Set<string>;
 }
 
 export async function loadUserState(userId: string): Promise<UserState> {
-  const [assetRows, lotRows, saleRows] = await Promise.all([
+  const [assetRows, lotRows, saleRows, actionRows] = await Promise.all([
     db.select().from(assets).where(eq(assets.userId, userId)),
     db.select().from(buyLots).where(eq(buyLots.userId, userId)),
     db.select().from(sales).where(eq(sales.userId, userId)),
+    db.select({ assetId: corporateActions.assetId, type: corporateActions.type }).from(corporateActions).where(eq(corporateActions.userId, userId)),
   ]);
   const saleIds = saleRows.map((s) => s.id);
   const allocRows = saleIds.length
@@ -66,6 +69,7 @@ export async function loadUserState(userId: string): Promise<UserState> {
     importedKeys,
     manualKeys,
     looseKeys,
+    splitAssetIds: new Set(actionRows.filter((a) => a.type !== "dividend").map((a) => a.assetId)),
   };
 }
 
