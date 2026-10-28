@@ -5,8 +5,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -52,34 +50,6 @@ export function GainByYearChart({ data }: { data: { fy: string; net: number; gai
         </Bar>
       </BarChart>
     </ResponsiveContainer>
-    </div>
-  );
-}
-
-/** Colours for the slices, largest first. Restrained greens with one gold; the legend uses the same list. */
-export const MIX_COLORS = ["#0f7a4a", "#34a874", "#5d7f6e", "#8fb8a2", "#c58a2b", "#a9bdb2", "#b45a3c", "#7a8c84", "#cbd5cf"];
-
-export function MixDonut({ data, label }: { data: { name: string; value: number; color: string }[]; label: string }) {
-  const summary = data.map((d) => `${d.name}: ${full.format(d.value)}`).join(". ");
-  return (
-    <div role="img" aria-label={`Mix by ${label}. ${summary || "Nothing held yet."}`} className="amt shrink-0">
-      <PieChart width={132} height={132}>
-        <Pie
-          data={data.map((d) => ({ ...d, fill: d.color }))}
-          dataKey="value"
-          nameKey="name"
-          innerRadius={40}
-          outerRadius={64}
-          paddingAngle={data.length > 1 ? 1 : 0}
-          stroke="var(--surface)"
-          strokeWidth={2}
-          isAnimationActive={false}
-        >
-          {data.map((d) => (
-            <Cell key={d.name} fill={d.color} />
-          ))}
-        </Pie>
-      </PieChart>
     </div>
   );
 }

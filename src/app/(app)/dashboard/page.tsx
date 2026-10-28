@@ -10,7 +10,8 @@ import { todayIso } from "@/domain/dates";
 import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
 import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
-import { GainByYearChart, MIX_COLORS, MixDonut } from "@/features/dashboard/Charts";
+import { GainByYearChart } from "@/features/dashboard/Charts";
+import { MIX_COLORS, MixDonut } from "@/features/dashboard/MixDonut";
 import { computeMix, MIX_VIEWS, rowsFor, upcomingMaturities, type MixView } from "@/features/dashboard/mix";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { loadPortfolio } from "@/features/portfolio/data";
@@ -99,7 +100,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           today={today}
           extraQuery={[fq, query.mix ? `mix=${encodeURIComponent(query.mix)}` : ""].filter(Boolean).join("&")}
         />
-        <div className="min-w-0 flex-1">
+        <div className="shrink-0 sm:min-w-0 sm:flex-1">
           <FilterBar
             basePath="/dashboard"
             selected={filters}
@@ -109,7 +110,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             ]}
           />
         </div>
-        <HideAmountsButton />
+        <div className="ml-auto shrink-0">
+          <HideAmountsButton />
+        </div>
       </div>
 
       {empty ? (
@@ -155,12 +158,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       const href = sliceHref(r.key);
                       const body = (
                         <>
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span className="size-2.5 shrink-0 rounded-[3px]" style={{ background: colorOf.get(r.key) }} aria-hidden />
-                            <span className="t-body truncate">{r.key}</span>
-                          </span>
-                          <span className="t-caption num shrink-0">
-                            {formatPercent(r.share)} · <Amount>{formatINRCompact(r.cost)}</Amount>
+                          <span className="flex min-w-0 items-start gap-2">
+                            <span className="mt-1.5 size-2.5 shrink-0 rounded-[3px]" style={{ background: colorOf.get(r.key) }} aria-hidden />
+                            <span className="min-w-0">
+                              <span className="t-body block [overflow-wrap:anywhere]">{r.key}</span>
+                              <span className="t-caption num block">
+                                {formatPercent(r.share)} · <Amount>{formatINRCompact(r.cost)}</Amount>
+                              </span>
+                            </span>
                           </span>
                         </>
                       );
