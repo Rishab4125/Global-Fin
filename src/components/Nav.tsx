@@ -56,7 +56,7 @@ export function SideNav() {
                     }`}
                   >
                     <l.icon size={18} className={active ? "text-emerald-300" : ""} />
-                    {l.label}
+                    {l.short}
                   </Link>
                 </li>
               );
