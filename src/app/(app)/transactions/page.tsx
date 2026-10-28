@@ -126,15 +126,17 @@ export default async function ActivityPage({
           basePath="/transactions"
           extraQuery={`${sortQuery}${withQ}${withF}`}
         />
-        <FilterBar
-          basePath="/transactions"
-          selected={filters}
-          groups={[
-            { id: "act", label: "Action", options: Object.values(KIND_LABEL) },
-            { id: "ty", label: "Category", options: categoryOptions.length > 1 ? categoryOptions : [] },
-            { id: "pf", label: "Platform", options: pf.platforms },
-          ]}
-        />
+        <div className="min-w-0 flex-1">
+          <FilterBar
+            basePath="/transactions"
+            selected={filters}
+            groups={[
+              { id: "act", label: "Action", options: Object.values(KIND_LABEL) },
+              { id: "ty", label: "Category", options: categoryOptions.length > 1 ? categoryOptions : [] },
+              { id: "pf", label: "Platform", options: pf.platforms },
+            ]}
+          />
+        </div>
       </div>
       {txns.length > 0 && (
         <p className="t-caption mb-3">

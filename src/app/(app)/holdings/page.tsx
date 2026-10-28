@@ -137,36 +137,44 @@ export default async function HoldingsPage({ searchParams }: { searchParams: Pro
         }
       >
         {hasAny && (
-          <>
-            <ListSearch
-              q={q}
-              basePath="/holdings"
-              query={joinQs(sortQs, fq, groupQs, viewQs)}
-              placeholder="Search name, platform or tag"
-            />
-            <SortSelect options={SORT_OPTIONS} value={`${sort.key}:${sort.dir}`} basePath="/holdings" query={joinQs(qQs, fq, groupQs, viewQs)} />
-            <ParamSelect param="group" label="Group holdings" value={groupBy} defaultValue="none" options={GROUP_OPTIONS} />
-            <div className="hidden lg:block">
-              <SegmentLinks
-                label="Holdings layout"
-                className=""
-                items={[
-                  { href: viewHref("cards"), label: "Cards", active: !table },
-                  { href: viewHref("table"), label: "Table", active: table },
-                ]}
-              />
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex min-w-0 items-center gap-3 sm:contents">
+              <div className="min-w-0 flex-1 sm:flex-none">
+                <ListSearch
+                  q={q}
+                  basePath="/holdings"
+                  query={joinQs(sortQs, fq, groupQs, viewQs)}
+                  placeholder="Search name, platform or tag"
+                />
+              </div>
+              <SortSelect options={SORT_OPTIONS} value={`${sort.key}:${sort.dir}`} basePath="/holdings" query={joinQs(qQs, fq, groupQs, viewQs)} />
             </div>
-            <FilterBar
-              basePath="/holdings"
-              selected={filters}
-              groups={[
-                { id: "ty", label: "Category", options: options.categories.length > 1 ? options.categories : [] },
-                { id: "pf", label: "Platform", options: pf.platforms },
-                { id: "ex", label: "Exposure", options: options.exposures.length > 1 ? options.exposures : [] },
-                { id: "tag", label: "Tag", options: options.tags },
-              ]}
-            />
-          </>
+            <div className="flex min-w-0 items-center gap-3 sm:contents">
+              <ParamSelect param="group" label="Group holdings" value={groupBy} defaultValue="none" options={GROUP_OPTIONS} />
+              <div className="hidden lg:block">
+                <SegmentLinks
+                  label="Holdings layout"
+                  className=""
+                  items={[
+                    { href: viewHref("cards"), label: "Cards", active: !table },
+                    { href: viewHref("table"), label: "Table", active: table },
+                  ]}
+                />
+              </div>
+              <div className="min-w-0 flex-1 sm:contents">
+                <FilterBar
+                  basePath="/holdings"
+                  selected={filters}
+                  groups={[
+                    { id: "ty", label: "Category", options: options.categories.length > 1 ? options.categories : [] },
+                    { id: "pf", label: "Platform", options: pf.platforms },
+                    { id: "ex", label: "Exposure", options: options.exposures.length > 1 ? options.exposures : [] },
+                    { id: "tag", label: "Tag", options: options.tags },
+                  ]}
+                />
+              </div>
+            </div>
+          </div>
         )}
       </AddInvestment>
 

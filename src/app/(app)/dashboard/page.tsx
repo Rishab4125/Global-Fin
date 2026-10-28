@@ -1,9 +1,10 @@
 import { Coins } from "lucide-react";
 import Link from "next/link";
-import { Amount, ResponsiveAmount } from "@/components/Amount";
+import { Amount } from "@/components/Amount";
 import { FilterBar } from "@/components/FilterBar";
 import { HideAmountsButton } from "@/components/HideAmountsButton";
 import { SegmentLinks } from "@/components/SegmentLinks";
+import { TrioCard } from "@/components/TrioCard";
 import { EmptyState, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
 import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
@@ -144,12 +145,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               {mixRows.length === 0 ? (
                 <p className="t-body py-6 text-center text-muted">Nothing held with these filters.</p>
               ) : (
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-4">
                   <MixDonut
                     label={view.toLowerCase()}
                     data={mixRows.map((r) => ({ name: r.key, value: r.cost, color: colorOf.get(r.key)! }))}
                   />
-                  <ul className="grid min-w-40 flex-1 gap-1">
+                  <ul className="grid min-w-0 flex-1 gap-1">
                     {mixRows.map((r) => {
                       const href = sliceHref(r.key);
                       const body = (
@@ -186,7 +187,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   short="Gain"
                   long="Realised gain"
                   value={t.gain}
-                  signed
                   hint={periodText}
                   valueClass={gainClass(t.gain)}
                 />
@@ -195,7 +195,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   short="Post-tax"
                   long="Post-tax gain"
                   value={t.net}
-                  signed
                   hint={periodText}
                   valueClass={gainClass(t.net)}
                   hero
@@ -275,41 +274,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-/** One of the three realised cards. Each says which period it covers; labels shorten on a very narrow phone. */
-function TrioCard({
-  short,
-  long,
-  value,
-  hint,
-  signed = false,
-  hero = false,
-  valueClass = "",
-}: {
-  short: string;
-  long: string;
-  value: number;
-  hint: string;
-  signed?: boolean;
-  hero?: boolean;
-  valueClass?: string;
-}) {
-  return (
-    <div className={`min-w-0 rounded-xl border p-3 sm:p-4 ${hero ? "border-primary/40 bg-primary-soft" : "border-line bg-surface"}`}>
-      <p className="t-label">
-        <span className="min-[420px]:hidden">{short}</span>
-        <span className="hidden min-[420px]:inline">{long}</span>
-      </p>
-      <p className={`t-kpi mt-1.5 ${valueClass}`}>
-        <ResponsiveAmount
-          whole={formatINRWhole(value, { sign: signed })}
-          compact={formatINRCompact(value, { sign: signed })}
-        />
-      </p>
-      <p className="t-caption mt-1.5 [overflow-wrap:anywhere]">{hint}</p>
     </div>
   );
 }

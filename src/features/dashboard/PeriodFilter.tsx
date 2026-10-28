@@ -83,21 +83,21 @@ export function PeriodFilter({
   };
 
   return (
-    <div className="flex w-full items-center gap-2 sm:w-auto">
+    <div className="flex shrink-0 items-center gap-2">
       <span className="hidden items-center gap-2 text-sm text-muted sm:flex">
         <CalendarRange size={16} />
         <span>Period</span>
       </span>
       <select
         aria-label="Analysis period"
-        className="input !h-9 !w-auto min-w-0 flex-1 sm:min-w-44 sm:flex-none"
+        className="input !h-9 !w-auto min-w-0 max-w-[10.5rem] sm:max-w-none sm:min-w-44"
         value={selected}
         disabled={pending}
         onChange={(e) => choose(e.target.value)}
       >
         {selected === "" && (
           <option value="" disabled>
-            Select period
+            Custom range
           </option>
         )}
         {options.map((o) => (

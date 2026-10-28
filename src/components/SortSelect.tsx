@@ -27,12 +27,12 @@ export function SortSelect({
   const [pending, start] = useTransition();
 
   return (
-    <label className="flex w-full items-center gap-2 text-sm text-muted sm:w-auto">
+    <label className="flex shrink-0 items-center gap-2 text-sm text-muted">
       <ArrowDownUp size={16} className="shrink-0" />
       <span className="hidden sm:inline">Sort</span>
       <select
         aria-label="Sort holdings"
-        className="input !h-9 !w-auto min-w-0 flex-1 sm:min-w-44 sm:flex-none"
+        className="input !h-9 !w-auto min-w-0 max-w-[9.5rem] sm:max-w-none sm:min-w-44"
         value={value}
         disabled={pending}
         onChange={(e) => {

@@ -72,14 +72,16 @@ export default async function MiscPage({
               basePath="/gains/misc"
               extraQuery={[q ? `q=${encodeURIComponent(q)}` : "", view.fq].filter(Boolean).join("&")}
             />
-            <FilterBar
-              basePath="/gains/misc"
-              selected={filters}
-              groups={[
-                { id: "mt", label: "Type", options: typeOptions.length > 1 ? typeOptions : [] },
-                { id: "sign", label: "Result", options: ["Profit", "Loss"] },
-              ]}
-            />
+            <div className="min-w-0 flex-1">
+              <FilterBar
+                basePath="/gains/misc"
+                selected={filters}
+                groups={[
+                  { id: "mt", label: "Type", options: typeOptions.length > 1 ? typeOptions : [] },
+                  { id: "sign", label: "Result", options: ["Profit", "Loss"] },
+                ]}
+              />
+            </div>
             <a href={`/gains/export?${exportQs}`} aria-label="Export CSV" title="Export CSV" className="btn-ghost shrink-0">
               <Download size={16} />
               <span className="hidden sm:inline">Export CSV</span>

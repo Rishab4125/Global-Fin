@@ -1,12 +1,12 @@
 import { Download } from "lucide-react";
-import { Amount } from "@/components/Amount";
 import { FilterBar } from "@/components/FilterBar";
 import { GainsTabs } from "@/components/SegmentLinks";
-import { Kpi, PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
+import { TrioCard } from "@/components/TrioCard";
 import { fyOptions } from "@/domain/period";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import type { Portfolio } from "@/features/portfolio/data";
-import { formatINRWhole } from "@/lib/format";
+import { formatDate, gainClass } from "@/lib/format";
 import { RESULTS, TERMS, type realisedView } from "./realisedFilter";
 import { totals } from "./summary";
 
@@ -38,6 +38,8 @@ export function GainsTop({
   if (period.value.startsWith("fy:") && !options.some((o) => o.value === period.value)) {
     options.push({ value: period.value, label: period.label });
   }
+  const periodText =
+    period.value === "custom" && period.from && period.to ? `${formatDate(period.from)} to ${formatDate(period.to)}` : period.label;
   const exportQs = [view.periodQuery, view.fq].filter(Boolean).join("&");
 
   return (
@@ -57,8 +59,13 @@ export function GainsTop({
           </a>
         }
       />
+      <div className="mb-4 grid grid-cols-3 gap-2 sm:gap-4">
+        <TrioCard short="Gain" long="Gross gain" value={t.gain} valueClass={gainClass(t.gain)} hint={periodText} />
+        <TrioCard short="Tax" long="Estimated tax" value={t.tax} hint="Incl. 4% cess" />
+        <TrioCard short="Post-tax" long="Post-tax gain" value={t.net} valueClass={gainClass(t.net)} hint={periodText} hero />
+      </div>
       <GainsTabs active={active} />
-      <div className="mb-5 flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <PeriodFilter
           options={options}
           value={period.value}
@@ -69,21 +76,18 @@ export function GainsTop({
           basePath={basePath}
           extraQuery={view.fq}
         />
-        <FilterBar
-          basePath={basePath}
-          selected={filters}
-          groups={[
-            { id: "ty", label: "Category", options: groups.length > 1 ? groups : [] },
-            { id: "term", label: "Term", options: TERMS },
-            { id: "sign", label: "Result", options: RESULTS },
-            { id: "pf", label: "Platform", options: pf.platforms },
-          ]}
-        />
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-        <Kpi label="Gross gain" value={<Amount>{formatINRWhole(t.gain)}</Amount>} tone={t.gain >= 0 ? "gain" : "loss"} />
-        <Kpi label="Estimated tax" value={<Amount>{formatINRWhole(t.tax)}</Amount>} hint="Incl. 4% cess" />
-        <Kpi label="Post-tax gain" value={<Amount>{formatINRWhole(t.net)}</Amount>} tone={t.net >= 0 ? "gain" : "loss"} />
+        <div className="min-w-0 flex-1">
+          <FilterBar
+            basePath={basePath}
+            selected={filters}
+            groups={[
+              { id: "ty", label: "Category", options: groups.length > 1 ? groups : [] },
+              { id: "term", label: "Term", options: TERMS },
+              { id: "sign", label: "Result", options: RESULTS },
+              { id: "pf", label: "Platform", options: pf.platforms },
+            ]}
+          />
+        </div>
       </div>
     </>
   );

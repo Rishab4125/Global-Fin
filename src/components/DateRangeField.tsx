@@ -83,12 +83,13 @@ export function DateRangeField({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label="Select date range"
+        title={`${dmy(from)} to ${dmy(to)}`}
         disabled={disabled}
         onClick={toggle}
-        className="input !flex !h-9 !w-auto items-center gap-1.5 whitespace-nowrap !px-2 text-[13px] disabled:opacity-60 sm:gap-2 sm:!px-3 sm:text-sm"
+        className="input !flex !h-9 !w-auto items-center gap-1.5 whitespace-nowrap !px-2.5 text-[13px] disabled:opacity-60 sm:gap-2 sm:!px-3 sm:text-sm"
       >
         <CalendarRange size={15} className="shrink-0 text-muted" />
-        <span>
+        <span className="hidden sm:inline">
           {dmy(from)} <span className="text-muted">to</span> {dmy(to)}
         </span>
       </button>
