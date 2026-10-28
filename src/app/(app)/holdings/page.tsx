@@ -138,18 +138,14 @@ export default async function HoldingsPage({ searchParams }: { searchParams: Pro
       >
         {hasAny && (
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="flex min-w-0 items-center gap-3 sm:contents">
-              <div className="min-w-0 flex-1 sm:flex-none">
-                <ListSearch
-                  q={q}
-                  basePath="/holdings"
-                  query={joinQs(sortQs, fq, groupQs, viewQs)}
-                  placeholder="Search name, platform or tag"
-                />
-              </div>
+            <ListSearch
+              q={q}
+              basePath="/holdings"
+              query={joinQs(sortQs, fq, groupQs, viewQs)}
+              placeholder="Search name, platform or tag"
+            />
+            <div className="flex flex-wrap items-center gap-3 sm:contents">
               <SortSelect options={SORT_OPTIONS} value={`${sort.key}:${sort.dir}`} basePath="/holdings" query={joinQs(qQs, fq, groupQs, viewQs)} />
-            </div>
-            <div className="flex min-w-0 items-center gap-3 sm:contents">
               <ParamSelect param="group" label="Group holdings" value={groupBy} defaultValue="none" options={GROUP_OPTIONS} />
               <div className="hidden lg:block">
                 <SegmentLinks
@@ -161,7 +157,7 @@ export default async function HoldingsPage({ searchParams }: { searchParams: Pro
                   ]}
                 />
               </div>
-              <div className="min-w-0 flex-1 sm:contents">
+              <div className="shrink-0 sm:contents">
                 <FilterBar
                   basePath="/holdings"
                   selected={filters}

@@ -27,7 +27,7 @@ export function ParamSelect({
       aria-label={label}
       value={value}
       disabled={pending}
-      className="input !h-9 !w-auto min-w-0 max-w-[9.5rem] sm:max-w-none"
+      className="input !h-9 min-w-[7rem] flex-1 sm:!w-auto sm:flex-none"
       onChange={(e) => {
         const next = new URLSearchParams(params.toString());
         if (e.target.value === defaultValue) next.delete(param);

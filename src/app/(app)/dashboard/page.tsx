@@ -110,9 +110,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             ]}
           />
         </div>
-        <div className="ml-auto shrink-0">
-          <HideAmountsButton />
-        </div>
       </div>
 
       {empty ? (
@@ -133,9 +130,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <div className="grid gap-4 lg:grid-cols-3">
             <section className="card min-w-0">
               <p className="t-label">Total invested · by cost</p>
-              <p className="t-hero mt-1.5">
-                <Amount>{formatINRWhole(mix.total)}</Amount>
-              </p>
+              <div className="mt-1.5 flex items-start justify-between gap-3">
+                <p className="t-hero min-w-0">
+                  <Amount>{formatINRWhole(mix.total)}</Amount>
+                </p>
+                <HideAmountsButton />
+              </div>
               <p className="t-caption mt-1.5">
                 {mix.holdingIds.length} holding{mix.holdingIds.length === 1 ? "" : "s"} · as of today
               </p>
