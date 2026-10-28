@@ -3,6 +3,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { db } from "@/db/client";
 import { assets, buyLots, saleAllocations, sales } from "@/db/schema";
 import { looseKey, manualKey } from "@/domain/brokerSync";
+import { platformOf } from "@/domain/platform";
 import type { ExistingLot, ExistingSale, Plan, PlanAsset } from "./plan";
 
 export interface UserState {
@@ -98,6 +99,7 @@ export async function executePlan(userId: string, source: string, plan: Plan): P
           buyDate: l.buyDate,
           qty: String(l.qty),
           unitPrice: String(l.unitPrice),
+          platform: platformOf(source),
           source,
           brokerTradeId: l.tradeId,
         })),

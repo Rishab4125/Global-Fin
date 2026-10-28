@@ -7,7 +7,7 @@ import { requireUser } from "@/features/auth/session";
 import type { ActionState } from "@/features/portfolio/actionState";
 import { number } from "@/lib/validation";
 
-const schema = number("tax rate", { max: 45 });
+const schema = number("tax rate", { max: 45, decimals: 2 });
 
 export async function saveSlabAction(_: ActionState, form: FormData): Promise<ActionState> {
   const user = await requireUser();

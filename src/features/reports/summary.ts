@@ -26,7 +26,7 @@ export function byFinancialYear(rows: RealisedRow[]) {
 export function byAssetGroup(rows: RealisedRow[]) {
   const map = new Map<string, RealisedRow[]>();
   for (const r of rows) {
-    const g = ASSET_RULES[r.assetType].group;
+    const g = ASSET_RULES[r.assetType].category;
     map.set(g, [...(map.get(g) ?? []), r]);
   }
   return [...map.entries()].map(([group, rs]) => ({ group, ...totals(rs) }));

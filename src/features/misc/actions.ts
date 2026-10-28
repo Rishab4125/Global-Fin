@@ -8,15 +8,15 @@ import { miscEntries } from "@/db/schema";
 import { ASSET_TYPE_IDS } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import type { ActionState } from "@/features/portfolio/actionState";
-import { number, pastDate } from "@/lib/validation";
+import { money, pastDate } from "@/lib/validation";
 
 const schema = z.object({
   assetType: z.enum(["buyback", ...ASSET_TYPE_IDS]),
   entryDate: pastDate,
-  amount: number("amount", { min: -1e12 }).refine((n) => n !== 0, "Enter a non-zero amount"),
+  amount: money("amount", { min: -1e12 }).refine((n) => n !== 0, "Enter a non-zero amount"),
   kind: z.enum(["profit", "loss"]),
-  cost: number("cost"),
-  brokerage: number("brokerage"),
+  cost: money("cost"),
+  brokerage: money("brokerage"),
   taxAdjusted: z.boolean(),
   term: z.enum(["STCG", "LTCG"]),
   note: z.string().trim().max(200).default(""),

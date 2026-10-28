@@ -6,14 +6,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { assets, buyLots, sales } from "@/db/schema";
+import { assets, buyLots, sales, userPlatforms } from "@/db/schema";
 import { reallocate, type Lot } from "@/domain/fifo";
-import { ASSET_TYPE_IDS } from "@/domain/taxRules";
+import { limitError } from "@/domain/limits";
+import { DEFAULT_PLATFORMS, MAX_PLATFORM_LENGTH } from "@/domain/platform";
+import { ASSET_TYPE_IDS, type AssetTypeId } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import type { ActionState } from "@/features/portfolio/actionState";
 import { loadPortfolio, type Portfolio } from "@/features/portfolio/data";
 import { allocationStatements, changedAllocations } from "@/features/portfolio/reallocate";
-import { number, pastDate, qty } from "@/lib/validation";
+import { money, number, pastDate, qty } from "@/lib/validation";
 
 const iso = pastDate;
 const assetType = z.enum(ASSET_TYPE_IDS as [string, ...string[]]);
@@ -24,7 +26,8 @@ const buySchema = z.object({
   buyDate: iso,
   qty: qty(),
   price: number("price"),
-  fees: number("fees"),
+  fees: money("fees"),
+  platform: z.string().trim().min(1).max(MAX_PLATFORM_LENGTH, "Platform name is too long").default("Other"),
 });
 
 export async function addBuyAction(_: ActionState, form: FormData): Promise<ActionState> {
@@ -36,9 +39,12 @@ export async function addBuyAction(_: ActionState, form: FormData): Promise<Acti
     qty: form.get("qty"),
     price: form.get("price"),
     fees: form.get("fees") || 0,
+    platform: form.get("platform") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const v = parsed.data;
+  const tooPrecise = limitError(v.type as AssetTypeId, { qty: v.qty, price: v.price });
+  if (tooPrecise) return { error: tooPrecise };
 
   const existing = await db
     .select({ id: assets.id })
@@ -62,7 +68,7 @@ export async function addBuyAction(_: ActionState, form: FormData): Promise<Acti
   }
 
   const lotId = randomUUID();
-  const newLot: Lot = { id: lotId, assetId, buyDate: v.buyDate, qty: v.qty, unitPrice: v.price, fees: v.fees };
+  const newLot: Lot = { id: lotId, assetId, buyDate: v.buyDate, qty: v.qty, unitPrice: v.price, fees: v.fees, platform: v.platform };
   let moved: ReturnType<typeof allocationStatements> = [];
   if (existing[0]) {
     // A purchase dated before an existing sale becomes that sale's oldest lot, so its matching may change.
@@ -80,7 +86,12 @@ export async function addBuyAction(_: ActionState, form: FormData): Promise<Acti
         qty: String(v.qty),
         unitPrice: String(v.price),
         fees: String(v.fees),
+        platform: v.platform,
       }),
+      // A platform typed here becomes part of the user's own list.
+      ...(DEFAULT_PLATFORMS.includes(v.platform)
+        ? []
+        : [db.insert(userPlatforms).values({ userId: user.id, name: v.platform }).onConflictDoNothing()]),
       ...moved,
     ] as unknown as Parameters<typeof db.batch>[0]);
   } catch {
@@ -107,7 +118,7 @@ const updateLotSchema = z.object({
   buyDate: iso,
   qty: qty(),
   price: number("price"),
-  fees: number("fees"),
+  fees: money("fees"),
 });
 
 export async function updateLotAction(_: ActionState, form: FormData): Promise<ActionState> {
@@ -125,6 +136,9 @@ export async function updateLotAction(_: ActionState, form: FormData): Promise<A
   const pf = await loadPortfolio(user.id);
   const lot = pf.lots.find((l) => l.id === v.lotId);
   if (!lot) return { error: "Purchase not found" };
+  const lotType = pf.assets.find((a) => a.id === lot.assetId)?.type;
+  const tooPrecise = lotType && limitError(lotType, { qty: v.qty, price: v.price });
+  if (tooPrecise) return { error: tooPrecise };
 
   const sold = pf.sold.get(lot.id) ?? 0;
   if (v.qty < sold - 1e-9) {

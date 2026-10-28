@@ -44,7 +44,7 @@ export function AssetTypeSelect({
 }) {
   const groups = new Map<string, AssetTypeId[]>();
   for (const id of ASSET_TYPE_IDS) {
-    const g = ASSET_RULES[id].group;
+    const g = ASSET_RULES[id].category;
     groups.set(g, [...(groups.get(g) ?? []), id]);
   }
   return (

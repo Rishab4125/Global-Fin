@@ -1,6 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { assets, buyLots, miscEntries, saleAllocations, sales, userSettings } from "@/db/schema";
+import { assets, buyLots, miscEntries, saleAllocations, sales, userPlatforms, userSettings } from "@/db/schema";
 import { computeHoldings, type Lot } from "@/domain/fifo";
 import {
   computeRealised,
@@ -9,6 +9,7 @@ import {
   type RealisedRow,
   type SaleEvent,
 } from "@/domain/gains";
+import { platformOptions } from "@/domain/platform";
 import { DEFAULT_SLAB_RATE, isAssetType, type AssetTypeId, type Term } from "@/domain/taxRules";
 
 export interface AssetView {
@@ -31,6 +32,8 @@ export interface Portfolio {
   saleEvents: SaleEvent[];
   miscEvents: MiscEvent[];
   slabRate: number;
+  /** Every platform the user can pick or filter by. */
+  platforms: string[];
   rows: RealisedRow[];
   holdings: HoldingView[];
 }
@@ -38,12 +41,13 @@ export interface Portfolio {
 const asType = (t: string): AssetTypeId => (isAssetType(t) ? t : "other");
 
 export async function loadPortfolio(userId: string): Promise<Portfolio> {
-  const [assetRows, lotRows, saleRows, miscRows, settings] = await Promise.all([
+  const [assetRows, lotRows, saleRows, miscRows, settings, platformRows] = await Promise.all([
     db.select().from(assets).where(eq(assets.userId, userId)),
     db.select().from(buyLots).where(eq(buyLots.userId, userId)),
     db.select().from(sales).where(eq(sales.userId, userId)),
     db.select().from(miscEntries).where(eq(miscEntries.userId, userId)),
     db.select().from(userSettings).where(eq(userSettings.userId, userId)),
+    db.select().from(userPlatforms).where(eq(userPlatforms.userId, userId)),
   ]);
 
   const saleIds = saleRows.map((s) => s.id);
@@ -67,7 +71,9 @@ export async function loadPortfolio(userId: string): Promise<Portfolio> {
     unitPrice: Number(l.unitPrice),
     fees: Number(l.fees),
     source: l.source,
+    platform: l.platform,
   }));
+  const lotPlatform = new Map(lots.map((l) => [l.id, l.platform ?? "Other"]));
 
   const sold = new Map<string, number>();
   for (const a of allocRows) sold.set(a.lotId, (sold.get(a.lotId) ?? 0) + Number(a.qty));
@@ -91,6 +97,9 @@ export async function loadPortfolio(userId: string): Promise<Portfolio> {
       allocations: allocRows
         .filter((a) => a.saleId === s.id)
         .map((a) => ({ lotId: a.lotId, qty: Number(a.qty) })),
+      platforms: [
+        ...new Set(allocRows.filter((a) => a.saleId === s.id).map((a) => lotPlatform.get(a.lotId) ?? "Other")),
+      ],
     };
   });
 
@@ -120,5 +129,10 @@ export async function loadPortfolio(userId: string): Promise<Portfolio> {
   }
   holdings.sort((x, y) => y.cost - x.cost);
 
-  return { assets: assetViews, lots, sold, saleEvents, miscEvents, slabRate, rows, holdings };
+  const platforms = platformOptions(
+    platformRows.map((p) => p.name).sort(),
+    lots.map((l) => l.platform ?? "Other"),
+  );
+
+  return { assets: assetViews, lots, sold, saleEvents, miscEvents, slabRate, platforms, rows, holdings };
 }

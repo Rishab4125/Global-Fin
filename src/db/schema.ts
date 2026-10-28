@@ -3,6 +3,7 @@ import {
   boolean,
   date,
   index,
+  jsonb,
   numeric,
   pgTable,
   primaryKey,
@@ -13,6 +14,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 const money = (name: string) => numeric(name, { precision: 20, scale: 4 });
+/** Quantities and unit prices: crypto needs 8 decimals. Wide enough for the 1e12 price cap. */
+const precise = (name: string) => numeric(name, { precision: 24, scale: 8 });
 
 export const assets = pgTable(
   "assets",
@@ -22,6 +25,10 @@ export const assets = pgTable(
     type: text("type").notNull(),
     name: text("name").notNull(),
     isin: text("isin"),
+    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+    notes: text("notes").notNull().default(""),
+    /** Optional category-specific fields (FD rate and maturity, bond coupon, folio, ...). */
+    details: jsonb("details").notNull().default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [
@@ -39,9 +46,11 @@ export const buyLots = pgTable(
       .notNull()
       .references(() => assets.id, { onDelete: "cascade" }),
     buyDate: date("buy_date", { mode: "string" }).notNull(),
-    qty: money("qty").notNull(),
-    unitPrice: money("unit_price").notNull(),
+    qty: precise("qty").notNull(),
+    unitPrice: precise("unit_price").notNull(),
     fees: money("fees").notNull().default("0"),
+    /** Where this purchase is held (Zerodha, HDFC Bank, ...). One holding can span several platforms. */
+    platform: text("platform").notNull().default("Other"),
     source: text("source").notNull().default("manual"),
     brokerTradeId: text("broker_trade_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -64,8 +73,8 @@ export const sales = pgTable(
       .notNull()
       .references(() => assets.id, { onDelete: "cascade" }),
     sellDate: date("sell_date", { mode: "string" }).notNull(),
-    qty: money("qty").notNull(),
-    price: money("price").notNull(),
+    qty: precise("qty").notNull(),
+    price: precise("price").notNull(),
     fees: money("fees").notNull().default("0"),
     applyTax: boolean("apply_tax").notNull().default(true),
     exemptRedemption: boolean("exempt_redemption").notNull().default(false),
@@ -92,7 +101,7 @@ export const saleAllocations = pgTable(
     lotId: uuid("lot_id")
       .notNull()
       .references(() => buyLots.id, { onDelete: "restrict" }),
-    qty: money("qty").notNull(),
+    qty: precise("qty").notNull(),
   },
   (t) => [index("alloc_sale_idx").on(t.saleId), index("alloc_lot_idx").on(t.lotId)],
 );
@@ -128,6 +137,19 @@ export const brokerConnections = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.broker] })],
+);
+
+/** Platforms the user added beyond the built-in ones. */
+export const userPlatforms = pgTable(
+  "user_platforms",
+  {
+    userId: text("user_id").notNull(),
+    name: text("name").notNull(),
+    /** broker, bank or self */
+    kind: text("kind").notNull().default("broker"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.name] })],
 );
 
 export const userSettings = pgTable("user_settings", {

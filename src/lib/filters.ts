@@ -3,8 +3,6 @@
 export type FilterQuery = Record<string, string | string[] | undefined>;
 export type Filters = Record<string, string[]>;
 
-export const PLATFORMS = ["Zerodha", "Groww", "Other"];
-
 /** "a,b" (or ["a,b", "c"]) -> ["a", "b", "c"], without blanks or repeats. */
 export function parseMulti(v: string | string[] | undefined): string[] {
   const parts = (Array.isArray(v) ? v : [v ?? ""]).flatMap((s) => s.split(","));

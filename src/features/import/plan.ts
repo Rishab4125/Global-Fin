@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { classifyTrade, type RowStatus } from "../../domain/brokerSync";
 import { allocateFifo, type Lot } from "../../domain/fifo";
+import { limitError } from "../../domain/limits";
+import { isAssetType } from "../../domain/taxRules";
 import { parsePnlTradeId } from "./parsers/zerodhaPnl";
 import type { BrokerTrade } from "./types";
 
@@ -230,6 +232,15 @@ export function buildPlan(input: PlanInput): Plan {
       if (clash) {
         status = "error";
         message = `Overlaps your earlier P&L for ${clash.start} to ${clash.end}. Delete those entries or download a non-overlapping period.`;
+      }
+    }
+    if (status !== "imported") {
+      // New holdings from a broker report are stocks, which are held in whole units. A fraction is refused, not rounded.
+      const held = assets.find((a) => a.id === existingId)?.type;
+      const tooPrecise = limitError(held && isAssetType(held) ? held : "equity", { qty: trade.qty });
+      if (tooPrecise) {
+        status = "error";
+        message = tooPrecise;
       }
     }
     if (tradeKey && status === "new") {

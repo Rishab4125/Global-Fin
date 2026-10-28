@@ -24,9 +24,39 @@ export type AssetTypeId =
   | "crypto"
   | "other";
 
+/** How the user thinks of an investment: where and how they manage it. Tax treatment is the sub-type. */
+export type Category =
+  | "Stocks & ETFs"
+  | "Mutual Funds"
+  | "Fixed Deposits"
+  | "Bonds"
+  | "Metals"
+  | "Real Estate"
+  | "Crypto"
+  | "Govt schemes"
+  | "Other";
+
+/** What the money is really exposed to, derived from category and sub-type. */
+export type Exposure = "Equity" | "Debt" | "Gold" | "Real estate" | "Crypto" | "Other";
+
+export const CATEGORIES: Category[] = [
+  "Stocks & ETFs",
+  "Mutual Funds",
+  "Fixed Deposits",
+  "Bonds",
+  "Metals",
+  "Real Estate",
+  "Crypto",
+  "Govt schemes",
+  "Other",
+];
+
 export interface AssetRule {
   label: string;
-  group: string;
+  category: Category;
+  exposure: Exposure;
+  /** Short tax sub-type shown under the category, e.g. "Equity MF" or "SGB". */
+  subType: string;
   /** Held for MORE than this many months => long term. null => no long-term concept (always STCG). */
   longTermMonths: number | null;
   stcg: Rate;
@@ -72,7 +102,9 @@ const SLAB: Rate = { kind: "slab" };
 export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   equity: {
     label: "Stocks / Equity ETF",
-    group: "Equity",
+    category: "Stocks & ETFs",
+    exposure: "Equity",
+    subType: "Equity",
     longTermMonths: 12,
     stcg: { kind: "flat", rate: 0.2 },
     ltcg: LTCG_125,
@@ -81,7 +113,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   equity_mf: {
     label: "Equity Mutual Fund",
-    group: "Equity",
+    category: "Mutual Funds",
+    exposure: "Equity",
+    subType: "Equity MF",
     longTermMonths: 12,
     stcg: { kind: "flat", rate: 0.2 },
     ltcg: LTCG_125,
@@ -90,7 +124,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   debt_mf: {
     label: "Debt Mutual Fund",
-    group: "Debt",
+    category: "Mutual Funds",
+    exposure: "Debt",
+    subType: "Debt MF",
     longTermMonths: null,
     stcg: SLAB,
     ltcg: SLAB,
@@ -98,7 +134,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   bond_listed: {
     label: "Bond / Debenture (listed)",
-    group: "Debt",
+    category: "Bonds",
+    exposure: "Debt",
+    subType: "Listed",
     longTermMonths: 12,
     stcg: SLAB,
     ltcg: LTCG_125,
@@ -106,7 +144,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   bond_unlisted: {
     label: "Bond / Debenture (unlisted)",
-    group: "Debt",
+    category: "Bonds",
+    exposure: "Debt",
+    subType: "Unlisted",
     longTermMonths: null,
     stcg: SLAB,
     ltcg: SLAB,
@@ -114,7 +154,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   fd: {
     label: "Fixed Deposit",
-    group: "Fixed income",
+    category: "Fixed Deposits",
+    exposure: "Debt",
+    subType: "FD",
     longTermMonths: null,
     stcg: SLAB,
     ltcg: SLAB,
@@ -122,7 +164,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   rd: {
     label: "Recurring Deposit",
-    group: "Fixed income",
+    category: "Fixed Deposits",
+    exposure: "Debt",
+    subType: "RD",
     longTermMonths: null,
     stcg: SLAB,
     ltcg: SLAB,
@@ -130,7 +174,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   ppf_epf: {
     label: "PPF / EPF",
-    group: "Fixed income",
+    category: "Govt schemes",
+    exposure: "Debt",
+    subType: "PPF / EPF",
     longTermMonths: null,
     stcg: { kind: "exempt" },
     ltcg: { kind: "exempt" },
@@ -138,7 +184,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   land: {
     label: "Land / Real Estate",
-    group: "Real estate",
+    category: "Real Estate",
+    exposure: "Real estate",
+    subType: "Land / property",
     longTermMonths: 24,
     stcg: SLAB,
     ltcg: LTCG_125,
@@ -146,15 +194,19 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   gold_physical: {
     label: "Gold (physical / digital)",
-    group: "Gold",
+    category: "Metals",
+    exposure: "Gold",
+    subType: "Physical / digital",
     longTermMonths: 24,
     stcg: SLAB,
     ltcg: LTCG_125,
     note: "Long term after 24 months at 12.5%; short term at slab rate.",
   },
   gold_etf: {
-    label: "Gold ETF / Gold Fund",
-    group: "Gold",
+    label: "Commodity ETF (gold / silver)",
+    category: "Stocks & ETFs",
+    exposure: "Gold",
+    subType: "Commodity ETF",
     longTermMonths: 12,
     stcg: SLAB,
     ltcg: LTCG_125,
@@ -162,7 +214,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   sgb: {
     label: "Sovereign Gold Bond",
-    group: "Gold",
+    category: "Metals",
+    exposure: "Gold",
+    subType: "Sovereign Gold Bond",
     longTermMonths: 12,
     stcg: SLAB,
     ltcg: LTCG_125,
@@ -170,7 +224,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   crypto: {
     label: "Crypto / VDA",
-    group: "Crypto",
+    category: "Crypto",
+    exposure: "Crypto",
+    subType: "VDA",
     longTermMonths: null,
     stcg: { kind: "flat", rate: 0.3 },
     ltcg: { kind: "flat", rate: 0.3 },
@@ -179,7 +235,9 @@ export const ASSET_RULES: Record<AssetTypeId, AssetRule> = {
   },
   other: {
     label: "Other",
-    group: "Other",
+    category: "Other",
+    exposure: "Other",
+    subType: "Generic",
     longTermMonths: 24,
     stcg: SLAB,
     ltcg: LTCG_125,

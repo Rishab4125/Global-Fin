@@ -178,3 +178,18 @@ describe("buildPlan Zerodha P&L reconciliation", () => {
     expect(p.rows[0].status).toBe("imported");
   });
 });
+
+describe("buildPlan whole-share rule", () => {
+  it("flags a fractional quantity instead of storing or rounding it", () => {
+    const p = buildPlan(base({ trades: [trade({ qty: 2.5 })] }));
+    expect(p.rows[0].status).toBe("error");
+    expect(p.rows[0].message).toMatch(/whole units/i);
+    expect(p.lots).toHaveLength(0);
+  });
+
+  it("still accepts whole quantities", () => {
+    const p = buildPlan(base({ trades: [trade({ qty: 3 })] }));
+    expect(p.rows[0].status).toBe("new");
+    expect(p.lots).toHaveLength(1);
+  });
+});

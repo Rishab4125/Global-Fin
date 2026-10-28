@@ -6,13 +6,12 @@ import { SortSelect } from "@/components/SortSelect";
 import { EmptyState, Kpi, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
 import { lotUnitCost } from "@/domain/fifo";
-import { platformOf } from "@/domain/platform";
 import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { AddInvestment } from "@/features/holdings/AddInvestment";
 import { HoldingsGrid } from "@/features/holdings/HoldingsGrid";
 import { loadPortfolio } from "@/features/portfolio/data";
-import { filterQs, joinQs, passes, PLATFORMS, readFilters } from "@/lib/filters";
+import { filterQs, joinQs, passes, readFilters } from "@/lib/filters";
 import { formatDate, formatINR, formatQty } from "@/lib/format";
 import { parseSort, sortRows } from "@/lib/sort";
 
@@ -53,8 +52,8 @@ export default async function HoldingsPage({
   const q = (query.q ?? "").trim();
   const needle = q.toLowerCase();
   const sort = parseSort(query, SORT_KEYS, { key: "invested", dir: "desc" });
-  const groupOptions = [...new Set(pf.holdings.map((h) => ASSET_RULES[h.type].group))].sort();
-  const filters = readFilters(query, ["pf", "ty"], { pf: PLATFORMS, ty: groupOptions });
+  const groupOptions = [...new Set(pf.holdings.map((h) => ASSET_RULES[h.type].category))].sort();
+  const filters = readFilters(query, ["pf", "ty"], { pf: pf.platforms, ty: groupOptions });
   const fq = filterQs(filters);
   const withQ = joinQs(q ? `q=${encodeURIComponent(q)}` : "", fq);
 
@@ -65,7 +64,7 @@ export default async function HoldingsPage({
     const rem = l.qty - (pf.sold.get(l.id) ?? 0);
     const a = assetMap.get(l.assetId);
     if (rem <= 1e-9 || !a) continue;
-    if (!passes(filters.pf, platformOf(l.source)) || !passes(filters.ty, ASSET_RULES[a.type].group)) continue;
+    if (!passes(filters.pf, l.platform) || !passes(filters.ty, ASSET_RULES[a.type].category)) continue;
     const r = acc.get(a.id) ?? {
       id: a.id,
       name: a.name,
@@ -79,7 +78,7 @@ export default async function HoldingsPage({
       lastBuy: l.buyDate,
     };
     const part = rem * lotUnitCost(l);
-    const platform = platformOf(l.source);
+    const platform = l.platform ?? "Other";
     r.qty += rem;
     r.cost += part;
     r.platformSet.add(platform);
@@ -146,8 +145,8 @@ export default async function HoldingsPage({
           basePath="/holdings"
           selected={filters}
           groups={[
-            { id: "pf", label: "Platform", options: PLATFORMS },
-            { id: "ty", label: "Asset class", options: groupOptions.length > 1 ? groupOptions : [] },
+            { id: "pf", label: "Platform", options: pf.platforms },
+            { id: "ty", label: "Category", options: groupOptions.length > 1 ? groupOptions : [] },
           ]}
         />
       </AddInvestment>

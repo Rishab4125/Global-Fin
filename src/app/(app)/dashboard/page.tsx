@@ -5,14 +5,13 @@ import { EmptyState, Kpi, PageHeader, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
 import { lotUnitCost } from "@/domain/fifo";
 import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
-import { platformOf } from "@/domain/platform";
 import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { AllocationChart, GainByYearChart } from "@/features/dashboard/Charts";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { loadPortfolio } from "@/features/portfolio/data";
 import { byFinancialYear, totals } from "@/features/reports/summary";
-import { filterQs, passes, PLATFORMS, readFilters } from "@/lib/filters";
+import { filterQs, passes, readFilters } from "@/lib/filters";
 import { formatDate, formatINR } from "@/lib/format";
 
 export const metadata = { title: "Dashboard" };
@@ -43,14 +42,14 @@ export default async function DashboardPage({
 
   // Asset class / platform filters apply to the KPIs and both charts.
   const assetMap = new Map(pf.assets.map((a) => [a.id, a]));
-  const groupOptions = [...new Set(pf.assets.map((a) => ASSET_RULES[a.type].group))].sort();
-  const filters = readFilters(query, ["ty", "pf"], { ty: groupOptions, pf: PLATFORMS });
+  const groupOptions = [...new Set(pf.assets.map((a) => ASSET_RULES[a.type].category))].sort();
+  const filters = readFilters(query, ["ty", "pf"], { ty: groupOptions, pf: pf.platforms });
   const fq = filterQs(filters);
-  const saleSource = new Map(pf.saleEvents.map((s) => [s.id, s.source]));
+  const salePlatforms = new Map(pf.saleEvents.map((s) => [s.id, s.platforms]));
   const rowsInFilter = pf.rows.filter(
     (r) =>
-      passes(filters.ty, ASSET_RULES[r.assetType].group) &&
-      passes(filters.pf, r.kind === "sale" ? platformOf(saleSource.get(r.id)) : "–"),
+      passes(filters.ty, ASSET_RULES[r.assetType].category) &&
+      passes(filters.pf, r.kind === "sale" ? salePlatforms.get(r.id) : "–"),
   );
   const periodRows = rowsInFilter.filter((r) => inPeriod(r.date, period));
 
@@ -59,7 +58,7 @@ export default async function DashboardPage({
     const rem = l.qty - (pf.sold.get(l.id) ?? 0);
     const a = assetMap.get(l.assetId);
     if (rem <= 1e-9 || !a) continue;
-    if (!passes(filters.ty, ASSET_RULES[a.type].group) || !passes(filters.pf, platformOf(l.source))) continue;
+    if (!passes(filters.ty, ASSET_RULES[a.type].category) || !passes(filters.pf, l.platform)) continue;
     heldCost.set(a.id, (heldCost.get(a.id) ?? 0) + rem * lotUnitCost(l));
   }
   const invested = [...heldCost.values()].reduce((s, c) => s + c, 0);
@@ -73,7 +72,7 @@ export default async function DashboardPage({
 
   const allocMap = new Map<string, number>();
   for (const [id, cost] of heldCost) {
-    const g = ASSET_RULES[assetMap.get(id)!.type].group;
+    const g = ASSET_RULES[assetMap.get(id)!.type].category;
     allocMap.set(g, (allocMap.get(g) ?? 0) + cost);
   }
   const allocation = [...allocMap.entries()]
@@ -126,8 +125,8 @@ export default async function DashboardPage({
           basePath="/dashboard"
           selected={filters}
           groups={[
-            { id: "ty", label: "Asset class", options: groupOptions.length > 1 ? groupOptions : [] },
-            { id: "pf", label: "Platform", options: PLATFORMS },
+            { id: "ty", label: "Category", options: groupOptions.length > 1 ? groupOptions : [] },
+            { id: "pf", label: "Platform", options: pf.platforms },
           ]}
         />
       </div>

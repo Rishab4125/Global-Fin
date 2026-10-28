@@ -27,6 +27,8 @@ export interface SaleEvent {
   buyback?: boolean;
   allocations: Allocation[];
   source?: string;
+  /** Platforms of the lots this sale consumed. */
+  platforms?: string[];
 }
 
 export interface MiscEvent {

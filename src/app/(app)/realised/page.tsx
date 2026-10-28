@@ -3,7 +3,6 @@ import { FilterBar } from "@/components/FilterBar";
 import { EmptyState, Kpi, PageHeader, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
 import { fyOptions } from "@/domain/period";
-import { PLATFORMS } from "@/lib/filters";
 import { ASSET_RULES } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
@@ -69,10 +68,10 @@ export default async function RealisedPage({ searchParams }: { searchParams: Pro
           basePath="/realised"
           selected={filters}
           groups={[
-            { id: "ty", label: "Asset class", options: groupOptions.length > 1 ? groupOptions : [] },
+            { id: "ty", label: "Category", options: groupOptions.length > 1 ? groupOptions : [] },
             { id: "term", label: "Term", options: TERMS },
             { id: "sign", label: "Result", options: RESULTS },
-            { id: "pf", label: "Platform", options: PLATFORMS },
+            { id: "pf", label: "Platform", options: pf.platforms },
           ]}
         />
       </div>

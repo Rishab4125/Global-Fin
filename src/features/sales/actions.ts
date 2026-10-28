@@ -9,11 +9,12 @@ import { db } from "@/db/client";
 import { sales } from "@/db/schema";
 import { reallocate, type Allocation } from "@/domain/fifo";
 import { computeRealised, type SaleEvent } from "@/domain/gains";
+import { limitError } from "@/domain/limits";
 import { requireUser } from "@/features/auth/session";
 import type { ActionState } from "@/features/portfolio/actionState";
 import { loadPortfolio } from "@/features/portfolio/data";
 import { allocationStatements, isOversold, rebuildAssetAllocations } from "@/features/portfolio/reallocate";
-import { number, pastDate, qty } from "@/lib/validation";
+import { money, number, pastDate, qty } from "@/lib/validation";
 
 const NEW_SALE = "preview";
 
@@ -23,7 +24,7 @@ const saleSchema = z.object({
   sellDate: pastDate,
   qty: qty(),
   price: number("price"),
-  fees: number("fees"),
+  fees: money("fees"),
   applyTax: z.boolean(),
   exemptRedemption: z.boolean(),
   isBuyback: z.boolean(),
@@ -52,6 +53,8 @@ async function plan(userId: string, form: FormData) {
   const pf = await loadPortfolio(userId);
   const asset = pf.assets.find((a) => a.id === v.assetId);
   if (!asset) return { error: "Holding not found" } as const;
+  const tooPrecise = limitError(asset.type, { qty: v.qty, price: v.price });
+  if (tooPrecise) return { error: tooPrecise } as const;
 
   const existing = v.saleId ? pf.saleEvents.find((s) => s.id === v.saleId) : undefined;
   if (v.saleId && (!existing || existing.assetId !== asset.id)) return { error: "Sale not found" } as const;

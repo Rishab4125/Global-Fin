@@ -5,13 +5,12 @@ import { ListSearch } from "@/components/ListSearch";
 import { SortHeader } from "@/components/SortHeader";
 import { EmptyState, PageHeader, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
-import { platformOf } from "@/domain/platform";
 import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
 import { ASSET_RULES, type AssetTypeId } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { loadPortfolio } from "@/features/portfolio/data";
-import { filterQs, passes, PLATFORMS, readFilters } from "@/lib/filters";
+import { filterQs, passes, readFilters } from "@/lib/filters";
 import { formatDate, formatINR, formatQty, gainClass } from "@/lib/format";
 import { parseSort, sortRows } from "@/lib/sort";
 
@@ -68,8 +67,8 @@ export default async function TransactionsPage({
         assetId: l.assetId,
         name: a?.name ?? "Unknown",
         typeLabel: a ? typeLabel(a.type) : "",
-        group: a ? ASSET_RULES[a.type].group : "",
-        platform: platformOf(l.source),
+        group: a ? ASSET_RULES[a.type].category : "",
+        platform: l.platform ?? "Other",
         qty: l.qty,
         price: l.unitPrice,
         fees: l.fees,
@@ -86,8 +85,8 @@ export default async function TransactionsPage({
         assetId: s.assetId,
         name: a?.name ?? "Unknown",
         typeLabel: a ? typeLabel(a.type) : "",
-        group: a ? ASSET_RULES[a.type].group : "",
-        platform: platformOf(s.source),
+        group: a ? ASSET_RULES[a.type].category : "",
+        platform: s.platforms?.join(", ") || "Other",
         qty: s.qty,
         price: s.price,
         fees: s.fees,
@@ -103,7 +102,7 @@ export default async function TransactionsPage({
         date: m.date,
         name: buyback ? "Share buyback" : "Misc profit / loss",
         typeLabel: buyback ? `Cost ${formatINR(m.cost)}` : typeLabel(m.assetType),
-        group: ASSET_RULES[m.assetType].group,
+        group: ASSET_RULES[m.assetType].category,
         platform: "–",
         qty: null,
         price: null,
@@ -133,7 +132,7 @@ export default async function TransactionsPage({
   const filters = readFilters(query, ["act", "ty", "pf"], {
     act: Object.values(badge).map((b) => b.label),
     ty: groupOptions,
-    pf: PLATFORMS,
+    pf: pf.platforms,
   });
   const fq = filterQs(filters);
   const q = (query.q ?? "").trim();
@@ -143,7 +142,7 @@ export default async function TransactionsPage({
       inPeriod(t.date, period) &&
       passes(filters.act, badge[t.kind].label) &&
       passes(filters.ty, t.group) &&
-      passes(filters.pf, t.platform) &&
+      passes(filters.pf, t.platform.split(", ")) &&
       (!needle ||
         [t.name, t.typeLabel, t.platform, badge[t.kind].label, t.note ?? ""].some((s) => s.toLowerCase().includes(needle))),
   );
@@ -196,8 +195,8 @@ export default async function TransactionsPage({
           selected={filters}
           groups={[
             { id: "act", label: "Action", options: Object.values(badge).map((b) => b.label) },
-            { id: "ty", label: "Asset class", options: groupOptions.length > 1 ? groupOptions : [] },
-            { id: "pf", label: "Platform", options: PLATFORMS },
+            { id: "ty", label: "Category", options: groupOptions.length > 1 ? groupOptions : [] },
+            { id: "pf", label: "Platform", options: pf.platforms },
           ]}
         />
       </div>

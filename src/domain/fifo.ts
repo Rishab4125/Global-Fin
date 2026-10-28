@@ -7,6 +7,8 @@ export interface Lot {
   fees: number;
   /** Where the purchase came from, e.g. "manual" or "zerodha_pnl". */
   source?: string;
+  /** Where the units are held, e.g. "Zerodha" or "HDFC Bank". */
+  platform?: string;
 }
 
 export interface Allocation {

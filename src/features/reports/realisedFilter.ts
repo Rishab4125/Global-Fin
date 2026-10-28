@@ -1,8 +1,7 @@
 import type { RealisedRow } from "@/domain/gains";
 import { inPeriod, resolvePeriod } from "@/domain/period";
 import { ASSET_RULES } from "@/domain/taxRules";
-import { platformOf } from "@/domain/platform";
-import { filterQs, passes, PLATFORMS, readFilters, type Filters } from "@/lib/filters";
+import { filterQs, passes, readFilters, type Filters } from "@/lib/filters";
 import type { Portfolio } from "@/features/portfolio/data";
 
 export const TERMS = ["Short term", "Long term"];
@@ -20,7 +19,7 @@ export type RealisedQuery = {
 
 /** Asset classes present in the realised rows, for the filter's options. */
 export const realisedGroups = (rows: RealisedRow[]) =>
-  [...new Set(rows.map((r) => ASSET_RULES[r.assetType].group))].sort();
+  [...new Set(rows.map((r) => ASSET_RULES[r.assetType].category))].sort();
 
 /** Period and list filters for the realised report; shared by the page and the CSV export so they always agree. */
 export function realisedView(pf: Portfolio, query: RealisedQuery, today: string) {
@@ -30,16 +29,16 @@ export function realisedView(pf: Portfolio, query: RealisedQuery, today: string)
     ty: groups,
     term: TERMS,
     sign: RESULTS,
-    pf: PLATFORMS,
+    pf: pf.platforms,
   });
-  const saleSource = new Map(pf.saleEvents.map((s) => [s.id, s.source]));
+  const salePlatforms = new Map(pf.saleEvents.map((s) => [s.id, s.platforms]));
   const rows = pf.rows.filter(
     (r) =>
       inPeriod(r.date, period) &&
-      passes(filters.ty, ASSET_RULES[r.assetType].group) &&
+      passes(filters.ty, ASSET_RULES[r.assetType].category) &&
       passes(filters.term, [Math.abs(r.stcg) > 1e-9 ? "Short term" : "", Math.abs(r.ltcg) > 1e-9 ? "Long term" : ""]) &&
       passes(filters.sign, r.netGain >= 0 ? "Profit" : "Loss") &&
-      passes(filters.pf, r.kind === "sale" ? platformOf(saleSource.get(r.id)) : "–"),
+      passes(filters.pf, r.kind === "sale" ? salePlatforms.get(r.id) : "–"),
   );
   const periodQuery =
     period.value === "custom" ? `period=custom&from=${period.from}&to=${period.to}` : `period=${encodeURIComponent(period.value)}`;
