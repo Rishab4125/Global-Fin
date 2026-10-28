@@ -400,7 +400,7 @@ Tapping the avatar opens a menu (desktop popover, mobile bottom sheet):
 |---|---|
 | Header | Photo, name, email |
 | **Profile** | Name, photo (from Google), email (read-only) |
-| **Tax settings** | Slab rate, tax regime, financial-year start (fixed April), "Tax rules applied" table (moved from Settings) |
+| **Tax settings** | Slab rate (new tax regime only), financial-year start (fixed April), "Tax rules applied" table (moved from Settings) |
 | **Connected platforms** | Zerodha Kite connect, last sync, add platform (Groww import) |
 | **Platforms and tags** | Manage the platform list and tags |
 | **Preferences** | Theme, default period, mix by value or cost, number format |

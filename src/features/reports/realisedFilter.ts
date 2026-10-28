@@ -27,7 +27,7 @@ export const realisedGroups = (rows: RealisedRow[]) =>
 
 /** Period and list filters for the realised report; shared by the page and the CSV export so they always agree. */
 export function realisedView(pf: Portfolio, query: RealisedQuery, today: string) {
-  const period = resolvePeriod({ ...query, period: query.period ?? "all" }, today);
+  const period = resolvePeriod(query, today);
   const groups = realisedGroups(pf.rows);
   const filters: Filters = readFilters(query, ["ty", "term", "sign", "pf"], {
     ty: groups,
@@ -53,7 +53,7 @@ export type MiscQuery = { period?: string; from?: string; to?: string; q?: strin
 
 /** Misc rows (entries and dividends) with the Misc page's period, type, result and search; the CSV export reuses it. */
 export function miscView(pf: Portfolio, query: MiscQuery, today: string) {
-  const period = resolvePeriod({ ...query, period: query.period ?? "all" }, today);
+  const period = resolvePeriod(query, today);
   const dividendIds = new Set(pf.dividendEvents.map((d) => d.id));
   const typeOf = (r: RealisedRow) => miscTypeOf(r, dividendIds);
   const all = pf.rows.filter((r) => r.kind === "misc");

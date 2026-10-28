@@ -49,7 +49,7 @@ export default async function ActivityPage({
 
   const today = todayIso();
   const earliest = txns.length ? txns[txns.length - 1].date : today;
-  const period = resolvePeriod({ ...query, period: query.period ?? "all" }, today);
+  const period = resolvePeriod(query, today);
   const options = fyOptions(txns.length ? earliest : null, today).map((fy, i) => ({
     value: `fy:${fy}`,
     label: i === 0 ? `FY ${fy} (current)` : `FY ${fy}`,
