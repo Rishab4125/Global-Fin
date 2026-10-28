@@ -12,7 +12,7 @@ import { PeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { loadPortfolio } from "@/features/portfolio/data";
 import { byFinancialYear, totals } from "@/features/reports/summary";
 import { filterQs, passes, readFilters } from "@/lib/filters";
-import { formatDate, formatINR } from "@/lib/format";
+import { formatDate, formatINRWhole } from "@/lib/format";
 
 export const metadata = { title: "Dashboard" };
 
@@ -134,21 +134,21 @@ export default async function DashboardPage({
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <Kpi
           label="Currently invested"
-          value={formatINR(invested)}
+          value={formatINRWhole(invested)}
           icon={BriefcaseBusiness}
           hint={`${heldCost.size} holdings, as of today`}
         />
         <Kpi
           label="Realised gain"
-          value={formatINR(t.gain)}
+          value={formatINRWhole(t.gain)}
           icon={TrendingUp}
           tone={t.gain >= 0 ? "gain" : "loss"}
           hint={`Before tax · ${periodText}`}
         />
-        <Kpi label="Estimated tax" value={formatINR(t.tax)} icon={Landmark} hint={`Incl. 4% cess · ${periodText}`} />
+        <Kpi label="Estimated tax" value={formatINRWhole(t.tax)} icon={Landmark} hint={`Incl. 4% cess · ${periodText}`} />
         <Kpi
           label="Post-tax gain"
-          value={formatINR(t.net)}
+          value={formatINRWhole(t.net)}
           icon={PiggyBank}
           tone={t.net >= 0 ? "gain" : "loss"}
           hint={`What you keep · ${periodText}`}

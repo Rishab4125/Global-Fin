@@ -116,7 +116,7 @@ export function DateRangeField({
           </p>
           <div className="grid grid-cols-7 gap-y-0.5 text-center">
             {WEEK.map((w) => (
-              <span key={w} className="py-1 text-[11px] text-muted">
+              <span key={w} className="py-1 text-xs text-muted">
                 {w}
               </span>
             ))}

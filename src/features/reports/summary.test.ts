@@ -18,7 +18,7 @@ describe("toCsv", () => {
 
   it("leaves negative numbers alone and quotes line breaks", () => {
     const csv = toCsv([row({ gain: -5, note: "a\r\nb" })]);
-    expect(csv).toContain(",-5,");
+    expect(csv).toContain(",-5.00,");
     expect(csv).toContain('"a\r\nb"');
   });
 });

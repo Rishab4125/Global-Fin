@@ -115,6 +115,36 @@ tbody tr:last-child td {
   background: var(--primary-soft);
 }
 
+/* Type scale (PRD 6.8): nine roles, one font, weights 400/500/600, nothing under 12px.
+   Sizes are in rem so browser text settings still work. */
+@utility t-hero {
+  @apply text-[1.625rem] leading-[1.1] font-semibold tracking-[-0.02em] lg:text-[1.75rem];
+}
+@utility t-page {
+  @apply text-xl leading-tight font-semibold tracking-[-0.02em] lg:text-2xl;
+}
+@utility t-kpi {
+  @apply text-lg leading-[1.2] font-semibold lg:text-2xl;
+}
+@utility t-value {
+  @apply text-lg leading-[1.3] font-semibold;
+}
+@utility t-title {
+  @apply text-base leading-[1.35] font-semibold;
+}
+@utility t-body {
+  @apply text-sm leading-[1.45] font-normal;
+}
+@utility t-body-strong {
+  @apply text-sm leading-[1.45] font-semibold;
+}
+@utility t-label {
+  @apply text-[0.8125rem] leading-[1.4] font-medium text-muted;
+}
+@utility t-caption {
+  @apply text-xs leading-[1.35] font-medium text-muted;
+}
+
 @utility card {
   @apply rounded-xl border border-line bg-surface p-5 shadow-[var(--shadow)];
 }

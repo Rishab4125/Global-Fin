@@ -1,5 +1,6 @@
 import type { RealisedRow } from "../../domain/gains";
 import { ASSET_RULES } from "../../domain/taxRules";
+import { csvMoney, csvQty } from "../../lib/format";
 
 export interface Totals {
   gain: number;
@@ -36,7 +37,9 @@ export function toCsv(rows: RealisedRow[]): string {
   // Text that starts with = + - @ would run as a formula when the file is opened in Excel, so it is made literal.
   const esc = (v: string | number | null) => {
     let s = v === null ? "" : String(v);
-    if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+    // Numbers written by csvMoney/csvQty are strings too, so a plain negative number must not be mistaken for a formula.
+    const plainNumber = /^-?\d+(\.\d+)?$/.test(s);
+    if (typeof v === "string" && !plainNumber && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const header = [
@@ -63,15 +66,15 @@ export function toCsv(rows: RealisedRow[]): string {
       r.kind === "sale" ? "Sale" : "Misc",
       ASSET_RULES[r.assetType].label,
       r.label,
-      r.qty,
-      r.proceeds,
-      r.cost,
-      r.stcg,
-      r.ltcg,
-      r.gain,
+      r.qty === null ? null : csvQty(r.qty),
+      r.proceeds === null ? null : csvMoney(r.proceeds),
+      r.cost === null ? null : csvMoney(r.cost),
+      csvMoney(r.stcg),
+      csvMoney(r.ltcg),
+      csvMoney(r.gain),
       r.taxApplied ? "Yes" : "No",
-      r.tax,
-      r.netGain,
+      csvMoney(r.tax),
+      csvMoney(r.netGain),
       r.note,
     ]
       .map(esc)

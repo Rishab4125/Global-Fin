@@ -48,7 +48,7 @@ export function SideNav() {
     <nav className="flex flex-col gap-5">
       {sections.map((s) => (
         <div key={s.title}>
-          <p className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wider text-white/60">{s.title}</p>
+          <p className="mb-1.5 px-3 text-xs font-medium uppercase tracking-wider text-white/60">{s.title}</p>
           <ul className="space-y-0.5">
             {s.links.map((l) => {
               const active = isActive(path, l.href);
@@ -139,7 +139,7 @@ export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
               onClick={() => setOpen((o) => !o)}
               aria-expanded={open}
               aria-haspopup="dialog"
-              className={`flex h-full w-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium outline-none focus-visible:bg-surface2 ${
+              className={`flex h-full w-full flex-col items-center justify-center gap-0.5 text-xs font-medium outline-none focus-visible:bg-surface2 ${
                 open || moreActive ? "text-primary" : "text-muted"
               }`}
             >
@@ -160,7 +160,7 @@ function TabLink({ link, active }: { link: NavLink; active: boolean }) {
     <Link
       href={link.href}
       aria-current={active ? "page" : undefined}
-      className={`flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-medium outline-none focus-visible:bg-surface2 ${
+      className={`flex h-full flex-col items-center justify-center gap-0.5 text-xs font-medium outline-none focus-visible:bg-surface2 ${
         active ? "text-primary" : "text-muted"
       }`}
     >
