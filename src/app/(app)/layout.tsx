@@ -1,7 +1,7 @@
 import { LogOut, TrendingUp } from "lucide-react";
-import Link from "next/link";
 import { signOut } from "@/auth";
 import { BottomNav, SideNav } from "@/components/Nav";
+import { AccountButton, OverlayProvider } from "@/components/Overlays";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { requireUser } from "@/features/auth/session";
 
@@ -25,62 +25,51 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
   const display = user.name || user.email;
   const initial = display.trim().charAt(0).toUpperCase() || "U";
+  const person = { name: user.name, email: user.email, initial };
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[248px_1fr]">
-      <aside className="sticky top-0 hidden h-screen flex-col justify-between bg-sidebar p-4 text-white lg:flex">
-        <div className="space-y-8">
-          <div className="px-2 pt-1">
-            <Logo />
-          </div>
-          <SideNav />
-        </div>
-        <div className="space-y-3">
-          <ThemeToggle variant="segmented" />
-          <form action={signOutAction} className="flex items-center gap-3 rounded-xl bg-white/6 p-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-600 text-sm font-semibold">
-              {initial}
+    <OverlayProvider
+      user={person}
+      signOutSlot={
+        <form action={signOutAction}>
+          <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-loss outline-none hover:bg-surface2 focus-visible:bg-surface2">
+            <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-loss/10">
+              <LogOut size={18} />
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{user.name || "Account"}</p>
-              <p className="truncate text-xs text-white/50">{user.email}</p>
+            Sign out
+          </button>
+        </form>
+      }
+    >
+      <div className="min-h-screen lg:grid lg:grid-cols-[248px_1fr]">
+        <aside className="sticky top-0 hidden h-screen flex-col justify-between bg-sidebar p-4 text-white lg:flex">
+          <div className="space-y-8">
+            <div className="px-2 pt-1">
+              <Logo />
             </div>
-            <button aria-label="Sign out" title="Sign out" className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white">
-              <LogOut size={17} />
-            </button>
-          </form>
-        </div>
-      </aside>
-
-      <div className="min-w-0">
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface/90 px-4 py-3 backdrop-blur lg:hidden">
-          <Logo />
-          <div className="flex items-center gap-1.5">
-            <ThemeToggle />
-            <Link
-              href="/settings"
-              aria-label="Settings"
-              className="grid size-8 place-items-center rounded-full bg-primary-soft text-sm font-semibold text-primary-strong"
-            >
-              {initial}
-            </Link>
+            <SideNav />
           </div>
-        </header>
-        <main className="mx-auto max-w-6xl px-4 py-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:py-9 lg:pb-12">
-          {children}
-        </main>
-      </div>
+          <div className="space-y-3">
+            <ThemeToggle variant="segmented" />
+            <AccountButton user={person} variant="sidebar" />
+          </div>
+        </aside>
 
-      <BottomNav
-        signOutSlot={
-          <form action={signOutAction}>
-            <button className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium text-loss hover:bg-surface2">
-              <LogOut size={20} />
-              Sign out
-            </button>
-          </form>
-        }
-      />
-    </div>
+        <div className="min-w-0">
+          <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface/90 px-4 py-3 backdrop-blur lg:hidden">
+            <Logo />
+            <div className="flex items-center gap-1.5">
+              <ThemeToggle />
+              <AccountButton user={person} variant="avatar" />
+            </div>
+          </header>
+          <main className="mx-auto max-w-6xl px-4 py-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:py-9 lg:pb-12">
+            {children}
+          </main>
+        </div>
+
+        <BottomNav />
+      </div>
+    </OverlayProvider>
   );
 }

@@ -99,7 +99,7 @@ export default async function DashboardPage({
               <span className="hidden sm:inline">Sync</span>
             </Link>
             <Link
-              href="/holdings"
+              href="/holdings?add=1"
               aria-label="Add investment"
               title="Add investment"
               className="btn-primary shrink-0 max-sm:!w-10 max-sm:!min-w-10 max-sm:!px-0"
@@ -163,7 +163,7 @@ export default async function DashboardPage({
               title="No investments yet"
               text="Add your first investment to start tracking holdings and realised gains."
               action={
-                <Link href="/holdings" className="btn-primary">
+                <Link href="/holdings?add=1" className="btn-primary">
                   Add investment
                 </Link>
               }

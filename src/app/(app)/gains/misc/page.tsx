@@ -3,6 +3,7 @@ import { DeleteButton } from "@/components/DeleteButton";
 import { FilterBar } from "@/components/FilterBar";
 import { ListSearch } from "@/components/ListSearch";
 import { SortHeader } from "@/components/SortHeader";
+import { GainsTabs } from "@/components/SegmentLinks";
 import { EmptyState, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
 import { fyOptions, inPeriod, resolvePeriod } from "@/domain/period";
@@ -18,12 +19,12 @@ import { parseSort, sortRows } from "@/lib/sort";
 
 const SORT_KEYS = ["date", "type", "amount", "brokerage", "tax", "net", "note"] as const;
 
-export const metadata = { title: "Misc profit / loss" };
+export const metadata = { title: "Gains: Misc" };
 
 export default async function MiscPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string; ty?: string; sign?: string; adj?: string }>;
+  searchParams: Promise<{ period?: string; from?: string; to?: string; q?: string; sort?: string; dir?: string; ty?: string; sign?: string; adj?: string; add?: string }>;
 }) {
   const query = await searchParams;
   const user = await requireUser();
@@ -78,19 +79,22 @@ export default async function MiscPage({
   const filtered = entries.length !== pf.miscEvents.length;
 
   const head = (label: string, col: (typeof SORT_KEYS)[number], align: "left" | "right" = "left", firstDir: "asc" | "desc" = "asc", className = "") => (
-    <SortHeader label={label} col={col} sort={sort} basePath="/misc" query={`${periodQuery}${withQ}${withF}`} align={align} firstDir={firstDir} className={className} />
+    <SortHeader label={label} col={col} sort={sort} basePath="/gains/misc" query={`${periodQuery}${withQ}${withF}`} align={align} firstDir={firstDir} className={className} />
   );
 
   return (
     <div>
       <AddMisc
+        key={query.add ? "add" : "list"}
+        defaultOpen={!!query.add}
         today={today}
-        title="Misc profit / loss"
-        description="Record a one-off gain or loss without a buy and sell, such as dividends or F&O."
+        title="Gains"
+        description="One-off gains and losses without a buy and sell, such as F&O or interest. Dividends are recorded on the holding."
+        tabs={<GainsTabs active="misc" />}
       >
         {pf.miscEvents.length > 0 && (
           <>
-            <ListSearch q={q} basePath="/misc" query={`${periodQuery}&${sortQuery}${withF}`} placeholder="Search type or note" />
+            <ListSearch q={q} basePath="/gains/misc" query={`${periodQuery}&${sortQuery}${withF}`} placeholder="Search type or note" />
             <PeriodFilter
               options={options}
               value={period.value}
@@ -98,11 +102,11 @@ export default async function MiscPage({
               to={period.to ?? ""}
               earliest={earliest}
               today={today}
-              basePath="/misc"
+              basePath="/gains/misc"
               extraQuery={`${sortQuery}${withQ}${withF}`}
             />
             <FilterBar
-              basePath="/misc"
+              basePath="/gains/misc"
               selected={filters}
               groups={[
                 { id: "ty", label: "Type", options: typeOptions.length > 1 ? typeOptions : [] },

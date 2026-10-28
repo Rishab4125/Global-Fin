@@ -4,15 +4,13 @@ import {
   ArrowLeftRight,
   BriefcaseBusiness,
   LayoutDashboard,
-  MoreHorizontal,
-  PlusCircle,
-  Settings,
+  Plus,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useOverlays } from "@/components/Overlays";
 
 interface NavLink {
   href: string;
@@ -24,31 +22,27 @@ interface NavLink {
 const dashboard: NavLink = { href: "/dashboard", label: "Dashboard", short: "Home", icon: LayoutDashboard };
 const holdings: NavLink = { href: "/holdings", label: "Holdings", short: "Holdings", icon: BriefcaseBusiness };
 const transactions: NavLink = { href: "/transactions", label: "Transactions", short: "Activity", icon: ArrowLeftRight };
-const realised: NavLink = { href: "/realised", label: "Realised gains", short: "Gains", icon: TrendingUp };
-const misc: NavLink = { href: "/misc", label: "Misc P/L", short: "Misc", icon: PlusCircle };
-const settings: NavLink = { href: "/settings", label: "Settings", short: "Settings", icon: Settings };
+const gains: NavLink = { href: "/gains", label: "Gains", short: "Gains", icon: TrendingUp };
 
 const sections: { title: string; links: NavLink[] }[] = [
   { title: "Overview", links: [dashboard] },
-  { title: "Portfolio", links: [holdings, misc, transactions] },
-  { title: "Reports", links: [realised] },
-  { title: "Account", links: [settings] },
+  { title: "Portfolio", links: [holdings, transactions] },
+  { title: "Reports", links: [gains] },
 ];
 
-const primary = [dashboard, holdings, realised, misc];
-const more = [transactions, settings];
-
+/** Selling happens from a holding, and Misc is part of Gains, so those paths keep their parent tab lit. */
 const isActive = (path: string, href: string) =>
   path === href || path.startsWith(href + "/") || (href === "/holdings" && path.startsWith("/sell"));
 
-/** Desktop sidebar navigation. */
+/** Desktop sidebar navigation, with the Add button under it. */
 export function SideNav() {
   const path = usePathname();
+  const { openAdd } = useOverlays();
   return (
-    <nav className="flex flex-col gap-5">
+    <nav aria-label="Primary" className="flex flex-col gap-5">
       {sections.map((s) => (
         <div key={s.title}>
-          <p className="mb-1.5 px-3 text-xs font-medium uppercase tracking-wider text-white/60">{s.title}</p>
+          <p className="mb-1.5 px-3 text-xs font-medium uppercase tracking-[0.04em] text-white/60">{s.title}</p>
           <ul className="space-y-0.5">
             {s.links.map((l) => {
               const active = isActive(path, l.href);
@@ -58,9 +52,7 @@ export function SideNav() {
                     href={l.href}
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-emerald-300/70 ${
-                      active
-                        ? "bg-white/12 text-white"
-                        : "text-white/70 hover:bg-white/7 hover:text-white"
+                      active ? "bg-white/12 text-white" : "text-white/70 hover:bg-white/7 hover:text-white"
                     }`}
                   >
                     <l.icon size={18} className={active ? "text-emerald-300" : ""} />
@@ -72,86 +64,57 @@ export function SideNav() {
           </ul>
         </div>
       ))}
+      <button
+        type="button"
+        onClick={openAdd}
+        aria-haspopup="dialog"
+        className="flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-medium text-[#04130c] outline-none transition hover:bg-emerald-400 focus-visible:ring-2 focus-visible:ring-emerald-200"
+      >
+        <Plus size={18} />
+        Add
+      </button>
     </nav>
   );
 }
 
-/** Bottom tab bar for phones and tablets. Less-used pages and sign-out live under "More". */
-export function BottomNav({ signOutSlot }: { signOutSlot: React.ReactNode }) {
+/** Bottom tab bar for phones and tablets: Home, Holdings, Add, Activity, Gains. */
+export function BottomNav() {
   const path = usePathname();
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => setOpen(false), [path]);
-
-  const moreBtn = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setOpen(false);
-      moreBtn.current?.focus();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  const moreActive = more.some((l) => isActive(path, l.href));
+  const { openAdd } = useOverlays();
 
   return (
-    <>
-      {open && (
-        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setOpen(false)}>
-          <div className="absolute inset-0 bg-black/40" />
-          <div
-            role="dialog"
-            aria-label="More pages"
-            className="absolute inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] mx-3 rounded-2xl border border-line bg-surface p-2 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
+    <nav
+      aria-label="Primary"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+    >
+      <ul className="grid h-16 grid-cols-5">
+        <li>
+          <TabLink link={dashboard} active={isActive(path, dashboard.href)} />
+        </li>
+        <li>
+          <TabLink link={holdings} active={isActive(path, holdings.href)} />
+        </li>
+        <li>
+          <button
+            type="button"
+            onClick={openAdd}
+            aria-haspopup="dialog"
+            className="flex h-full w-full flex-col items-center justify-center gap-0.5 text-xs font-medium text-muted outline-none focus-visible:bg-surface2"
           >
-            {more.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium outline-none hover:bg-surface2 focus-visible:bg-surface2"
-              >
-                <l.icon size={20} className="text-primary" />
-                {l.label}
-              </Link>
-            ))}
-            <div className="mt-1 border-t border-line pt-1">{signOutSlot}</div>
-          </div>
-        </div>
-      )}
-
-      <nav
-        aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
-      >
-        <ul className="grid h-16 grid-cols-5">
-          {primary.map((l) => (
-            <li key={l.href}>
-              <TabLink link={l} active={isActive(path, l.href)} />
-            </li>
-          ))}
-          <li>
-            <button
-              ref={moreBtn}
-              onClick={() => setOpen((o) => !o)}
-              aria-expanded={open}
-              aria-haspopup="dialog"
-              className={`flex h-full w-full flex-col items-center justify-center gap-0.5 text-xs font-medium outline-none focus-visible:bg-surface2 ${
-                open || moreActive ? "text-primary" : "text-muted"
-              }`}
-            >
-              <span className={`rounded-full px-4 py-1 ${open || moreActive ? "bg-primary-soft" : ""}`}>
-                <MoreHorizontal size={20} />
-              </span>
-              More
-            </button>
-          </li>
-        </ul>
-      </nav>
-    </>
+            <span className="rounded-full bg-primary px-[18px] py-1.5 text-[var(--on-primary)]">
+              <Plus size={20} />
+            </span>
+            Add
+          </button>
+        </li>
+        <li>
+          <TabLink link={transactions} active={isActive(path, transactions.href)} />
+        </li>
+        <li>
+          <TabLink link={gains} active={isActive(path, gains.href)} />
+        </li>
+      </ul>
+    </nav>
   );
 }
 

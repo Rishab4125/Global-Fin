@@ -33,15 +33,19 @@ export function byAssetGroup(rows: RealisedRow[]) {
   return [...map.entries()].map(([group, rs]) => ({ group, ...totals(rs) }));
 }
 
+/**
+ * One CSV cell. Text that starts with = + - @ would run as a formula when the file is opened in Excel, so it is made
+ * literal. Numbers written by csvMoney/csvQty are strings too, so a plain negative number is left alone.
+ */
+export function csvCell(v: string | number | null): string {
+  let s = v === null ? "" : String(v);
+  const plainNumber = /^-?\d+(\.\d+)?$/.test(s);
+  if (typeof v === "string" && !plainNumber && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
 export function toCsv(rows: RealisedRow[]): string {
-  // Text that starts with = + - @ would run as a formula when the file is opened in Excel, so it is made literal.
-  const esc = (v: string | number | null) => {
-    let s = v === null ? "" : String(v);
-    // Numbers written by csvMoney/csvQty are strings too, so a plain negative number must not be mistaken for a formula.
-    const plainNumber = /^-?\d+(\.\d+)?$/.test(s);
-    if (typeof v === "string" && !plainNumber && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
-    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
+  const esc = csvCell;
   const header = [
     "Date",
     "Financial year",

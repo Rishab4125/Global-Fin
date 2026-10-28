@@ -1,33 +1,21 @@
-import { and, eq } from "drizzle-orm";
-import { db } from "@/db/client";
-import { brokerConnections } from "@/db/schema";
 import { PageHeader, SectionCard } from "@/components/ui";
 import { ASSET_RULES, ASSET_TYPE_IDS, type Rate } from "@/domain/taxRules";
 import { requireUser } from "@/features/auth/session";
 import { loadPortfolio } from "@/features/portfolio/data";
-import { KiteSettings } from "@/features/kite/KiteSettings";
 import { SlabForm } from "@/features/settings/SlabForm";
 
 const rateText = (r: Rate) =>
   r.kind === "slab" ? "Slab rate" : r.kind === "exempt" ? "Exempt" : `${+(r.rate * 100).toFixed(2)}%`;
 
-export const metadata = { title: "Settings" };
+export const metadata = { title: "Tax settings" };
 
-export default async function SettingsPage() {
+export default async function TaxSettingsPage() {
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);
-  const [conn] = await db
-    .select()
-    .from(brokerConnections)
-    .where(and(eq(brokerConnections.userId, user.id), eq(brokerConnections.broker, "kite")))
-    .limit(1);
-  const lastSync = conn?.lastSyncAt
-    ? conn.lastSyncAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })
-    : null;
 
   return (
     <div>
-      <PageHeader title="Settings" description="Your tax assumptions and the rules this app applies." />
+      <PageHeader title="Tax settings" description="Your tax assumptions and the rules this app applies." />
       <div className="space-y-5">
         <SlabForm slabPercent={+(pf.slabRate * 100).toFixed(2)} />
         <SectionCard
@@ -61,30 +49,6 @@ export default async function SettingsPage() {
               })}
             </tbody>
           </table>
-        </SectionCard>
-
-        <SectionCard title="Connected brokers" description="Used by Sync on the Holdings page.">
-          <KiteSettings connected={!!conn?.apiKey} lastSync={lastSync} />
-        </SectionCard>
-
-        <SectionCard title="Account" description="Your data is stored against this Google account ID.">
-          <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="kpi-label">Signed in as</dt>
-              <dd className="mt-1 break-all font-medium">{user.email || user.name}</dd>
-            </div>
-            <div>
-              <dt className="kpi-label">Account ID</dt>
-              <dd className="mt-1 break-all font-mono text-xs">{user.id}</dd>
-            </div>
-          </dl>
-        </SectionCard>
-
-        <SectionCard title="About">
-          <p className="text-sm text-muted">
-            Global Fin is created by <span className="font-medium text-ink">Rishab Gupta</span>. Tax figures are
-            estimates, not tax advice.
-          </p>
         </SectionCard>
       </div>
     </div>

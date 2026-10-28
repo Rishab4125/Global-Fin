@@ -1,5 +1,6 @@
 import { Download, LineChart } from "lucide-react";
 import { FilterBar } from "@/components/FilterBar";
+import { GainsTabs } from "@/components/SegmentLinks";
 import { EmptyState, Kpi, PageHeader, SectionCard } from "@/components/ui";
 import { todayIso } from "@/domain/dates";
 import { fyOptions } from "@/domain/period";
@@ -11,7 +12,7 @@ import { realisedView, RESULTS, TERMS, type RealisedQuery } from "@/features/rep
 import { byAssetGroup, totals } from "@/features/reports/summary";
 import { formatDate, formatINR, formatQty, gainClass } from "@/lib/format";
 
-export const metadata = { title: "Realised gains" };
+export const metadata = { title: "Gains" };
 
 export default async function RealisedPage({ searchParams }: { searchParams: Promise<RealisedQuery> }) {
   const query = await searchParams;
@@ -38,11 +39,11 @@ export default async function RealisedPage({ searchParams }: { searchParams: Pro
   return (
     <div>
       <PageHeader
-        title="Realised gains"
-        description="Profit and loss from sales and misc entries, with estimated tax. Losses reduce gains in the same financial year."
+        title="Gains"
+        description="Profit and loss from sales, with estimated tax. Losses reduce gains in the same financial year."
         actions={
           <a
-            href={`/realised/export?${exportQs}`}
+            href={`/gains/export?${exportQs}`}
             aria-label="Export CSV"
             title="Export CSV"
             className="btn-ghost shrink-0 max-sm:!w-10 max-sm:!min-w-10 max-sm:!px-0"
@@ -53,6 +54,8 @@ export default async function RealisedPage({ searchParams }: { searchParams: Pro
         }
       />
 
+      <GainsTabs active="sales" />
+
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <PeriodFilter
           options={options}
@@ -61,11 +64,11 @@ export default async function RealisedPage({ searchParams }: { searchParams: Pro
           to={period.to ?? ""}
           earliest={earliest}
           today={today}
-          basePath="/realised"
+          basePath="/gains"
           extraQuery={view.fq}
         />
         <FilterBar
-          basePath="/realised"
+          basePath="/gains"
           selected={filters}
           groups={[
             { id: "ty", label: "Category", options: groupOptions.length > 1 ? groupOptions : [] },

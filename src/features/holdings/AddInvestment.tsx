@@ -10,6 +10,7 @@ export function AddInvestment({
   today,
   platforms,
   defaultPlatform,
+  defaultOpen = false,
   title,
   description,
   actions,
@@ -18,12 +19,14 @@ export function AddInvestment({
   today: string;
   platforms: string[];
   defaultPlatform: string;
+  /** Start with the form open, e.g. when arriving from the Add sheet. */
+  defaultOpen?: boolean;
   title: string;
   description: string;
   actions: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <>
       <PageHeader

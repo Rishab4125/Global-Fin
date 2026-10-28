@@ -169,7 +169,7 @@ export async function recordSaleAction(_: ActionState, form: FormData): Promise<
   }
 
   revalidatePath("/", "layout");
-  redirect("/realised");
+  redirect("/gains");
 }
 
 export async function updateSaleAction(_: ActionState, form: FormData): Promise<ActionState> {

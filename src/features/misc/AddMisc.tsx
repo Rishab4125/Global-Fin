@@ -10,14 +10,19 @@ export function AddMisc({
   today,
   title,
   description,
+  tabs,
+  defaultOpen = false,
   children,
 }: {
   today: string;
   title: string;
   description: string;
+  /** Segment links shown between the header and the form. */
+  tabs?: React.ReactNode;
+  defaultOpen?: boolean;
   children?: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const label = open ? "Close" : "Add misc P/L";
   return (
     <>
@@ -37,6 +42,7 @@ export function AddMisc({
           </button>
         }
       />
+      {tabs}
       {open && (
         <div className="mb-5">
           <MiscForm today={today} />

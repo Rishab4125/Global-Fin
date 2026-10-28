@@ -265,7 +265,7 @@ export default async function TransactionsPage({
                         <span className="hidden sm:inline">Edit</span>
                       </Link>
                     ) : (
-                      <Link href="/misc" className="btn-ghost !h-8 !px-2.5">
+                      <Link href="/gains/misc" className="btn-ghost !h-8 !px-2.5">
                         Manage
                       </Link>
                     )}

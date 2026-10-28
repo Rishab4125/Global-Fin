@@ -43,7 +43,7 @@ export const metadata = { title: "Holdings" };
 export default async function HoldingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; sort?: string; dir?: string; pf?: string; ty?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; dir?: string; pf?: string; ty?: string; add?: string }>;
 }) {
   const query = await searchParams;
   const user = await requireUser();
@@ -117,6 +117,8 @@ export default async function HoldingsPage({
   return (
     <div>
       <AddInvestment
+        key={query.add ? "add" : "list"}
+        defaultOpen={!!query.add}
         today={today}
         platforms={pf.platforms}
         defaultPlatform={pf.lastPlatform}
