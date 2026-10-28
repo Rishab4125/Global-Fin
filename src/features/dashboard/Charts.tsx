@@ -5,6 +5,8 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -31,7 +33,7 @@ const tooltipStyle = {
 export function GainByYearChart({ data }: { data: { fy: string; net: number; gain: number }[] }) {
   const summary = data.map((d) => `FY ${d.fy}: ${full.format(d.net)} after tax`).join(". ");
   return (
-    <div role="img" aria-label={`Post-tax gain by financial year. ${summary || "No data yet."}`}>
+    <div role="img" aria-label={`Post-tax gain by financial year. ${summary || "No data yet."}`} className="amt">
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
@@ -54,23 +56,30 @@ export function GainByYearChart({ data }: { data: { fy: string; net: number; gai
   );
 }
 
-export function AllocationChart({ data }: { data: { group: string; cost: number }[] }) {
-  const summary = data.map((d) => `${d.group}: ${full.format(d.cost)} invested`).join(". ");
+/** Colours for the slices, largest first. Restrained greens with one gold; the legend uses the same list. */
+export const MIX_COLORS = ["#0f7a4a", "#34a874", "#5d7f6e", "#8fb8a2", "#c58a2b", "#a9bdb2", "#b45a3c", "#7a8c84", "#cbd5cf"];
+
+export function MixDonut({ data, label }: { data: { name: string; value: number; color: string }[]; label: string }) {
+  const summary = data.map((d) => `${d.name}: ${full.format(d.value)}`).join(". ");
   return (
-    <div role="img" aria-label={`Amount invested by asset class. ${summary || "No data yet."}`}>
-    <ResponsiveContainer width="100%" height={Math.max(160, data.length * 44 + 20)}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
-        <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" horizontal={false} />
-        <XAxis type="number" {...axisProps} tickFormatter={(v) => compact.format(v)} />
-        <YAxis type="category" dataKey="group" {...axisProps} width={96} />
-        <Tooltip
-          contentStyle={tooltipStyle}
-          cursor={{ fill: "var(--surface-2)" }}
-          formatter={(v) => [full.format(Number(v)), "Invested"]}
-        />
-        <Bar dataKey="cost" fill="var(--primary)" radius={[0, 4, 4, 0]} maxBarSize={26} />
-      </BarChart>
-    </ResponsiveContainer>
+    <div role="img" aria-label={`Mix by ${label}. ${summary || "Nothing held yet."}`} className="amt shrink-0">
+      <PieChart width={132} height={132}>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          innerRadius={40}
+          outerRadius={64}
+          paddingAngle={data.length > 1 ? 1 : 0}
+          stroke="var(--surface)"
+          strokeWidth={2}
+          isAnimationActive={false}
+        >
+          {data.map((d) => (
+            <Cell key={d.name} fill={d.color} />
+          ))}
+        </Pie>
+      </PieChart>
     </div>
   );
 }

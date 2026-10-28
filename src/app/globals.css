@@ -84,6 +84,12 @@ h3 {
   letter-spacing: -0.02em;
 }
 
+/* Amounts the eye icon hides. The choice is kept in a cookie and set on <html> before the page paints. */
+html.hide-amounts .amt {
+  filter: blur(7px);
+  user-select: none;
+}
+
 /* Money and quantities line up in columns */
 table,
 .num {

@@ -19,6 +19,8 @@ export interface AssetView {
   type: AssetTypeId;
   name: string;
   isin: string | null;
+  /** Type-specific fields saved when it was added (rate, maturity, ...). */
+  details: Record<string, unknown>;
 }
 
 export interface HoldingView extends AssetView {
@@ -81,6 +83,7 @@ export async function loadPortfolio(userId: string): Promise<Portfolio> {
     type: asType(a.type),
     name: a.name,
     isin: a.isin,
+    details: (a.details ?? {}) as Record<string, unknown>,
   }));
   const assetMap = new Map(assetViews.map((a) => [a.id, a]));
 
