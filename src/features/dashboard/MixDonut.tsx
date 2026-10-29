@@ -10,7 +10,7 @@ export function MixDonut({ data, label }: { data: { name: string; value: number;
   const gap = data.length > 1 ? 0.8 : 0;
   let used = 0;
   return (
-    <div role="img" aria-label={`Mix by ${label}. ${summary || "Nothing held yet."}`} className="amt shrink-0">
+    <div role="img" aria-label={`Mix by ${label}. ${summary || "Nothing held yet."}`} className="shrink-0">
       <svg viewBox="0 0 42 42" width={128} height={128} className="-rotate-90">
         <circle cx="21" cy="21" r="15.9155" fill="none" stroke="var(--surface-2)" strokeWidth="6" />
         {total > 0 &&

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Amount } from "@/components/Amount";
 import { FilterBar } from "@/components/FilterBar";
 import { HideAmountsButton } from "@/components/HideAmountsButton";
+import { HideOnOpen } from "@/components/HideOnOpen";
 import { SegmentLinks } from "@/components/SegmentLinks";
 import { TrioCard } from "@/components/TrioCard";
 import { EmptyState, SectionCard } from "@/components/ui";
@@ -87,7 +88,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const empty = pf.lots.length === 0 && pf.miscEvents.length === 0 && pf.dividendEvents.length === 0;
 
   return (
-    <div>
+    <div id="dash-root" className="hide-amounts">
+      <HideOnOpen rootId="dash-root" />
       <h1 className="sr-only">Dashboard</h1>
 
       <div className="sticky top-[57px] z-20 -mx-4 mb-4 flex flex-wrap items-start gap-3 bg-bg px-4 py-2 sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-10 lg:px-10">
@@ -117,11 +119,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <EmptyState
             icon={Coins}
             title="No investments yet"
-            text="Add your first investment to see your mix and what you realised."
+            text="Add your first investment, or bring in what you already have, to see your mix and what you realised."
             action={
-              <Link href="/holdings?add=1" className="btn-primary">
-                Add investment
-              </Link>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link href="/holdings?add=1" className="btn-primary">
+                  Add investment
+                </Link>
+                <Link href="/holdings/import" className="btn-ghost">
+                  Import trades
+                </Link>
+                <Link href="/holdings/sync" className="btn-ghost">
+                  Sync account
+                </Link>
+              </div>
             }
           />
         </SectionCard>
