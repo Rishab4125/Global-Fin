@@ -87,6 +87,13 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
         </p>
       )}
 
+      {!sync && preview.replacedCount > 0 && (
+        <p className="rounded-xl border border-line p-3 text-sm">
+          This report&apos;s period contains an earlier P&amp;L you imported. Replacing its {preview.replacedCount} entr
+          {preview.replacedCount === 1 ? "y" : "ies"} with this report, so the same trades are not counted twice.
+        </p>
+      )}
+
       {!sync && statuses.length > 1 && (
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
           {statuses.map((s) => {

@@ -67,7 +67,7 @@ export function UploadCard() {
           </button>
         )}
       </div>
-      {preview && importable === 0 && preview.counts.possible === 0 && (
+      {preview && importable === 0 && preview.counts.possible === 0 && preview.replacedCount === 0 && (
         <p className="text-xs text-muted">Nothing new to import from this file.</p>
       )}
     </form>

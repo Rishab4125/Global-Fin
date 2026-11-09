@@ -142,8 +142,59 @@ describe("buildPlan Zerodha P&L reconciliation", () => {
   it("blocks a P&L whose period overlaps one already imported for the same stock", () => {
     const p = run([pnl("2025-10-01", "2026-09-30", "b")], [existingOpen]);
     expect(p.rows[0].status).toBe("error");
-    expect(p.rows[0].message).toMatch(/Overlaps/);
+    expect(p.rows[0].message).toMatch(/Partly overlaps/);
     expect(p.lots).toHaveLength(0);
+  });
+
+  describe("a longer report that contains an earlier one", () => {
+    const earlierBuy = { ...existingOpen, id: "LB", buyDate: "2025-12-01", qty: 15, brokerTradeId: id("2025-12-01", "2026-10-27", "b") };
+    const earlierSale = {
+      id: "SB", assetId: "a1", source: "zerodha_pnl", brokerTradeId: id("2025-12-01", "2026-10-27", "s"),
+      allocations: [{ lotId: "LB", qty: 15 }],
+    };
+    const longer = [pnl("2020-10-01", "2026-10-28", "b", { qty: 837 }), pnl("2020-10-01", "2026-10-28", "s", { qty: 837 })];
+
+    it("replaces what the earlier report stored instead of counting the trades twice", () => {
+      const p = run(longer, [earlierBuy], { sales: [earlierSale] });
+      expect(p.rows.map((r) => r.status)).toEqual(["new", "new"]);
+      expect(p.removeLotIds).toEqual(["LB"]);
+      expect(p.removeSaleIds).toEqual(["SB"]);
+      expect(p.replacedCount).toBe(2);
+      expect(p.lots).toHaveLength(1);
+      expect(p.sales).toHaveLength(1);
+    });
+
+    it("repairs an earlier double count when the longer report is uploaded again", () => {
+      const stored = [
+        { ...existingOpen, id: "LL", buyDate: "2020-10-01", brokerTradeId: id("2020-10-01", "2026-10-28", "b") },
+        earlierBuy,
+      ];
+      const p = run(longer, stored, {
+        sales: [earlierSale],
+        importedKeys: new Set([`zerodha_pnl:${id("2020-10-01", "2026-10-28", "b")}`, `zerodha_pnl:${id("2020-10-01", "2026-10-28", "s")}`]),
+      });
+      expect(p.rows.map((r) => r.status)).toEqual(["imported", "imported"]);
+      expect(p.removeLotIds).toEqual(["LB"]);
+      expect(p.removeSaleIds).toEqual(["SB"]);
+      expect(p.lots).toHaveLength(0);
+    });
+
+    it("refuses when another sale uses the earlier report's purchases", () => {
+      const other = { id: "SM", assetId: "a1", source: "manual", brokerTradeId: null, allocations: [{ lotId: "LB", qty: 1 }] };
+      const p = run(longer, [earlierBuy], { sales: [earlierSale, other] });
+      expect(p.rows[0].status).toBe("error");
+      expect(p.rows[0].message).toMatch(/other sales use/);
+      expect(p.removeLotIds).toEqual([]);
+    });
+
+    it("skips a shorter report that an earlier, longer one already contains", () => {
+      const stored = { ...existingOpen, id: "LL", buyDate: "2020-10-01", brokerTradeId: id("2020-10-01", "2026-10-28", "b") };
+      const p = run([pnl("2025-12-01", "2026-10-27", "b"), pnl("2025-12-01", "2026-10-27", "s")], [stored]);
+      expect(p.rows.map((r) => r.status)).toEqual(["imported", "imported"]);
+      expect(p.rows[0].message).toMatch(/Already included/);
+      expect(p.lots).toHaveLength(0);
+      expect(p.removeLotIds).toEqual([]);
+    });
   });
 
   it("allows an adjacent period", () => {

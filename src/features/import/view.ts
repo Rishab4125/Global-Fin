@@ -30,6 +30,7 @@ export interface ImportPreview {
   skipped: string[];
   estimatedCount: number;
   reconciledCount: number;
+  replacedCount: number;
   counts: { new: number; imported: number; possible: number; error: number };
 }
 
@@ -72,6 +73,7 @@ export function toPreview(
     skipped,
     estimatedCount: plan.estimatedCount,
     reconciledCount: plan.reconciledCount,
+    replacedCount: plan.replacedCount,
     counts: {
       new: count((r) => r.status === "new"),
       imported: count((r) => r.status === "imported"),

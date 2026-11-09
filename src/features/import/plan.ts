@@ -99,6 +99,8 @@ export interface Plan {
   estimatedCount: number;
   /** Earlier P&L "still held" entries replaced because this P&L covers the same stocks. */
   reconciledCount: number;
+  /** Entries of an earlier, shorter P&L replaced because this P&L's period contains it. */
+  replacedCount: number;
   lots: PlanLot[];
   sales: PlanSale[];
 }
@@ -199,23 +201,60 @@ export function buildPlan(input: PlanInput): Plan {
     }
   }
 
-  // Zerodha P&L periods already stored per holding, to refuse a report that overlaps one of them.
-  const pnlPeriods = new Map<string, { start: string; end: string }[]>();
-  if (source === "zerodha_pnl") {
-    for (const x of [...input.lots, ...input.sales]) {
-      const p = x.source === "zerodha_pnl" ? parsePnlTradeId(x.brokerTradeId) : null;
-      if (p) pnlPeriods.set(x.assetId, [...(pnlPeriods.get(x.assetId) ?? []), p]);
-    }
+  // Zerodha P&L periods already stored per holding, with the entries that came from each, so a report whose period
+  // overlaps one of them is neither entered twice nor left half-counted.
+  interface StoredPeriod {
+    start: string;
+    end: string;
+    lotIds: Set<string>;
+    saleIds: Set<string>;
   }
-  const overlapping = (assetId: string | null, tradeId: string | null) => {
+  const pnlPeriods = new Map<string, Map<string, StoredPeriod>>();
+  if (source === "zerodha_pnl") {
+    const add = (x: { assetId: string; id: string; source: string; brokerTradeId: string | null }, kind: "lotIds" | "saleIds") => {
+      const p = x.source === "zerodha_pnl" ? parsePnlTradeId(x.brokerTradeId) : null;
+      if (!p) return;
+      const byPeriod = pnlPeriods.get(x.assetId) ?? new Map<string, StoredPeriod>();
+      const k = `${p.start}~${p.end}`;
+      const entry = byPeriod.get(k) ?? { start: p.start, end: p.end, lotIds: new Set(), saleIds: new Set() };
+      entry[kind].add(x.id);
+      byPeriod.set(k, entry);
+      pnlPeriods.set(x.assetId, byPeriod);
+    };
+    for (const l of input.lots) add(l, "lotIds");
+    for (const x of input.sales) add(x, "saleIds");
+  }
+
+  /**
+   * How this trade's report period relates to the periods already stored for the holding:
+   * the same period is handled by the id check; a period inside a stored one is already counted; one that contains
+   * a stored period replaces it (unless other sales use its purchases); a partial overlap is refused.
+   */
+  const relation = (assetId: string | null, tradeId: string | null) => {
     const mine = parsePnlTradeId(tradeId);
-    if (!assetId || !mine) return null;
-    return (
-      pnlPeriods
-        .get(assetId)
-        ?.find((p) => (p.start !== mine.start || p.end !== mine.end) && p.start <= mine.end && p.end >= mine.start) ?? null
-    );
+    const stored = assetId ? pnlPeriods.get(assetId) : undefined;
+    if (!assetId || !mine || !stored) return null;
+    const replace: StoredPeriod[] = [];
+    let covering: StoredPeriod | null = null;
+    for (const p of stored.values()) {
+      if (p.start === mine.start && p.end === mine.end) continue;
+      if (p.start > mine.end || p.end < mine.start) continue;
+      if (p.start <= mine.start && p.end >= mine.end) covering = p;
+      else if (mine.start <= p.start && mine.end >= p.end) replace.push(p);
+      else return { kind: "partial" as const, period: p };
+    }
+    if (covering) return { kind: "covered" as const, period: covering };
+    if (!replace.length) return null;
+    for (const p of replace) {
+      const others = input.sales.filter((x) => x.assetId === assetId && !p.saleIds.has(x.id));
+      if (others.some((x) => x.allocations.some((a) => p.lotIds.has(a.lotId)))) {
+        return { kind: "blocked" as const, period: p };
+      }
+    }
+    return { kind: "replace" as const, periods: replace };
   };
+  /** Stored periods to replace, per holding, collected from the rows that will be imported. */
+  const replacing = new Map<string, Map<string, StoredPeriod>>();
 
   const seen = new Set<string>();
   const rows: PlanRow[] = trades.map((trade) => {
@@ -229,11 +268,27 @@ export function buildPlan(input: PlanInput): Plan {
       status = "imported";
     }
     let message: string | undefined;
+    let toReplace: StoredPeriod[] = [];
+    // Trades already stored from this very report still replace a shorter earlier report that was imported before it,
+    // so uploading the longer file again repairs a double count left by an earlier import.
+    if (tradeKey && status === "imported") {
+      const rel = relation(existingId, trade.tradeId);
+      if (rel?.kind === "replace") toReplace = rel.periods;
+    }
     if (tradeKey && status !== "imported") {
-      const clash = overlapping(existingId, trade.tradeId);
-      if (clash) {
+      const rel = relation(existingId, trade.tradeId);
+      if (rel?.kind === "covered") {
+        status = "imported";
+        message = `Already included in your earlier P&L for ${rel.period.start} to ${rel.period.end}.`;
+      } else if (rel?.kind === "partial") {
         status = "error";
-        message = `Overlaps your earlier P&L for ${clash.start} to ${clash.end}. Delete those entries or download a non-overlapping period.`;
+        message = `Partly overlaps your earlier P&L for ${rel.period.start} to ${rel.period.end}. Download a period that contains it, or one that does not overlap.`;
+      } else if (rel?.kind === "blocked") {
+        status = "error";
+        message = `Replaces your earlier P&L for ${rel.period.start} to ${rel.period.end}, but other sales use its purchases. Delete those sales first.`;
+      } else if (rel?.kind === "replace") {
+        toReplace = rel.periods;
+        message = `Replaces your earlier P&L for ${rel.periods.map((p) => `${p.start} to ${p.end}`).join(", ")}.`;
       }
     }
     if (status !== "imported") {
@@ -254,6 +309,11 @@ export function buildPlan(input: PlanInput): Plan {
       seen.add(tradeKey);
     }
     const include = status === "new" || (status === "possible_duplicate" && !!tradeKey && includeDuplicates.has(tradeKey));
+    if ((include || status === "imported") && existingId && toReplace.length) {
+      const byPeriod = replacing.get(existingId) ?? new Map<string, StoredPeriod>();
+      for (const p of toReplace) byPeriod.set(`${p.start}~${p.end}`, p);
+      replacing.set(existingId, byPeriod);
+    }
     return { tradeKey, trade, assetKey, status, message, include };
   });
 
@@ -268,6 +328,15 @@ export function buildPlan(input: PlanInput): Plan {
   const removeLotIds = new Set<string>();
   if (input.replaceEstimated) {
     for (const s of estSales) removeSaleIds.add(s.id);
+  }
+  // A report whose period contains an earlier one replaces what that earlier report stored.
+  let replacedCount = 0;
+  for (const byPeriod of replacing.values()) {
+    for (const p of byPeriod.values()) {
+      for (const id of p.saleIds) removeSaleIds.add(id);
+      for (const id of p.lotIds) removeLotIds.add(id);
+      replacedCount += p.saleIds.size + p.lotIds.size;
+    }
   }
 
   const sold = new Map<string, number>();
@@ -341,6 +410,7 @@ export function buildPlan(input: PlanInput): Plan {
     removeSaleIds: [...removeSaleIds],
     estimatedCount,
     reconciledCount,
+    replacedCount,
     lots: newLots,
     sales: newSales,
   };

@@ -1,4 +1,5 @@
 import { Coins } from "lucide-react";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { Amount } from "@/components/Amount";
 import { FilterBar } from "@/components/FilterBar";
@@ -29,6 +30,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);
   const today = todayIso();
+  // Amounts start hidden only when the page itself is loaded or refreshed. Moving here from another tab sends an RSC
+  // request, and then the eye icon's last choice stands.
+  const freshLoad = !(await headers()).has("rsc");
 
   const allDates = [
     ...pf.lots.map((l) => l.buyDate),
@@ -88,8 +92,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const empty = pf.lots.length === 0 && pf.miscEvents.length === 0 && pf.dividendEvents.length === 0;
 
   return (
-    <div id="dash-root" className="hide-amounts">
-      <HideOnOpen rootId="dash-root" />
+    <div id="dash-root" className={freshLoad ? "hide-amounts" : undefined}>
+      {freshLoad && <HideOnOpen rootId="dash-root" />}
       <h1 className="sr-only">Dashboard</h1>
 
       <div className="sticky top-[57px] z-20 -mx-4 mb-4 flex flex-wrap items-start gap-3 bg-bg px-4 py-2 sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-10 lg:px-10">
