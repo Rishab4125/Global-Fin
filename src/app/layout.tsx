@@ -15,7 +15,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, view
 const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||((t!=='light')&&matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const hideAmounts = (await cookies()).get("hide-amounts")?.value === "1";
+  const hideAmounts = (await cookies()).get("hide-amt")?.value === "1";
   return (
     <html lang="en" className={`${inter.variable}${hideAmounts ? " hide-amounts" : ""}`} suppressHydrationWarning>
       <head>

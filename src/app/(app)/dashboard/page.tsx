@@ -1,10 +1,8 @@
 import { Coins } from "lucide-react";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { Amount } from "@/components/Amount";
 import { FilterBar } from "@/components/FilterBar";
 import { HideAmountsButton } from "@/components/HideAmountsButton";
-import { HideOnOpen } from "@/components/HideOnOpen";
 import { SegmentLinks } from "@/components/SegmentLinks";
 import { TrioCard } from "@/components/TrioCard";
 import { EmptyState, SectionCard } from "@/components/ui";
@@ -23,6 +21,8 @@ import { formatDate, formatINRCompact, formatINRWhole, formatPercent, gainClass 
 
 export const metadata = { title: "Dashboard" };
 
+const HIDE_ON_REFRESH = `document.currentScript.parentElement.classList.add("hide-home")`;
+
 type Query = { period?: string; from?: string; to?: string; ty?: string; pf?: string; mix?: string };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Query> }) {
@@ -30,9 +30,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const user = await requireUser();
   const pf = await loadPortfolio(user.id);
   const today = todayIso();
-  // Amounts start hidden only when the page itself is loaded or refreshed. Moving here from another tab sends an RSC
-  // request, and then the eye icon's last choice stands.
-  const freshLoad = !(await headers()).has("rsc");
 
   const allDates = [
     ...pf.lots.map((l) => l.buyDate),
@@ -92,8 +89,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const empty = pf.lots.length === 0 && pf.miscEvents.length === 0 && pf.dividendEvents.length === 0;
 
   return (
-    <div id="dash-root" className={freshLoad ? "hide-amounts" : undefined}>
-      {freshLoad && <HideOnOpen rootId="dash-root" />}
+    <div id="dash-root" suppressHydrationWarning>
+      {/* Runs only when this page is loaded or refreshed. Moving here from another tab renders it in the browser,
+          where React does not run scripts, so amounts are then left as they were. */}
+      <script dangerouslySetInnerHTML={{ __html: HIDE_ON_REFRESH }} />
       <h1 className="sr-only">Dashboard</h1>
 
       <div className="sticky top-[57px] z-20 -mx-4 mb-4 flex flex-wrap items-start gap-3 bg-bg px-4 py-2 sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-10 lg:px-10">
@@ -148,7 +147,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <p className="t-hero min-w-0">
                   <Amount>{formatINRWhole(mix.total)}</Amount>
                 </p>
-                <HideAmountsButton />
+                <HideAmountsButton localRootId="dash-root" />
               </div>
               <p className="t-caption mt-1.5">
                 {mix.holdingIds.length} holding{mix.holdingIds.length === 1 ? "" : "s"} · as of today

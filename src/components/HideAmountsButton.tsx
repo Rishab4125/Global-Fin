@@ -3,19 +3,35 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const COOKIE = "hide-amounts";
+const COOKIE = "hide-amt";
 
-/** Eye icon that blurs every amount marked `.amt`. Remembered for a year in a cookie, so every page respects it. */
-export function HideAmountsButton() {
+/**
+ * Eye icon that blurs every amount marked `.amt`. The choice is kept for a year in a cookie, so every page respects it.
+ * On a page that hides its own amounts when it is refreshed, pass that page's root id: hiding then affects that page
+ * alone, while showing clears the page and the saved choice.
+ */
+export function HideAmountsButton({ localRootId }: { localRootId?: string }) {
   const [hidden, setHidden] = useState(false);
 
-  useEffect(() => setHidden(document.documentElement.classList.contains("hide-amounts")), []);
+  const root = () => (localRootId ? document.getElementById(localRootId) : null);
+  const isHidden = () => document.documentElement.classList.contains("hide-amounts") || !!root()?.classList.contains("hide-home");
+
+  useEffect(() => setHidden(isHidden()), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = () => {
-    const next = !hidden;
-    document.documentElement.classList.toggle("hide-amounts", next);
-    document.cookie = `${COOKIE}=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`;
-    setHidden(next);
+    if (isHidden()) {
+      document.documentElement.classList.remove("hide-amounts");
+      root()?.classList.remove("hide-home");
+      document.cookie = `${COOKIE}=0; path=/; max-age=31536000; samesite=lax`;
+      setHidden(false);
+    } else if (localRootId) {
+      root()?.classList.add("hide-home");
+      setHidden(true);
+    } else {
+      document.documentElement.classList.add("hide-amounts");
+      document.cookie = `${COOKIE}=1; path=/; max-age=31536000; samesite=lax`;
+      setHidden(true);
+    }
   };
 
   return (
