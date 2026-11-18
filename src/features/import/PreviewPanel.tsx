@@ -154,57 +154,62 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
       )}
 
       {preview.rows.length > 0 && (
-        <div className="max-h-96 overflow-auto rounded-xl border border-line">
-          <table className="w-full">
-            <thead className="sticky top-0 bg-surface">
-              <tr>
-                {!sync && <th className="th w-8"><span className="sr-only">Import</span></th>}
-                <th className="th">Stock</th>
-                <th className="th">Date</th>
-                <th className="th">Type</th>
-                <th className="th text-right">Qty</th>
-                <th className="th text-right">Price</th>
-                <th className="th">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {preview.rows.map((r) => (
-                <tr key={r.key} hidden={shown.length > 0 && !shown.includes(r.status)}>
+        <ul className="grid gap-2">
+          {preview.rows.map((r) => {
+            const on = ticked.has(r.key);
+            const hide = shown.length > 0 && !shown.includes(r.status);
+            const cols = sync
+              ? "grid-cols-1 md:grid-cols-[minmax(9rem,1fr)_minmax(9rem,.8fr)_2fr]"
+              : "grid-cols-[auto_1fr] md:grid-cols-[auto_minmax(9rem,1fr)_minmax(9rem,.8fr)_2fr]";
+            return (
+              // Hidden cards stay in the form (display:none), so their ticks are still submitted.
+              <li key={r.key} className={hide ? "hidden" : ""}>
+                <label
+                  className={`grid ${cols} items-start gap-x-3 gap-y-1.5 rounded-xl border p-3 md:items-center ${
+                    !sync && on ? "border-primary/45 bg-primary-soft" : "border-line bg-surface"
+                  } ${!sync && !r.selectable ? "opacity-75" : sync ? "" : "cursor-pointer"}`}
+                >
                   {!sync && (
-                    <td className="td">
+                    <span className="pt-0.5 md:pt-0">
                       {r.tradeKey && <input type="hidden" name={`row:${r.tradeKey}`} value="1" />}
                       {r.selectable && r.tradeKey ? (
                         <input
                           type="checkbox"
                           name={`sel:${r.tradeKey}`}
-                          checked={ticked.has(r.key)}
+                          checked={on}
                           onChange={() => toggleRow(r.key)}
                           aria-label={`Import ${r.symbol} ${r.side} on ${r.date}`}
-                          className="accent-[var(--primary)]"
+                          className="size-4 accent-[var(--primary)]"
                         />
                       ) : (
-                        <input type="checkbox" disabled aria-label="Cannot be imported" className="opacity-40" />
+                        <input type="checkbox" disabled aria-label="Cannot be imported" className="size-4 opacity-40" />
                       )}
-                    </td>
-                  )}
-                  <td className="td font-medium">{r.symbol}</td>
-                  <td className="td">{formatDate(r.date)}</td>
-                  <td className="td">{r.side === "buy" ? "Buy" : "Sell"}</td>
-                  <td className="td text-right">{formatQty(r.qty)}</td>
-                  <td className="td text-right">{formatINR(r.price)}</td>
-                  <td className="td">
-                    <span className="inline-flex flex-wrap items-center gap-2">
-                      <span className={STATUS[r.status].cls}>
-                        {sync && r.status === "new" ? "Estimated" : STATUS[r.status].label}
-                      </span>
-                      {r.message && <span className="whitespace-normal text-xs text-muted">{r.message}</span>}
                     </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  )}
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-x-2">
+                      <span className="font-medium">{r.symbol}</span>
+                      <span className={r.side === "buy" ? "badge-gain" : "badge-warn"}>{r.side === "buy" ? "Buy" : "Sell"}</span>
+                    </span>
+                    <span className="block text-xs text-muted">{formatDate(r.date)}</span>
+                  </span>
+                  <span className={`flex items-baseline justify-between gap-3 md:block ${sync ? "" : "col-start-2 md:col-start-auto"}`}>
+                    <span className="text-sm">
+                      {formatQty(r.qty)} × {formatINR(r.price)}
+                    </span>
+                    <span className="block text-xs text-muted">{formatINR(r.qty * r.price)}</span>
+                  </span>
+                  <span className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${sync ? "" : "col-start-2 md:col-start-auto"}`}>
+                    <span className={STATUS[r.status].cls}>
+                      {sync && r.status === "new" ? "Estimated" : STATUS[r.status].label}
+                    </span>
+                    {r.message && <span className="whitespace-normal text-xs text-muted">{r.message}</span>}
+                  </span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       {preview.skipped.length > 0 && (
