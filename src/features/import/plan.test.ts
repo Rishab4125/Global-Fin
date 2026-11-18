@@ -139,10 +139,45 @@ describe("buildPlan Zerodha P&L reconciliation", () => {
   const run = (trades: BrokerTrade[], lots: PlanInput["lots"] = [], over: Partial<PlanInput> = {}) =>
     buildPlan(base({ source: "zerodha_pnl", assets, trades, lots, ...over }));
 
-  it("blocks a P&L whose period overlaps one already imported for the same stock", () => {
+  it("marks a P&L whose period overlaps one already imported as present, unticked but selectable", () => {
     const p = run([pnl("2025-10-01", "2026-09-30", "b")], [existingOpen]);
-    expect(p.rows[0].status).toBe("error");
-    expect(p.rows[0].message).toMatch(/Partly overlaps/);
+    expect(p.rows[0].status).toBe("overlap");
+    expect(p.rows[0].message).toMatch(/Already present.*partly overlaps/);
+    expect(p.rows[0].defaultInclude).toBe(false);
+    expect(p.rows[0].selectable).toBe(true);
+    expect(p.lots).toHaveLength(0);
+  });
+
+  it("imports the new stocks and leaves the overlapping one unticked in the same file", () => {
+    const other = { symbol: "TCS", name: "TCS", isin: "INE467B01029" };
+    const p = run(
+      [pnl("2025-10-01", "2026-09-30", "b"), pnl("2025-10-01", "2026-09-30", "b", { ...other, tradeId: "INE467B01029~2025-10-01~2026-09-30:b" })],
+      [existingOpen],
+    );
+    expect(p.rows.map((r) => r.status)).toEqual(["overlap", "new"]);
+    expect(p.rows.map((r) => r.include)).toEqual([false, true]);
+    expect(p.lots).toHaveLength(1);
+  });
+
+  it("imports an overlapping row when the user ticks it, and drops a new row they untick", () => {
+    const t = pnl("2025-10-01", "2026-09-30", "b");
+    const ticked = run([t], [existingOpen], { selection: new Map([[`zerodha_pnl:${t.tradeId}`, true]]) });
+    expect(ticked.rows[0].include).toBe(true);
+    expect(ticked.lots).toHaveLength(1);
+    const fresh = pnl("2026-04-01", "2027-03-31", "b");
+    const unticked = run([fresh], [existingOpen], { selection: new Map([[`zerodha_pnl:${fresh.tradeId}`, false]]) });
+    expect(unticked.rows[0].status).toBe("new");
+    expect(unticked.lots).toHaveLength(0);
+  });
+
+  it("never lets a trade already stored under the same id be ticked", () => {
+    const key = `zerodha_pnl:${existingOpen.brokerTradeId}`;
+    const p = run([pnl("2025-04-01", "2026-03-31", "o")], [existingOpen], {
+      importedKeys: new Set([key]),
+      selection: new Map([[key, true]]),
+    });
+    expect(p.rows[0].selectable).toBe(false);
+    expect(p.rows[0].include).toBe(false);
     expect(p.lots).toHaveLength(0);
   });
 
@@ -179,10 +214,11 @@ describe("buildPlan Zerodha P&L reconciliation", () => {
       expect(p.lots).toHaveLength(0);
     });
 
-    it("refuses when another sale uses the earlier report's purchases", () => {
+    it("does not replace when another sale uses the earlier report's purchases, and leaves the row unticked", () => {
       const other = { id: "SM", assetId: "a1", source: "manual", brokerTradeId: null, allocations: [{ lotId: "LB", qty: 1 }] };
       const p = run(longer, [earlierBuy], { sales: [earlierSale, other] });
-      expect(p.rows[0].status).toBe("error");
+      expect(p.rows[0].status).toBe("overlap");
+      expect(p.rows[0].include).toBe(false);
       expect(p.rows[0].message).toMatch(/other sales use/);
       expect(p.removeLotIds).toEqual([]);
     });
@@ -191,7 +227,8 @@ describe("buildPlan Zerodha P&L reconciliation", () => {
       const stored = { ...existingOpen, id: "LL", buyDate: "2020-10-01", brokerTradeId: id("2020-10-01", "2026-10-28", "b") };
       const p = run([pnl("2025-12-01", "2026-10-27", "b"), pnl("2025-12-01", "2026-10-27", "s")], [stored]);
       expect(p.rows.map((r) => r.status)).toEqual(["imported", "imported"]);
-      expect(p.rows[0].message).toMatch(/Already included/);
+      expect(p.rows[0].message).toMatch(/Already present: included/);
+      expect(p.rows[0].selectable).toBe(true);
       expect(p.lots).toHaveLength(0);
       expect(p.removeLotIds).toEqual([]);
     });

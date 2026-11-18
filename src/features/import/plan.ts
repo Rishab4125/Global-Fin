@@ -54,6 +54,8 @@ export interface PlanInput {
   mapping: Map<string, string>;
   /** Trade keys of possible duplicates the user chose to import anyway. */
   includeDuplicates: Set<string>;
+  /** Per-row choices from the preview (trade key -> ticked). A row not listed here uses its default. */
+  selection?: Map<string, boolean>;
   /** Remove unsold/estimated kite_sync entries for the stocks being imported. */
   replaceEstimated: boolean;
   /** Holdings with a split or bonus event; trades for them are refused for now. */
@@ -64,10 +66,17 @@ export interface PlanRow {
   tradeKey: string | null;
   trade: BrokerTrade;
   assetKey: string;
-  status: RowStatus | "error";
+  status: PlanRowStatus;
   message?: string;
   include: boolean;
+  /** Ticked in the preview unless the user changes it: true only for rows that are not already present. */
+  defaultInclude: boolean;
+  /** The user may tick this row. False for errors and for trades already stored under the same id. */
+  selectable: boolean;
 }
+
+/** `overlap`: the trade's P&L period overlaps one already stored; it can still be imported by choice. */
+export type PlanRowStatus = RowStatus | "overlap" | "error";
 
 export interface PlanLot {
   id: string;
@@ -261,7 +270,7 @@ export function buildPlan(input: PlanInput): Plan {
     const assetKey = assetKeyOf(trade);
     const tradeKey = tradeKeyOf(source, trade);
     const existingId = matchByKey.get(assetKey)?.assetId ?? null;
-    let status: RowStatus | "error" = tradeKey
+    let status: PlanRowStatus = tradeKey
       ? classifyTrade(tradeKey, existingId, trade, importedKeys, manualKeys, input.looseKeys)
       : "new";
     if (status !== "imported" && trade.legacyTradeId && importedKeys.has(`${source}:${trade.legacyTradeId}`)) {
@@ -269,6 +278,8 @@ export function buildPlan(input: PlanInput): Plan {
     }
     let message: string | undefined;
     let toReplace: StoredPeriod[] = [];
+    // Same trade id already stored (or repeated in this file): the unique index forbids a second copy.
+    let locked = status === "imported";
     // Trades already stored from this very report still replace a shorter earlier report that was imported before it,
     // so uploading the longer file again repairs a double count left by an earlier import.
     if (tradeKey && status === "imported") {
@@ -279,13 +290,13 @@ export function buildPlan(input: PlanInput): Plan {
       const rel = relation(existingId, trade.tradeId);
       if (rel?.kind === "covered") {
         status = "imported";
-        message = `Already included in your earlier P&L for ${rel.period.start} to ${rel.period.end}.`;
+        message = `Already present: included in your earlier P&L for ${rel.period.start} to ${rel.period.end}. Importing it again may count it twice.`;
       } else if (rel?.kind === "partial") {
-        status = "error";
-        message = `Partly overlaps your earlier P&L for ${rel.period.start} to ${rel.period.end}. Download a period that contains it, or one that does not overlap.`;
+        status = "overlap";
+        message = `Already present: this period partly overlaps your earlier P&L for ${rel.period.start} to ${rel.period.end}. Importing it may count some trades twice.`;
       } else if (rel?.kind === "blocked") {
-        status = "error";
-        message = `Replaces your earlier P&L for ${rel.period.start} to ${rel.period.end}, but other sales use its purchases. Delete those sales first.`;
+        status = "overlap";
+        message = `Already present: it would replace your earlier P&L for ${rel.period.start} to ${rel.period.end}, but other sales use its purchases. Importing it adds it alongside, which may count trades twice.`;
       } else if (rel?.kind === "replace") {
         toReplace = rel.periods;
         message = `Replaces your earlier P&L for ${rel.periods.map((p) => `${p.start} to ${p.end}`).join(", ")}.`;
@@ -305,16 +316,27 @@ export function buildPlan(input: PlanInput): Plan {
       message = "This holding has a split or bonus event, and imports can't adjust for it yet. Add these trades by hand.";
     }
     if (tradeKey && status === "new") {
-      if (seen.has(tradeKey)) status = "imported";
+      if (seen.has(tradeKey)) {
+        status = "imported";
+        locked = true;
+        message = "Already present: this trade appears twice in the file.";
+      }
       seen.add(tradeKey);
     }
-    const include = status === "new" || (status === "possible_duplicate" && !!tradeKey && includeDuplicates.has(tradeKey));
+    if (status === "imported" && locked && !message) message = "Already present: this trade is already in the app.";
+    if (status === "possible_duplicate") message = "Already present? Same stock, day and quantity as an existing entry.";
+    const selectable = status !== "error" && !locked;
+    const defaultInclude = status === "new";
+    const chosen = tradeKey ? input.selection?.get(tradeKey) : undefined;
+    const include =
+      selectable &&
+      (chosen ?? (defaultInclude || (status === "possible_duplicate" && !!tradeKey && includeDuplicates.has(tradeKey))));
     if ((include || status === "imported") && existingId && toReplace.length) {
       const byPeriod = replacing.get(existingId) ?? new Map<string, StoredPeriod>();
       for (const p of toReplace) byPeriod.set(`${p.start}~${p.end}`, p);
       replacing.set(existingId, byPeriod);
     }
-    return { tradeKey, trade, assetKey, status, message, include };
+    return { tradeKey, trade, assetKey, status, message, include, defaultInclude, selectable };
   });
 
   const touched = new Set(
@@ -393,6 +415,7 @@ export function buildPlan(input: PlanInput): Plan {
       if (shortfall > EPS) {
         r.status = "error";
         r.include = false;
+        r.selectable = false;
         r.message = `Only ${t.qty - shortfall} units available to sell on or before ${t.date}. Import the earlier buys first.`;
         continue;
       }

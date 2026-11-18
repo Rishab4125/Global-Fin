@@ -16,15 +16,15 @@ export function UploadCard() {
   const { formRef, state, pending, onSubmit, run } = useServerForm(previewImportAction);
   const [broker, setBroker] = useState("zerodha");
   const preview = state.importPreview;
-  const importable = preview ? preview.counts.new : 0;
+  const importable = preview ? preview.counts.selected : 0;
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="card space-y-4">
       <div>
         <h2 className="text-base font-semibold">Upload trades</h2>
         <p className="mt-1 text-sm text-muted">
-          {HELP[broker]} CSV and Excel (.xlsx) files both work. Uploading the same file again, or an overlapping date
-          range, never adds a trade twice.
+          {HELP[broker]} CSV and Excel (.xlsx) files both work. Trades already in the app are marked and left
+          unticked, so uploading the same file again, or an overlapping date range, imports only what is new.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-[12rem_1fr]">
@@ -67,8 +67,10 @@ export function UploadCard() {
           </button>
         )}
       </div>
-      {preview && importable === 0 && preview.counts.possible === 0 && preview.replacedCount === 0 && (
-        <p className="text-xs text-muted">Nothing new to import from this file.</p>
+      {preview && importable === 0 && preview.replacedCount === 0 && (
+        <p className="text-xs text-muted">
+          Nothing new to import: every trade here is already present. Tick a row above to import it anyway.
+        </p>
       )}
     </form>
   );

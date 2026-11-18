@@ -23,12 +23,19 @@ async function readFile(form: FormData): Promise<ParsedFile> {
 function readChoices(form: FormData) {
   const mapping = new Map<string, string>();
   const includeDuplicates = new Set<string>();
+  // Every preview row sends `row:<key>`, and a ticked row also sends `sel:<key>`: an unticked box sends nothing,
+  // so the marker is what tells "unticked" apart from "never shown".
+  const shown = new Set<string>();
+  const ticked = new Set<string>();
   for (const [name, value] of form.entries()) {
     if (typeof value !== "string") continue;
     if (name.startsWith("map:") && value) mapping.set(name.slice(4), value);
     else if (name.startsWith("dup:") && value === "on") includeDuplicates.add(name.slice(4));
+    else if (name.startsWith("row:")) shown.add(name.slice(4));
+    else if (name.startsWith("sel:") && value === "on") ticked.add(name.slice(4));
   }
-  return { mapping, includeDuplicates, replaceEstimated: form.get("replaceEstimated") === "on" };
+  const selection = new Map([...shown].map((k) => [k, ticked.has(k)] as const));
+  return { mapping, includeDuplicates, selection, replaceEstimated: form.get("replaceEstimated") === "on" };
 }
 
 async function makePlan(userId: string, form: FormData) {

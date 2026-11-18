@@ -6,8 +6,9 @@ import type { ImportPreview, PreviewRow } from "./view";
 
 const STATUS: Record<PreviewRow["status"], { label: string; cls: string }> = {
   new: { label: "New", cls: "badge-gain" },
-  imported: { label: "Already imported", cls: "badge-muted" },
+  imported: { label: "Already present", cls: "badge-muted" },
   possible_duplicate: { label: "Possible duplicate", cls: "badge-warn" },
+  overlap: { label: "Overlaps earlier P&L", cls: "badge-warn" },
   error: { label: "Can't import", cls: "badge-loss" },
 };
 
@@ -30,6 +31,24 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
   const statusCount = (s: PreviewRow["status"]) => preview.rows.filter((r) => r.status === s).length;
   const statuses = (Object.keys(STATUS) as PreviewRow["status"][]).filter(statusCount);
 
+  // Ticked rows. Starts from the server's choice (new rows ticked, already-present rows not) and resets on a new preview.
+  const initial = (p: ImportPreview) => new Set(p.rows.filter((r) => r.include).map((r) => r.key));
+  const [seenPreview, setSeenPreview] = useState(preview);
+  const [ticked, setTicked] = useState(() => initial(preview));
+  if (seenPreview !== preview) {
+    setSeenPreview(preview);
+    setTicked(initial(preview));
+  }
+  const selectable = preview.rows.filter((r) => r.selectable);
+  const toggleRow = (key: string) =>
+    setTicked((cur) => {
+      const next = new Set(cur);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  const pick = (f: (r: PreviewRow) => boolean) => setTicked(new Set(selectable.filter(f).map((r) => r.key)));
+  const pickedCount = selectable.filter((r) => ticked.has(r.key)).length;
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">
@@ -37,10 +56,23 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
           ? counts.new
             ? `${counts.new} change${counts.new === 1 ? "" : "s"} to bring the app in line with Zerodha.`
             : "Your holdings already match Zerodha. Nothing to change."
-          : `${counts.new} new, ${counts.imported} already imported, ${counts.possible} possible duplicate${
+          : `${counts.new} new, ${counts.imported + counts.overlap} already present, ${counts.possible} possible duplicate${
               counts.possible === 1 ? "" : "s"
-            }${counts.error ? `, ${counts.error} can't be imported` : ""}.`}
+            }${counts.error ? `, ${counts.error} can't be imported` : ""}. ${pickedCount} selected to import.`}
       </p>
+      {!sync && selectable.length > 0 && (
+        <div className="flex flex-wrap gap-3 text-[13px]">
+          <button type="button" className="text-primary-strong hover:underline" onClick={() => pick((r) => r.status === "new")}>
+            New only
+          </button>
+          <button type="button" className="text-muted hover:text-ink" onClick={() => pick(() => true)}>
+            Select all
+          </button>
+          <button type="button" className="text-muted hover:text-ink" onClick={() => pick(() => false)}>
+            Select none
+          </button>
+        </div>
+      )}
 
       {adjustable.length > 0 && (
         <div className="rounded-xl border border-line p-3">
@@ -126,6 +158,7 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
           <table className="w-full">
             <thead className="sticky top-0 bg-surface">
               <tr>
+                {!sync && <th className="th w-8"><span className="sr-only">Import</span></th>}
                 <th className="th">Stock</th>
                 <th className="th">Date</th>
                 <th className="th">Type</th>
@@ -137,25 +170,35 @@ export function PreviewPanel({ preview, mode }: { preview: ImportPreview; mode: 
             <tbody>
               {preview.rows.map((r) => (
                 <tr key={r.key} hidden={shown.length > 0 && !shown.includes(r.status)}>
+                  {!sync && (
+                    <td className="td">
+                      {r.tradeKey && <input type="hidden" name={`row:${r.tradeKey}`} value="1" />}
+                      {r.selectable && r.tradeKey ? (
+                        <input
+                          type="checkbox"
+                          name={`sel:${r.tradeKey}`}
+                          checked={ticked.has(r.key)}
+                          onChange={() => toggleRow(r.key)}
+                          aria-label={`Import ${r.symbol} ${r.side} on ${r.date}`}
+                          className="accent-[var(--primary)]"
+                        />
+                      ) : (
+                        <input type="checkbox" disabled aria-label="Cannot be imported" className="opacity-40" />
+                      )}
+                    </td>
+                  )}
                   <td className="td font-medium">{r.symbol}</td>
                   <td className="td">{formatDate(r.date)}</td>
                   <td className="td">{r.side === "buy" ? "Buy" : "Sell"}</td>
                   <td className="td text-right">{formatQty(r.qty)}</td>
                   <td className="td text-right">{formatINR(r.price)}</td>
                   <td className="td">
-                    {r.status === "possible_duplicate" && r.tradeKey ? (
-                      <label className="flex items-center gap-2 text-xs">
-                        <input type="checkbox" name={`dup:${r.tradeKey}`} className="accent-[var(--primary)]" />
-                        <span className="text-accent-strong">Same stock, day and quantity as an existing entry. Import anyway</span>
-                      </label>
-                    ) : (
-                      <span className="inline-flex flex-wrap items-center gap-2">
-                        <span className={STATUS[r.status].cls}>
-                          {sync && r.status === "new" ? "Estimated" : STATUS[r.status].label}
-                        </span>
-                        {r.message && <span className="whitespace-normal text-xs text-muted">{r.message}</span>}
+                    <span className="inline-flex flex-wrap items-center gap-2">
+                      <span className={STATUS[r.status].cls}>
+                        {sync && r.status === "new" ? "Estimated" : STATUS[r.status].label}
                       </span>
-                    )}
+                      {r.message && <span className="whitespace-normal text-xs text-muted">{r.message}</span>}
+                    </span>
                   </td>
                 </tr>
               ))}

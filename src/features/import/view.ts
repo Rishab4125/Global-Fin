@@ -1,5 +1,4 @@
-import type { RowStatus } from "@/domain/brokerSync";
-import type { MatchKind, Plan, PlanAsset } from "./plan";
+import type { MatchKind, Plan, PlanAsset, PlanRowStatus } from "./plan";
 
 export interface PreviewRow {
   key: string;
@@ -10,8 +9,12 @@ export interface PreviewRow {
   side: "buy" | "sell";
   qty: number;
   price: number;
-  status: RowStatus | "error";
+  status: PlanRowStatus;
   message?: string;
+  /** Ticked in the preview. */
+  include: boolean;
+  /** The row has a checkbox the user can change. */
+  selectable: boolean;
 }
 
 export interface PreviewMatch {
@@ -31,7 +34,7 @@ export interface ImportPreview {
   estimatedCount: number;
   reconciledCount: number;
   replacedCount: number;
-  counts: { new: number; imported: number; possible: number; error: number };
+  counts: { new: number; imported: number; possible: number; overlap: number; error: number; selected: number };
 }
 
 export interface ImportDone {
@@ -57,6 +60,8 @@ export function toPreview(
     price: r.trade.price,
     status: r.status,
     message: r.message,
+    include: r.include,
+    selectable: r.selectable,
   }));
   const count = (f: (r: PreviewRow) => boolean) => rows.filter(f).length;
   return {
@@ -78,7 +83,9 @@ export function toPreview(
       new: count((r) => r.status === "new"),
       imported: count((r) => r.status === "imported"),
       possible: count((r) => r.status === "possible_duplicate"),
+      overlap: count((r) => r.status === "overlap"),
       error: count((r) => r.status === "error"),
+      selected: count((r) => r.include),
     },
   };
 }

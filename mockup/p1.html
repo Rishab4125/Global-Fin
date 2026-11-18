@@ -118,8 +118,8 @@ body.hidden .amt{filter:blur(7px);user-select:none}
 /* dashboard */
 .dgrid{display:grid;gap:12px}
 @media(min-width:1024px){.dgrid{grid-template-columns:1fr 2fr}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}}
-.donut{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px}.donut svg{width:132px;height:132px;flex:none;transform:rotate(-90deg)}
-.legend{flex:1;min-width:150px;display:grid;gap:8px}.lrow{display:flex;align-items:center;gap:8px;justify-content:space-between}.lrow .l{display:flex;gap:8px;align-items:center;min-width:0}.dot{width:10px;height:10px;border-radius:3px;flex:none}
+.donut{display:flex;align-items:center;gap:16px;margin-top:14px}.donut svg{width:128px;height:128px;flex:none;transform:rotate(-90deg)}
+.legend{flex:1;min-width:0;display:grid;gap:8px}.lrow{display:flex;align-items:center;gap:8px;justify-content:space-between}.lrow .l{display:flex;gap:8px;align-items:center;min-width:0}.dot{width:10px;height:10px;border-radius:3px;flex:none}
 .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .kcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
 .kcard.hero{border-color:color-mix(in srgb,var(--primary) 45%,transparent);background:var(--soft)}
@@ -127,6 +127,15 @@ body.hidden .amt{filter:blur(7px);user-select:none}
 .bars{display:grid;gap:10px}.brow{display:grid;grid-template-columns:70px 1fr 90px;gap:10px;align-items:center}
 .btrack{height:14px;background:var(--surface2);border-radius:4px;position:relative}.bfill{position:absolute;top:0;bottom:0;border-radius:4px}
 .eye{margin-left:auto}
+.calbtn{border:1px solid var(--line);background:var(--surface)}.calbtn .rng{display:none;font-size:.8125rem;margin-left:6px}
+@media(min-width:640px){.calbtn{width:auto;padding:0 10px;display:inline-flex;align-items:center}.calbtn .rng{display:inline}}
+.hero-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:6px}.hero-row .t-hero{margin:0;min-width:0}
+.hwrap{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.hwrap .r1,.hwrap .r2{display:contents}.hwrap input{height:36px;width:320px;max-width:100%}
+@media(max-width:639px){.hwrap{display:grid}.hwrap input{width:100%}.hwrap .r2{display:flex;gap:8px;align-items:center}.hwrap .r2 select{flex:1;min-width:0}}
+.lrow2{display:flex;gap:8px;align-items:flex-start;padding:2px 0}.lrow2 .dot{margin-top:5px}
+.chev{color:var(--muted);flex:none}
+.empty{text-align:center;padding:36px 16px}.empty .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+
 
 /* holdings */
 .hsum{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px}
@@ -214,7 +223,7 @@ const CATS={ // category -> sub-types (tax sub-type is derived, never shown as a
 const QTYDEC={'Stocks & ETFs':0,'Bonds':0,'Mutual Funds':4,'Metals':3,'Crypto':8,'Fixed Deposits':4,'Real Estate':4,'Govt schemes':4,'Other':4};
 const CATCOL={'Stocks & ETFs':'#0f7a4a','Mutual Funds':'#34a874','Fixed Deposits':'#8fb8a2','Bonds':'#5d7f6e','Metals':'#c58a2b','Real Estate':'#7a8c84','Crypto':'#b45a3c','Govt schemes':'#a9bdb2','Other':'#cbd5cf'};
 const EXPCOL={Equity:'#0f7a4a',Debt:'#5d7f6e',Gold:'#c58a2b','Real estate':'#7a8c84',Crypto:'#b45a3c'};
-const PLATCOL=['#0f7a4a','#34a874','#5d7f6e','#8fb8a2','#c58a2b','#a9bdb2'];
+const MIXCOL=['#0f7a4a','#c58a2b','#2f6fb0','#b45a3c','#7a5aa6','#2a9d9d','#8a8f94','#c26a8f','#6b8e23'];
 const H=[
  {id:1,name:'RELIANCE',cat:'Stocks & ETFs',sub:'Equity',exp:'Equity',plat:['Zerodha'],qty:120,avg:2450.5,tags:['Core']},
  {id:2,name:'HDFCBANK',cat:'Stocks & ETFs',sub:'Equity',exp:'Equity',plat:['Zerodha','Groww'],qty:80,avg:1520.25,tags:['Core']},
@@ -263,19 +272,19 @@ const invested=h=>h.qty*h.avg;
 const hstat=h=>({inv:Math.round(invested(h)*100)/100});
 
 /* ---------- state ---------- */
-const S={route:'dashboard',arg:null,fy:CURFY,mix:'Platform',filt:{cat:[],plat:[]},hidden:false,
+const S={route:'dashboard',arg:null,fy:CURFY,mix:'Platform',filt:{cat:[],plat:[]},hidden:false,homeHidden:true,empty:false,
   hsort:'val',hgroup:'None',hview:'cards',dtab:'Overview',gseg:'Summary',gcat:[],expanded:{}};
 function fMatch(cat,plats){return(!S.filt.cat.length||S.filt.cat.includes(cat))&&(!S.filt.plat.length||[].concat(plats).some(p=>S.filt.plat.includes(p)))}
 
 /* ---------- navigation ---------- */
 const NAV=[{id:'dashboard',label:'Dashboard',short:'Home',i:'home'},{id:'holdings',label:'Holdings',short:'Holdings',i:'brief'},{id:'activity',label:'Transactions',short:'Activity',i:'swap'},{id:'gains',label:'Gains',short:'Gains',i:'trend'}];
 function buildNav(){
-  document.getElementById('side').innerHTML=['Overview','Portfolio','Reports'].map((t,i)=>{const l=[[NAV[0]],[NAV[1],NAV[2]],[NAV[3]]][i];return `<p class="secT">${t}</p>`+l.map(n=>`<button class="sidelink ${active(n.id)?'on':''}" onclick="go('${n.id}')" ${active(n.id)?'aria-current="page"':''}>${ico(n.i)}${n.label}</button>`).join('')}).join('')+`<div style="margin-top:20px;padding:0 4px"><button class="btn" style="width:100%" onclick="openAdd()">${ico('plus',16)} Add</button></div>`;
+  document.getElementById('side').innerHTML=['Overview','Portfolio','Reports'].map((t,i)=>{const l=[[NAV[0]],[NAV[1],NAV[2]],[NAV[3]]][i];return `<p class="secT">${t}</p>`+l.map(n=>`<button class="sidelink ${active(n.id)?'on':''}" onclick="go('${n.id}')" ${active(n.id)?'aria-current="page"':''}>${ico(n.i)}${n.short}</button>`).join('')}).join('')+`<div style="margin-top:20px;padding:0 4px"><button class="btn" style="width:100%" onclick="openAdd()">${ico('plus',16)} Add</button></div>`;
   const b=n=>`<li><button class="${active(n.id)?'on':''}" onclick="go('${n.id}')"><span class="pill">${ico(n.i)}</span>${n.short}</button></li>`;
   document.getElementById('bnav').innerHTML=b(NAV[0])+b(NAV[1])+`<li><button class="plus" aria-label="Add" onclick="openAdd()"><span class="pill">${ico('plus')}</span>Add</button></li>`+b(NAV[2])+b(NAV[3]);
 }
-const active=id=>S.route===id||(id==='holdings'&&S.route==='detail');
-function go(r,a){S.route=r;S.arg=a??null;if(r==='detail')S.dtab='Overview';closeAll();render();scrollTo(0,0)}
+const active=id=>S.route===id||(id==='holdings'&&(S.route==='detail'||S.route==='import'));
+function go(r,a){if(r==='dashboard'&&S.route!=='dashboard')S.homeHidden=false;S.route=r;S.arg=a??null;if(r==='detail')S.dtab='Overview';closeAll();render();scrollTo(0,0)}
 function theme(){const d=document.documentElement.classList.toggle('dark');try{localStorage.setItem('theme',d?'dark':'light')}catch(e){}}
 
 /* ---------- sheet / popover / toast ---------- */
@@ -283,14 +292,14 @@ function openSheet(html){const s=document.getElementById('sheet');s.innerHTML='<
 function closeAll(){['sheet','pop'].forEach(i=>document.getElementById(i).classList.remove('open'));document.getElementById('scrim').classList.remove('open')}
 function toast(t){const e=document.getElementById('toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 addEventListener('keydown',e=>{if(e.key==='Escape')closeAll()});
-function profileItems(){return [['user','Profile','Name, photo, email','profile'],['tax','Tax settings','Slab rate, regime, tax rules applied','tax'],['link','Connected platforms','Zerodha Kite, last sync, Groww import','plat'],['tag','Platforms and tags','Manage your platform list and tags','tags'],['sliders','Preferences','Theme, default period, mix by cost or value','pref'],['db','Data','Export all data, import trades, delete account','data'],['info','About','Version, tax disclaimer, privacy, feedback','about']]}
+function profileItems(){return [['user','Profile','Name, photo, email','profile'],['tax','Tax settings','Slab rate, tax rules applied','tax'],['link','Connected platforms','Zerodha Kite, last sync, Groww import','plat'],['tag','Platforms and tags','Manage your platform list and tags','tags'],['sliders','Preferences','Theme, mix by cost or value','pref'],['db','Data','Export all data, import trades, delete all data','data'],['info','About','Version, tax disclaimer, privacy, feedback','about']]}
 function profileMenuHtml(){return `<div style="display:flex;gap:12px;align-items:center;padding:8px 12px 12px"><span class="avatar" style="width:40px;height:40px;background:var(--soft)">R</span><div><div class="t-strong">Rishab Gupta</div><div class="t-cap">rishab.gupta@accordion.com</div></div></div>`+profileItems().map(i=>`<button class="menuitem" role="menuitem" onclick="go('profile','${i[3]}')"><span class="ic">${ico(i[0],18)}</span><span><span class="t-strong" style="display:block">${i[1]}</span><span class="t-cap">${i[2]}</span></span></button>`).join('')+`<button class="menuitem" onclick="toast('Signed out (mock)')"><span class="ic" style="color:var(--loss);background:color-mix(in srgb,var(--loss) 10%,transparent)">${ico('out',18)}</span><span class="t-strong loss">Sign out</span></button>`}
 function togglePop(e){e.stopPropagation();const p=document.getElementById('pop');p.innerHTML=profileMenuHtml();p.classList.toggle('open');document.getElementById('scrim').classList.toggle('open',p.classList.contains('open'))}
 function openProfileSheet(){openSheet(`<h2 class="t-title">Account</h2>`+profileMenuHtml())}
 
 /* ---------- Add sheet ---------- */
 function openAdd(){openSheet(`<h2 class="t-title">Add</h2>`+[['plus','Add investment','A holding you bought elsewhere','addInv'],['sell','Add sale','Record a sale that already happened','addSale'],['cal','Add misc / dividend','Dividend, F&O, interest, other','addMisc'],['up','Import trades','Zerodha P&L or Groww reports','imp'],['sync','Sync','Pull holdings from Zerodha Kite','sync']].map(i=>`<button class="menuitem" onclick="addAction('${i[3]}')"><span class="ic">${ico(i[0],18)}</span><span><span class="t-strong" style="display:block">${i[1]}</span><span class="t-cap">${i[2]}</span></span></button>`).join(''))}
-function addAction(a){if(a==='addInv')openAddInvest();else if(a==='addSale')openSale(null);else if(a==='addMisc')openMisc();else{closeAll();toast('Existing import / sync flow, unchanged in P1')}}
+function addAction(a){if(a==='addInv')openAddInvest();else if(a==='addSale')openSale(null);else if(a==='addMisc')openMisc();else if(a==='imp')go('import');else{closeAll();toast('Existing sync flow, unchanged in P1')}}
 function opts(arr,sel){return arr.map(x=>`<option ${x===sel?'selected':''}>${x}</option>`).join('')}
 
 /* Add investment: category -> sub-type, required fields only; category fields change below */
@@ -348,6 +357,43 @@ function openMisc(){openSheet(`<h2 class="t-title">Add misc / dividend</h2><div 
  <div><label class="fl">Amount (₹, negative for a loss)</label><input inputmode="decimal" placeholder="0.00"></div></div>
  <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end"><button class="btn ghost" onclick="closeAll()">Cancel</button><button class="btn" onclick="closeAll();toast('Entry added (mock)')">Save</button></div>`)}
 
+/* Import trades: every row has a tick box; rows not yet in the app start ticked, rows already present start unticked with a comment */
+const IMP_SAMPLE=[
+ {id:'z1',sym:'RELIANCE',date:'2025-04-01',side:'buy',qty:20,price:2850},
+ {id:'z2',sym:'RELIANCE',date:'2025-01-20',side:'buy',qty:50,price:2900,prior:['present','Already present: included in your earlier P&L for 1 Apr 2024 to 31 Mar 2025.']},
+ {id:'z3',sym:'HDFCBANK',date:'2025-04-01',side:'buy',qty:30,price:1520,prior:['overlap','Already present: this period partly overlaps your earlier P&L for 1 Mar 2025 to 31 Dec 2025. Importing it may count some trades twice.']},
+ {id:'z4',sym:'HDFCBANK',date:'2025-12-15',side:'sell',qty:10,price:1710},
+ {id:'z5',sym:'GOLDBEES',date:'2025-05-05',side:'buy',qty:100,price:62},
+ {id:'z6',sym:'GOLDBEES',date:'2025-08-18',side:'buy',qty:50,price:58.4,dup:true}];
+const U={rows:null,sel:{},seen:new Set(),filt:new Set(),done:''};
+function impLoad(){U.rows=IMP_SAMPLE;U.sel={};U.filt=new Set();U.done='';render()}
+function impRows(){return (U.rows||[]).map(t=>{let st='new',msg='',locked=false;
+ if(U.seen.has(t.id)){st='present';locked=true;msg='Already present: this trade is already in the app.'}
+ else if(t.prior){st=t.prior[0];msg=t.prior[1]}
+ else if(t.dup){st='dup';msg='Already present? Same stock, day and quantity as an existing entry.'}
+ const on=!locked&&(U.sel[t.id]??st==='new');
+ return{...t,st,msg,locked,on}})}
+const IMP_ST=[['new','New','g'],['present','Already present',''],['overlap','Overlaps earlier P&L','w'],['dup','Possible duplicate','w']];
+const impBadge=st=>{const x=IMP_ST.find(a=>a[0]===st);return `<span class="badge ${x[2]}">${x[1]}</span>`};
+function impTick(id,v){U.sel[id]=v;render()}
+function impAll(f){impRows().forEach(r=>{if(!r.locked)U.sel[r.id]=f(r)});render()}
+function impFilt(s){U.filt.has(s)?U.filt.delete(s):U.filt.add(s);render()}
+function impRun(){const todo=impRows().filter(r=>r.on);if(!todo.length){toast('Nothing selected to import');return}
+ const b=todo.filter(r=>r.side==='buy').length,n=impRows().length-todo.length;todo.forEach(r=>U.seen.add(r.id));U.sel={};
+ U.done=`Imported ${b} buy${b===1?'':'s'} and ${todo.length-b} sell${todo.length-b===1?'':'s'}. Left out ${n} unticked or already-present trade${n===1?'':'s'}.`;toast('Import complete (mock)');render()}
+function importTrades(){
+ const rows=impRows(),c=s=>rows.filter(r=>r.st===s).length,picked=rows.filter(r=>r.on).length;
+ const head=`<button class="back" onclick="go('holdings')">${ico('back',16)} Holdings</button><div class="ph"><div><h1 class="t-page">Import trades</h1><p class="t-body">Bring in your broker's trade history. Trades already in the app are marked and left unticked, so importing an overlapping period adds only what is new.</p></div></div>`;
+ const up=`<div class="card"><div class="t-title" style="margin-bottom:4px">Upload trades</div><p class="t-cap">Zerodha P&amp;L report (Console, Reports, P&amp;L) or Groww Stocks order history. CSV or Excel (.xlsx). The P&amp;L has no trade dates, so buys are dated the report start and sells the report end.</p><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn" onclick="impLoad()">${ico('up',16)} ${U.rows?'Refresh preview':'Use sample P&amp;L file'}</button></div></div>`;
+ if(!U.rows)return head+up;
+ const list=rows.filter(r=>!U.filt.size||U.filt.has(r.st));
+ return head+up+`<div class="card">${U.done?`<div class="note" style="color:var(--ink);margin-bottom:12px">${U.done}</div>`:''}
+  <p class="t-body">${c('new')} new, ${c('present')+c('overlap')} already present, ${c('dup')} possible duplicate${c('dup')===1?'':'s'}. <b>${picked} selected to import.</b></p>
+  <div style="display:flex;gap:14px;margin:6px 0 12px;font-size:.8125rem"><a href="#" style="color:var(--primary-strong)" onclick="impAll(r=>r.st==='new');return false">New only</a><a href="#" class="muted" onclick="impAll(()=>true);return false">Select all</a><a href="#" class="muted" onclick="impAll(()=>false);return false">Select none</a></div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">${IMP_ST.filter(a=>c(a[0])).map(a=>`<button class="chip ${U.filt.has(a[0])?'on':''}" aria-pressed="${U.filt.has(a[0])}" onclick="impFilt('${a[0]}')">${a[1]} <b>${c(a[0])}</b></button>`).join('')}</div>
+  <div class="scroll" style="border:1px solid var(--line);border-radius:8px"><table><thead><tr><th style="width:32px"></th><th>Stock</th><th>Date</th><th>Type</th><th class="r">Qty</th><th class="r">Price</th><th>Status</th></tr></thead><tbody>${list.map(r=>`<tr><td><input type="checkbox" ${r.on?'checked':''} ${r.locked?'disabled':''} aria-label="Import ${r.sym} ${r.side} on ${r.date}" onchange="impTick('${r.id}',this.checked)"></td><td class="t-strong">${r.sym}</td><td>${dt(r.date)}</td><td>${r.side==='buy'?'Buy':'Sell'}</td><td class="r num">${r.qty}</td><td class="r">${amt(price(r.price))}</td><td><span style="display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center">${impBadge(r.st)}${r.msg?`<span class="t-cap" style="white-space:normal;max-width:360px">${r.msg}</span>`:''}</span></td></tr>`).join('')}</tbody></table></div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px"><button class="btn" onclick="impRun()" ${picked?'':'disabled'}>Import ${picked} trade${picked===1?'':'s'}</button><span class="t-cap">After importing, choose the file again: those trades show as already present and can't be ticked.</span></div></div>`}
+
 /* corporate actions */
 function openEvent(hid){
   const h=H.find(x=>x.id===hid);
@@ -374,9 +420,13 @@ function inlineFilters(){return `<div class="fpanel inline" id="fpi">${filterPan
 
 /* ---------- screens ---------- */
 const view=()=>document.getElementById('view');
-function render(){buildNav();const r=S.route;
-  view().innerHTML=({dashboard,holdings,detail,gains,activity,profile})[r]();paintIcons(view())}
-function eyeBtn(){return `<button class="ibtn eye" aria-label="${S.hidden?'Show':'Hide'} amounts" aria-pressed="${S.hidden}" onclick="S.hidden=!S.hidden;document.body.classList.toggle('hidden',S.hidden);render()">${ico(S.hidden?'eyeoff':'eye')}</button>`}
+function render(){buildNav();const r=S.route;document.body.classList.toggle('hidden',r==='dashboard'?(S.homeHidden||S.hidden):S.hidden);
+  view().innerHTML=({dashboard,holdings,detail,gains,activity,profile,import:importTrades})[r]();paintIcons(view())}
+function isHid(){return S.route==='dashboard'?(S.homeHidden||S.hidden):S.hidden}
+function toggleEye(){if(S.route==='dashboard'){if(S.homeHidden||S.hidden){S.homeHidden=false;S.hidden=false}else S.homeHidden=true}else S.hidden=!S.hidden;render()}
+function eyeBtn(){return `<button class="ibtn" aria-label="${isHid()?'Show':'Hide'} amounts" aria-pressed="${isHid()}" onclick="toggleEye()">${ico(isHid()?'eyeoff':'eye')}</button>`}
+function calBtn(){return `<button class="ibtn calbtn" aria-label="Choose dates" title="Choose dates" onclick="toast('Calendar: pick a start and end date. The period then reads Custom range (mock)')">${ico('cal',16)}<span class="rng">${(y=>`01-04-${y} to 31-03-${y+1}`)(+S.fy.slice(0,4))}</span></button>`}
+function periodBar(){return `<div class="pbar"><select aria-label="Period" onchange="if(this.value!=='all'){S.fy=this.value;render()}else toast('All time (mock)')">${FYS.map(f=>`<option value="${f}" ${f===S.fy?'selected':''}>FY ${f}${f===CURFY?' (current)':''}</option>`).join('')}<option value="all">All time</option></select>${calBtn()}${filtButton()}</div>`}
 
 /* Dashboard (6.2) */
 function dashboard(){
@@ -388,7 +438,7 @@ function dashboard(){
   else held.forEach(h=>{const k=S.mix==='Category'?h.cat:h.exp;groups[k]=(groups[k]||0)+invested(h)});
   const gsum=Object.values(groups).reduce((a,b)=>a+b,0)||1;
   const rows=Object.entries(groups).sort((a,b)=>b[1]-a[1]);
-  const col=k=>S.mix==='Category'?CATCOL[k]:S.mix==='Exposure'?EXPCOL[k]:PLATCOL[PLATFORMS.indexOf(k)%6];
+  const col=k=>MIXCOL[rows.findIndex(r=>r[0]===k)%MIXCOL.length];
   let off=0;const arcs=rows.map(([k,v])=>{const f=v/gsum*100,a=`<circle cx="21" cy="21" r="15.9155" fill="none" stroke="${col(k)}" stroke-width="7" stroke-dasharray="${f} ${100-f}" stroke-dashoffset="${-off}"/>`;off+=f;return a}).join('');
   // realised for period (sales + misc), filtered
   const inP=e=>e.fy===S.fy&&fMatch(e.cat,e.pl);
@@ -398,21 +448,18 @@ function dashboard(){
   const mx=Math.max(...years.map(y=>Math.abs(y[1])),1);
   const top=[...held].sort((a,b)=>invested(b)-invested(a)).slice(0,5);
   const mats=H.filter(h=>h.cat==='Fixed Deposits');
+  if(S.empty)return `<div class="card empty"><h2 class="t-title">No investments yet</h2><p class="t-body" style="margin-top:6px">Add your first investment, or bring in what you already have, to see your mix and what you realised.</p><div class="acts"><button class="btn" onclick="openAddInvest()">Add investment</button><button class="btn ghost" onclick="go('import')">Import trades</button><button class="btn ghost" onclick="toast('Opens Sync account (mock)')">Sync account</button></div></div><p class="t-cap" style="margin-top:12px"><a href="#" onclick="S.empty=false;render();return false">Back to sample data</a></p>`;
   return `
-  <div class="pbar">
-    <select aria-label="Financial year" onchange="S.fy=this.value;render()">${FYS.map(f=>`<option value="${f}" ${f===S.fy?'selected':''}>FY ${f}${f===CURFY?' (current)':''}</option>`).join('')}</select>
-    ${filtButton()}${eyeBtn()}
-  </div>
-  <div class="show-m">${''}</div>${inlineFilters()}
+  ${periodBar()}${inlineFilters()}
   <div class="dgrid">
     <div class="card" style="margin:0">
       <div class="t-label">Total invested · by cost</div>
-      <div class="t-hero" style="margin-top:6px">${amt(inr0(total))}</div>
+      <div class="hero-row"><div class="t-hero">${amt(inr0(total))}</div>${eyeBtn()}</div>
       <div class="t-cap" style="margin-top:6px">${held.length} holdings · as of today</div>
       <div class="seg" style="margin-top:14px" role="tablist">${['Platform','Category','Exposure'].map(m=>`<button class="${S.mix===m?'on':''}" role="tab" aria-selected="${S.mix===m}" onclick="S.mix='${m}';render()">${m}</button>`).join('')}</div>
       <div class="donut"><svg viewBox="0 0 42 42" role="img" aria-label="Mix by ${S.mix}">${arcs}</svg>
-        <div class="legend">${rows.map(([k,v])=>`<div class="lrow"><span class="l"><span class="dot" style="background:${col(k)}"></span><span class="t-body trunc">${k}</span></span><span class="t-cap num">${pct(v/gsum*100)} · ${amt(compact(v))}</span></div>`).join('')}</div></div>
-      <div class="t-cap" style="margin-top:10px">Tap a slice row to open Holdings filtered (shown in the real app).</div>
+        <div class="legend">${rows.map(([k,v])=>`<div class="lrow2"><span class="dot" style="background:${col(k)}"></span><span style="min-width:0"><span class="t-body" style="display:block;overflow-wrap:anywhere">${k}</span><span class="t-cap num" style="display:block">${pct(v/gsum*100)} · ${amt(compact(v))}</span></span></div>`).join('')}</div></div>
+      <div class="t-cap" style="margin-top:10px">Tap a row to open Holdings filtered by it (Platform and Category views).</div>
     </div>
     <div>
       <div class="trio">
@@ -420,21 +467,22 @@ function dashboard(){
         <div class="kcard"><div class="t-label">${narrow()?'Tax':'Estimated tax'}</div><div class="t-kpi">${amt(kfmt(tax))}</div><div class="t-cap">FY ${S.fy}</div></div>
         <div class="kcard hero"><div class="t-label">${narrow()?'Post-tax':'Post-tax gain'}</div><div class="t-kpi ${cls(net)}">${amt(kfmt(net))}</div><div class="t-cap">FY ${S.fy}</div></div>
       </div>
-      <div class="card" style="margin-top:12px"><div class="t-title" style="margin-bottom:12px">Post-tax gain by FY</div><div class="bars">${years.map(([fy,v])=>`<div class="brow"><span class="t-cap">FY ${fy}</span><div class="btrack"><div class="bfill" style="background:${v>=0?'var(--gain)':'var(--loss)'};left:${v>=0?'50%':50-Math.abs(v)/mx*50+'%'};width:${Math.abs(v)/mx*50}%"></div></div><span class="t-cap num r" style="text-align:right">${amt(sg(v))}</span></div>`).join('')}</div></div>
+      <div class="card" style="margin-top:12px"><div class="t-title" style="margin-bottom:12px">Post-tax gain by FY</div><div class="bars">${years.map(([fy,v])=>`<div class="brow"><span class="t-cap">FY ${fy}</span><div class="btrack"><div class="bfill" style="background:${v>=0?'var(--gain)':'var(--loss)'};left:${v>=0?'50%':50-Math.abs(v)/mx*50+'%'};width:${Math.abs(v)/mx*50}%"></div></div><span class="t-cap num r" style="text-align:right">${amt(inr0(v))}</span></div>`).join('')}</div></div>
     </div>
   </div>
   <div class="two-col" style="margin-top:16px">
-    <div class="card flush"><div class="ct" style="display:flex;justify-content:space-between;align-items:center"><h2 class="t-title">Top holdings</h2><button class="btn ghost sm" onclick="go('holdings')">View all</button></div>
+    <div class="card flush"><div class="ct" style="display:flex;justify-content:space-between;align-items:center"><div><h2 class="t-title">Top holdings</h2><p class="t-cap">By what you paid.</p></div><button class="btn ghost sm" onclick="go('holdings')">View all</button></div>
       ${top.map(h=>`<div class="frow" style="grid-template-columns:1fr auto" onclick="go('detail',${h.id})"><div style="min-width:0"><div class="t-strong trunc">${h.name}</div><div class="t-cap">${h.cat}</div></div><div style="text-align:right"><div class="t-strong">${amt(inr0(invested(h)))}</div><div class="t-cap">${pct(invested(h)/total*100)}</div></div></div>`).join('')}</div>
-    <div class="card flush"><div class="ct"><h2 class="t-title">Upcoming</h2><p class="t-cap">FD and bond maturities in the next 90 days. Hidden when empty. <span class="badge w">P2</span></p></div>
+    <div class="card flush"><div class="ct"><h2 class="t-title">Upcoming</h2><p class="t-cap">Maturities in the next 90 days. Hidden when there are none.</p></div>
       ${mats.map(h=>`<div class="frow" style="grid-template-columns:1fr auto"><div><div class="t-strong">${h.name}</div><div class="t-cap">Matures 01 Apr 2027</div></div><span class="badge">in 155 days</span></div>`).join('')}</div>
-  </div>`}
+  </div>
+  <p class="t-cap" style="margin-top:12px">Home hides amounts each time it is refreshed, on this page only. Press the eye to show them; they stay shown when you come back from another tab. <a href="#" onclick="S.empty=true;render();return false">Preview as a new user</a></p>`}
 
 /* Holdings (6.3) */
 function holdings(){
   let list=H.filter(h=>fMatch(h.cat,h.plat));
   const tot=H.reduce((s,h)=>s+invested(h),0);
-  const keys={val:(a,b)=>invested(b)-invested(a),vall:(a,b)=>invested(a)-invested(b),name:(a,b)=>a.name.localeCompare(b.name),qty:(a,b)=>b.qty-a.qty,recent:(a,b)=>lastBuy(b)>lastBuy(a)?1:-1};
+  const keys={val:(a,b)=>invested(b)-invested(a),vall:(a,b)=>invested(a)-invested(b),name:(a,b)=>a.name.localeCompare(b.name),qty:(a,b)=>b.qty-a.qty,avg:(a,b)=>b.avg-a.avg,recent:(a,b)=>lastBuy(b)>lastBuy(a)?1:-1};
   list.sort(keys[S.hsort]);
   const sub=list.reduce((s,h)=>s+invested(h),0);
   const card=h=>`<div class="hcard" onclick="go('detail',${h.id})">
@@ -450,10 +498,10 @@ function holdings(){
     body=Object.entries(m).map(([k,l])=>{const s=l.reduce((a,h)=>a+invested(h),0);return `<div class="ghead"><span class="t-title">${k}</span><span class="t-cap">${amt(inr0(s))} · ${pct(s/tot*100)}</span></div><div class="hcards cards">${l.map(card).join('')}</div>`}).join('')}
   return `
   <div class="ph"><div><h1 class="t-page">Holdings</h1><p class="t-body">What you hold, where, and what it cost.</p></div><button class="btn" onclick="openAddInvest()">${ico('plus',16)}<span>Add investment</span></button></div>
-  <div class="hsum"><div><div class="t-cap">Total invested · by cost</div><div class="t-kpi">${amt(inr0(sub))}</div></div><div><div class="t-cap">Holdings</div><div class="t-kpi">${list.length}</div></div></div>
-  <div class="htools">${filtButton()}
-    <select aria-label="Sort" onchange="S.hsort=this.value;render()">${[['val','Value: high to low'],['vall','Value: low to high'],['name','Name A to Z'],['qty','Quantity'],['recent','Recently bought']].map(o=>`<option value="${o[0]}" ${S.hsort===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
-    <select aria-label="Group by" onchange="S.hgroup=this.value;render()">${['None','Category','Platform'].map(o=>`<option ${S.hgroup===o?'selected':''} value="${o}">${o==='None'?'No grouping':'Group by '+o.toLowerCase()}</option>`).join('')}</select>
+  <div class="hsum"><div><div class="t-cap">Total invested · by cost</div><div class="t-kpi">${amt(inr0(sub))}</div></div><div><div class="t-cap">Holdings</div><div class="t-kpi">${list.length}</div></div><div style="margin-left:auto">${eyeBtn()}</div></div>
+  <div class="hwrap"><div class="r1"><input placeholder="Search name, platform or tag" aria-label="Search"></div>
+    <div class="r2"><select aria-label="Sort" onchange="S.hsort=this.value;render()">${[['val','Invested: high to low'],['vall','Invested: low to high'],['name','Name: A to Z'],['qty','Quantity: high to low'],['avg','Avg cost: high to low'],['recent','Recently bought']].map(o=>`<option value="${o[0]}" ${S.hsort===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
+    <select aria-label="Group by" onchange="S.hgroup=this.value;render()">${['None','Category','Platform'].map(o=>`<option ${S.hgroup===o?'selected':''} value="${o}">${o==='None'?'No grouping':'Group by '+o.toLowerCase()}</option>`).join('')}</select>${filtButton()}</div>
     <div class="seg hide-m" style="margin-left:auto"><button class="${S.hview==='cards'?'on':''}" onclick="S.hview='cards';render()">Cards</button><button class="${S.hview==='table'?'on':''}" onclick="S.hview='table';render()">Table</button></div>
   </div>${inlineFilters()}
   ${body}
@@ -501,15 +549,24 @@ function gains(){
   const seg=['Summary','Sales','Misc'];
   const byCat={};all.forEach(e=>{const c=byCat[e.cat]=byCat[e.cat]||{g:0,t:0};c.g+=e.gain;c.t+=e.tax});
   const stl=sal.filter(s=>!s.long).reduce((a,s)=>a+s.gain,0),ltl=sal.filter(s=>s.long).reduce((a,s)=>a+s.gain,0);
-  const body={Summary:()=>`<div class="two-col"><div class="card"><div class="t-title" style="margin-bottom:10px">By category</div>${Object.entries(byCat).map(([c,v])=>`<div class="hrow" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="t-body">${c}</span><span class="t-strong num">${amt(inr0(v.g),cls(v.g))} <span class="t-cap">tax ${amt(inr0(v.t))}</span></span></div>`).join('')||'<div class="t-label">Nothing in this period.</div>'}</div>
-      <div class="card"><div class="t-title" style="margin-bottom:10px">Short term vs long term</div><div class="hrow" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="t-body">Short term</span>${amt(inr0(stl),cls(stl))}</div><div class="hrow" style="padding:8px 0"><span class="t-body">Long term</span>${amt(inr0(ltl),cls(ltl))}</div></div></div>`,
-   Sales:()=>`<div class="card flush"><div class="scroll"><table><thead><tr><th>Date</th><th>Asset</th><th class="hide-m">Platform</th><th class="hide-m">Term</th><th class="r hide-m">Proceeds</th><th class="r hide-m">Cost</th><th class="r hide-m">Gain</th><th class="r hide-m">Tax</th><th class="r">Net</th></tr></thead><tbody>${sal.map(s=>`<tr><td>${dt(s.d)}</td><td class="t-strong">${s.n}${s.buyback?` <span class="badge w">Buyback ${s.accepted}/${s.tendered}</span>`:''}</td><td class="hide-m">${s.pl}</td><td class="hide-m">${s.long?'Long':'Short'}</td><td class="r hide-m">${amt(inr2(s.proceeds))}</td><td class="r hide-m">${amt(inr2(s.cost))}</td><td class="r hide-m ${cls(s.gain)}">${amt(inr2(s.gain))}</td><td class="r hide-m">${amt(inr2(s.tax))}</td><td class="r t-strong ${cls(s.net)}">${amt(inr2(s.net))}</td></tr>`).join('')||'<tr><td colspan=9 class="t-label">No sales in this period.</td></tr>'}</tbody></table></div><div class="t-cap" style="padding:10px 16px;border-top:1px solid var(--line)">Mobile shows date, asset and net. Tap a row in the real app for the rest. Totals are the sum of the rounded rows.</div></div>`,
-   Misc:()=>{const by={};mis.forEach(m=>by[m.type]=(by[m.type]||0)+m.amount);return `<div class="card flush"><div class="misc-sum">${Object.entries(by).map(([k,v])=>`<span class="t-body">${k} <b class="${cls(v)}">${amt(inr0(v))}</b></span>`).join('')||'<span class="t-label">No entries.</span>'}</div>${mis.map(m=>`<div class="frow" style="grid-template-columns:52px 1fr auto"><div class="d">${dshort(m.d)}</div><div><span class="badge ${m.type==='Dividend'?'g':''}">${m.type}</span> <span class="t-body">${m.n}</span></div><div style="text-align:right"><div class="t-strong ${cls(m.amount)}">${amt(inr0(m.amount))}</div><div class="t-cap">net ${amt(inr0(m.net))}</div></div></div>`).join('')}</div><p class="t-cap">Buybacks are recorded as sales and appear under Sales. Add entries from the + sheet.</p>`}};
+  const inc=mis.filter(m=>m.type==='Dividend').reduce((a,m)=>a+m.gain,0),oth=r2(gain-stl-ltl-inc);
+  const years=FYS.map(fy=>{const e=[...SALES,...MISC].filter(x=>x.fy===fy&&fMatch(x.cat,x.pl));return [fy,r2(e.reduce((s,x)=>s+x.net,0))]}).reverse();
+  const mx=Math.max(...years.map(y=>Math.abs(y[1])),1);
+  const row=(t,n,v)=>`<div class="hrow" style="padding:10px 0;border-bottom:1px solid var(--line)"><div><div class="t-strong">${t}</div><div class="t-cap">${n}</div></div><span class="t-value num ${cls(v)}">${amt(inr0(v))}</span></div>`;
+  const body={Summary:()=>`<div class="card"><div class="t-title">By category</div><p class="t-cap" style="margin:2px 0 10px">Gain, tax and what is left after tax.</p><div class="hcards cards">${Object.entries(byCat).map(([c,v])=>`<div class="hcard" style="cursor:default"><div class="t-label">${c}</div><div class="t-value num ${cls(v.g)}" style="margin-top:4px">${amt(inr0(v.g))}</div><div class="t-cap">Tax ${amt(inr0(v.t))} · Post-tax ${amt(inr0(v.g-v.t))}</div></div>`).join('')||'<div class="t-label">Nothing in this period.</div>'}</div></div>
+    <div class="two-col" style="margin-top:12px"><div class="card"><div class="t-title">Short term and long term</div><p class="t-cap" style="margin:2px 0 4px">Where the gain came from. Dividends are income, not capital gain.</p>${row('Short term','Held up to the long-term limit',stl)}${row('Long term','Held beyond the long-term limit',ltl)}${row('Dividends and other income','Taxed at your slab rate',inc)}${oth?row('Other','Share buyback adjustments',oth):''}<div class="hrow" style="padding:10px 0"><div class="t-strong">Gross gain</div><span class="t-value num ${cls(gain)}">${amt(inr0(gain))}</span></div></div>
+    <div class="card"><div class="t-title" style="margin-bottom:12px">Post-tax gain by financial year</div><div class="bars">${years.map(([fy,v])=>`<div class="brow"><span class="t-cap">FY ${fy}</span><div class="btrack"><div class="bfill" style="background:${v>=0?'var(--gain)':'var(--loss)'};left:${v>=0?'50%':50-Math.abs(v)/mx*50+'%'};width:${Math.abs(v)/mx*50}%"></div></div><span class="t-cap num r" style="text-align:right">${amt(inr0(v))}</span></div>`).join('')}</div></div></div>`,
+   Sales:()=>`<div class="card flush"><div class="ct"><h2 class="t-title">Sales</h2><p class="t-cap">${sal.length} sale${sal.length===1?'':'s'} · gain ${amt(inr0(sal.reduce((a,s)=>a+s.gain,0)))} · post-tax ${amt(inr0(sal.reduce((a,s)=>a+s.net,0)))}</p></div><div class="scroll"><table><thead><tr><th>Date</th><th>Asset</th><th class="r hide-m">Qty</th><th class="r hide-m">Proceeds</th><th class="r hide-m">Cost</th><th class="r hide-m">Short term</th><th class="r hide-m">Long term</th><th class="r hide-m">Tax</th><th class="r">Net</th></tr></thead><tbody>${sal.map(s=>`<tr><td>${dt(s.d)}</td><td><div class="t-strong">${s.n}${s.buyback?` <span class="badge w">Buyback ${s.accepted}/${s.tendered}</span>`:''}</div><div class="t-cap">${s.cat} · ${s.pl}</div><details class="show-m" style="margin-top:4px"><summary class="t-cap" style="color:var(--primary);cursor:pointer">Details</summary><div class="t-cap num">Proceeds ${amt(inr2(s.proceeds))} · Cost ${amt(inr2(s.cost))} · Tax ${amt(inr2(s.tax))}</div></details></td><td class="r hide-m num">${s.q}</td><td class="r hide-m">${amt(inr2(s.proceeds))}</td><td class="r hide-m">${amt(inr2(s.cost))}</td><td class="r hide-m ${cls(s.long?0:s.gain)}">${amt(inr2(s.long?0:s.gain))}</td><td class="r hide-m ${cls(s.long?s.gain:0)}">${amt(inr2(s.long?s.gain:0))}</td><td class="r hide-m">${amt(inr2(s.tax))}</td><td class="r t-strong ${cls(s.net)}">${amt(inr2(s.net))}</td></tr>`).join('')||'<tr><td colspan=9 class="t-label">No sales in this period.</td></tr>'}</tbody></table></div></div>`,
+   Misc:()=>{const by={};mis.forEach(m=>{const k=m.type==='Dividend'?'Dividends':m.type;(by[k]=by[k]||[]).push(m)});
+     const sum=l=>l.reduce((x,m)=>x+m.amount,0);
+     const groups=Object.entries(by).sort((a,b)=>a[0]==='Dividends'?-1:b[0]==='Dividends'?1:Math.abs(sum(b[1]))-Math.abs(sum(a[1])));
+     return `<p class="t-body" style="margin-bottom:12px"><span class="t-label">Gross</span> ${amt(groups.map(([k,l])=>k+' '+inr0(sum(l))).join(' · '))}</p>`+(groups.map(([k,l])=>{const g=sum(l),n=l.reduce((x,m)=>x+m.net,0);return `<div class="card flush" style="margin-bottom:12px"><div class="ct" style="display:flex;justify-content:space-between;gap:12px"><div><h2 class="t-title">${k}</h2><p class="t-cap">${l.length} entr${l.length===1?'y':'ies'}</p></div><div style="text-align:right"><div class="t-value num ${cls(g)}">${amt(inr0(g))}</div><div class="t-cap">after tax ${amt(inr0(n))}</div></div></div>${l.map(m=>`<div class="frow" style="grid-template-columns:52px 1fr auto"><div class="d">${dshort(m.d)}</div><div><span class="badge ${m.type==='Dividend'?'g':''}">${m.type}</span> <span class="t-strong" ${m.type==='Dividend'?'style="color:var(--primary);cursor:pointer" onclick="toast(`Opens the stock, Events tab (mock)`)"':''}>${m.n}</span></div><div style="text-align:right"><div class="t-strong ${cls(m.amount)}">${amt(inr0(m.amount))}</div><div class="t-cap">net ${amt(inr0(m.net))}</div></div></div>`).join('')}</div>`}).join('')||'<div class="card"><span class="t-label">No entries.</span></div>')+`<p class="t-cap">Buybacks are recorded as sales and appear under Sales. Dividends come from the holding; add other entries from the + sheet.</p>`}};
+  const desc={Summary:'Profit and loss from sales and other income, with estimated tax. Losses reduce gains in the same financial year.',Sales:'Every sale with its gain, tax and what you keep. Tap a row on a phone for the rest.',Misc:'One-off gains and losses, and dividends from your holdings.'}[S.gseg];
   return `
-  <div class="ph"><div><h1 class="t-page">Gains</h1><p class="t-body">Realised gain, tax and what you keep.</p></div><button class="btn ghost" onclick="toast('CSV export follows the filters (mock)')">${ico('up',16)}<span>Export CSV</span></button></div>
-  <div class="pbar"><select aria-label="Financial year" onchange="S.fy=this.value;render()">${FYS.map(x=>`<option value="${x}" ${x===S.fy?'selected':''}>FY ${x}</option>`).join('')}</select>${filtButton()}${eyeBtn()}</div>${inlineFilters()}
-  <div class="trio" style="margin-bottom:12px"><div class="kcard"><div class="t-label">${narrow()?'Gain':'Gross gain'}</div><div class="t-kpi ${cls(gain)}">${amt(kfmt(gain))}</div><div class="t-cap">FY ${S.fy}</div></div><div class="kcard"><div class="t-label">${narrow()?'Tax':'Estimated tax'}</div><div class="t-kpi">${amt(kfmt(tax))}</div><div class="t-cap">Incl. 4% cess</div></div><div class="kcard hero"><div class="t-label">${narrow()?'Post-tax':'Post-tax gain'}</div><div class="t-kpi ${cls(net)}">${amt(kfmt(net))}</div><div class="t-cap">What you keep</div></div></div>
+  <div class="ph"><div><h1 class="t-page">Gains</h1><p class="t-body">${desc}</p></div><button class="btn ghost" onclick="toast('CSV export follows the period and filters (mock)')">${ico('up',16)}<span>Export CSV</span></button></div>
+  <div class="trio" style="margin-bottom:12px"><div class="kcard"><div class="t-label">${narrow()?'Gain':'Gross gain'}</div><div class="t-kpi ${cls(gain)}">${amt(kfmt(gain))}</div><div class="t-cap">FY ${S.fy}</div></div><div class="kcard"><div class="t-label">${narrow()?'Tax':'Estimated tax'}</div><div class="t-kpi">${amt(kfmt(tax))}</div><div class="t-cap">Incl. 4% cess</div></div><div class="kcard hero"><div class="t-label">${narrow()?'Post-tax':'Post-tax gain'}</div><div class="t-kpi ${cls(net)}">${amt(kfmt(net))}</div><div class="t-cap">FY ${S.fy}</div></div></div>
   <div class="tab-row"><div class="seg" role="tablist">${seg.map(t=>`<button class="${S.gseg===t?'on':''}" role="tab" aria-selected="${S.gseg===t}" onclick="S.gseg='${t}';render()">${t}</button>`).join('')}</div></div>
+  ${periodBar()}${inlineFilters()}
   ${body[S.gseg]()}`}
 
 /* Activity (6.5): month-grouped feed */
@@ -524,10 +581,10 @@ function activity(){
   const chip={Buy:'',Sell:'g',Buyback:'w',Dividend:'g',Misc:'',Event:'w'};
   return `
   <div class="ph"><div><h1 class="t-page">Activity</h1><p class="t-body">Everything that happened, newest first.</p></div></div>
-  <div class="htools"><input style="max-width:320px;height:36px" placeholder="Search name, platform or tag" aria-label="Search">${filtButton()}${eyeBtn()}</div>${inlineFilters()}
+  <div class="hwrap"><div class="r1"><input placeholder="Search name, type, platform or note" aria-label="Search"></div></div>${periodBar()}${inlineFilters()}<p class="t-cap" style="margin-bottom:12px">${list.length} entries</p>
   ${Object.entries(m).map(([k,l])=>{const net=l.reduce((s,i)=>s+(i.amt||0),0);const label=new Date(k+'-01T00:00:00Z').toLocaleDateString('en-IN',{month:'long',year:'numeric',timeZone:'UTC'});
-   return `<div class="card flush"><div class="mhead"><span class="t-strong">${label}</span><span class="t-cap">${l.length} items · net ${amt(sg(net)+'')}</span></div>${l.map((i,ix)=>{const id=k+ix;return `<div class="frow ${S.expanded[id]?'open':''}" onclick="S.expanded['${id}']=!S.expanded['${id}'];render()"><div class="d">${dshort(i.d)}</div><div style="min-width:0"><span class="badge ${chip[i.k]}">${i.k}</span> <span class="t-strong">${i.n}</span></div><div class="t-strong ${i.amt==null?'':cls(i.amt)}">${i.amt==null?'–':amt(inr0(i.amt))}</div><div class="more">${i.det}</div></div>`}).join('')}</div>`}).join('')}
-  <p class="t-cap">Tap a row for quantity, price, fees and platform. In the real app it opens the edit page.</p>`}
+   return `<div class="card flush"><div class="mhead"><span class="t-strong">${label}</span><span class="t-cap">${l.length} entr${l.length===1?'y':'ies'} · net cash ${amt((net>0?'+':'')+inr0(net),cls(net))}</span></div>${l.map((i,ix)=>{const id=k+ix;return `<div class="frow open" onclick="toast('Opens the edit page (mock)')"><div class="d">${dshort(i.d)}</div><div style="min-width:0"><span class="badge ${chip[i.k]}">${i.k}</span> <span class="t-strong">${i.n}</span></div><div class="t-strong ${i.amt==null?'':cls(i.amt)}">${i.amt==null?'–':amt(inr0(i.amt))}</div><div class="more">${i.det}</div></div>`}).join('')}</div>`}).join('')}
+  <p class="t-cap">Tap a row to open it. On a desktop this is a sortable table with the same filters.</p>`}
 
 /* Profile (6.7) */
 function profile(){
@@ -535,11 +592,11 @@ function profile(){
   const box=(t,body)=>`<div class="card"><div class="t-title" style="margin-bottom:12px">${t}</div>${body}</div>`;
   const pages={
    profile:()=>box('Profile',`<div class="form two"><div><label class="fl">Name</label><input value="Rishab Gupta"></div><div><label class="fl">Email</label><input value="rishab.gupta@accordion.com" disabled></div></div>`),
-   tax:()=>box('Tax settings',`<div class="form two"><div><label class="fl">Slab rate (%)</label><input value="30"></div><div><label class="fl">Tax regime</label><select><option>New regime</option><option>Old regime</option></select></div><div><label class="fl">Financial year starts</label><input value="April" disabled></div></div><div class="note" style="margin-top:12px">Tax is an estimate. Surcharge and carry-forward of losses are not modelled. We do not apply the statutory round-off to ₹10.</div>`)+box('Tax rules applied',`<div class="scroll"><table><thead><tr><th>Sub-type</th><th>Long term after</th><th>Short term</th><th>Long term</th></tr></thead><tbody><tr><td>Equity, Equity MF</td><td>12 months</td><td>20%</td><td>12.5% above ₹1.25L</td></tr><tr><td>Commodity ETF</td><td>12 months</td><td>Slab</td><td>12.5%</td></tr><tr><td>Debt MF, FD, unlisted bonds</td><td>n/a</td><td>Slab</td><td>Slab</td></tr><tr><td>Crypto</td><td>n/a</td><td>30%</td><td>30%</td></tr></tbody></table></div>`),
+   tax:()=>box('Tax settings',`<div class="form two"><div><label class="fl">Slab rate (%)</label><input value="30"></div><div><label class="fl">Financial year starts</label><input value="April" disabled></div></div><div class="note" style="margin-top:12px">Tax is calculated under the new tax regime only. It is an estimate. Surcharge and carry-forward of losses are not modelled. We do not apply the statutory round-off to ₹10.</div>`)+box('Tax rules applied',`<div class="scroll"><table><thead><tr><th>Sub-type</th><th>Long term after</th><th>Short term</th><th>Long term</th></tr></thead><tbody><tr><td>Equity, Equity MF</td><td>12 months</td><td>20%</td><td>12.5% above ₹1.25L</td></tr><tr><td>Commodity ETF</td><td>12 months</td><td>Slab</td><td>12.5%</td></tr><tr><td>Debt MF, FD, unlisted bonds</td><td>n/a</td><td>Slab</td><td>Slab</td></tr><tr><td>Crypto</td><td>n/a</td><td>30%</td><td>30%</td></tr></tbody></table></div>`),
    plat:()=>box('Connected platforms',`<div class="hrow" style="padding:8px 0"><div><div class="t-strong">Zerodha Kite</div><div class="t-cap">Last sync 26 Oct 2026</div></div><button class="btn ghost sm">Sync now</button></div><div class="hrow" style="padding:8px 0"><div><div class="t-strong">Groww</div><div class="t-cap">Import from reports</div></div><button class="btn ghost sm" onclick="go('holdings')">Import</button></div>`),
    tags:()=>box('Platforms',`<div class="chips" style="display:flex;flex-wrap:wrap;gap:6px">${PLATFORMS.map(p=>`<span class="chip">${p}</span>`).join('')}<button class="chip on">+ Add platform</button></div>`)+box('Tags',`<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip">Retirement</span><span class="chip">Core</span><span class="chip">Kid's fund</span><button class="chip on">+ Add tag</button></div>`),
-   pref:()=>box('Preferences',`<div class="form two"><div><label class="fl">Theme</label><select><option>System</option><option>Light</option><option>Dark</option></select></div><div><label class="fl">Default period</label><select><option>Current FY</option><option>All time</option></select></div><div><label class="fl">Mix shows</label><select><option>By cost</option><option disabled>By value (P2)</option></select></div></div>`),
-   data:()=>box('Data',`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost">Export all data (CSV)</button><button class="btn ghost">Import trades</button><button class="btn" style="background:var(--loss)">Delete account</button></div>`),
+   pref:()=>box('Preferences',`<div class="form two"><div><label class="fl">Theme</label><select><option>System</option><option>Light</option><option>Dark</option></select></div><div><label class="fl">Mix shows</label><select><option>By cost</option><option disabled>By value (P2)</option></select></div></div>`),
+   data:()=>box('Data',`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost">Export all data (CSV)</button><button class="btn ghost" onclick="go('import')">Import trades</button><button class="btn" style="background:var(--loss)" onclick="toast('Asks you to type DELETE first (mock)')">Delete all my data</button></div>`),
    about:()=>box('About',`<p class="t-body">Global Fin v0.2 · Tax figures are estimates, not advice. Privacy and contact links live here.</p>`)};
   const t=profileItems().find(i=>i[3]===sec)||profileItems()[0];
   return `<button class="back" onclick="go('dashboard')">${ico('back',16)} Back</button><div class="ph"><div><h1 class="t-page">${t[1]}</h1><p class="t-body">${t[2]}</p></div></div>
