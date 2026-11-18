@@ -319,7 +319,7 @@ tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface2)
 <!-- IMPORT -->
 <section class="screen" id="import">
   <button class="back" onclick="go('holdings')"><span data-i="back"></span><span>Holdings</span></button>
-  <div class="ph"><div><h1>Import trades</h1><p>Bring in your broker's trade history instead of typing it. Nothing is ever added twice.</p></div></div>
+  <div class="ph"><div><h1>Import trades</h1><p>Bring in your broker's trade history instead of typing it. Trades already in the app are marked and left unticked.</p></div></div>
   <div class="card" style="padding:16px">
     <h2 style="font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px"><span style="display:inline-flex;color:var(--primary)" data-i="chart"></span>What to import</h2>
     <p class="muted" style="margin:2px 0 0">CSV or Excel (.xlsx) only. Equity trades only.</p>
@@ -693,9 +693,9 @@ function rReal(){const all=compute().sort((a,b)=>a.date<b.date?1:-1),years=[...n
 const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
 const SAMPLE=[
  {id:'z1',sym:'RELIANCE',date:'2025-03-10',side:'buy',qty:20,price:2850},
- {id:'z2',sym:'RELIANCE',date:'2025-01-20',side:'buy',qty:50,price:2900},
+ {id:'z2',sym:'RELIANCE',date:'2025-01-20',side:'buy',qty:50,price:2900,prior:['present','Already present: included in your earlier P&L for 1 Apr 2024 to 31 Mar 2025.']},
  {id:'z3',sym:'TCS',date:'2025-02-12',side:'buy',qty:5,price:3800},
- {id:'z4',sym:'INFY',date:'2025-04-02',side:'buy',qty:30,price:1500},
+ {id:'z4',sym:'INFY',date:'2025-04-02',side:'buy',qty:30,price:1500,prior:['overlap','Already present: this period partly overlaps your earlier P&L for 1 Mar 2025 to 31 Dec 2025. Importing it may count some trades twice.']},
  {id:'z5',sym:'INFY',date:'2025-08-01',side:'sell',qty:10,price:1700},
  {id:'z6',sym:'NIPPONGOLD',date:'2025-05-05',side:'buy',qty:10,price:6600}];
 const BROKER=[{sym:'RELIANCE',qty:160,avg:2950,last:3020},{sym:'TCS',qty:5,avg:3800,last:3950},{sym:'INFY',qty:15,avg:1500,last:1650},{sym:'NIPPONGOLD',qty:30,avg:6500,last:6800},{sym:'WIPRO',qty:15,avg:480,last:495}];
@@ -707,31 +707,35 @@ function autoMatch(sym){const n=norm(sym),ents=Object.entries(assets);
 const KIND={name:'Matched by name',suggest:'Suggested match: please check',none:'New holding'};
 const chosen=sym=>{const v=up.map[sym];return v===undefined?autoMatch(sym).aid:v==='new'?null:v};
 function fifo(aid,qty,date){let need=qty;const al=[];lots.filter(l=>l.aid===aid&&l.date<=date&&remaining(l)>1e-9).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0).forEach(l=>{if(need<=1e-9)return;const t=Math.min(need,remaining(l));al.push({lot:l.id,qty:t});need-=t});return{al,short:need}}
-function loadSample(){up={trades:SAMPLE,map:{},dup:{},rep:true,recon:1,done:''};$('upFile').textContent='pnl.csv';rUp()}
-function upRows(){return up.trades.map(t=>{const aid=chosen(t.sym);let st='new';
- if(imported.has(t.id))st='imported';
- else if(aid&&lots.some(l=>l.aid===aid&&!l.bid&&!l.est&&t.side==='buy'&&l.date===t.date&&l.qty===t.qty&&l.price===t.price))st='dup';
- return{...t,aid,st}})}
-const stBadge=r=>r.st==='new'?'<span class="badge b-buy">New</span>':r.st==='imported'?'<span class="badge b-off">Already imported</span>':'<span class="badge b-sell">Possible duplicate</span>';
+function loadSample(){up={trades:SAMPLE,map:{},sel:{},rep:true,recon:1,done:''};$('upFile').textContent='pnl.csv';rUp()}
+function upRows(){return up.trades.map(t=>{const aid=chosen(t.sym);let st='new',msg='',locked=false;
+ if(imported.has(t.id)){st='present';locked=true;msg='Already present: this trade is already in the app.'}
+ else if(t.prior){st=t.prior[0];msg=t.prior[1]}
+ else if(aid&&lots.some(l=>l.aid===aid&&!l.bid&&!l.est&&t.side==='buy'&&l.date===t.date&&l.qty===t.qty&&l.price===t.price)){st='dup';msg='Already present? Same stock, day and quantity as an existing entry.'}
+ const on=!locked&&(up.sel[t.id]??st==='new');
+ return{...t,aid,st,msg,locked,on}})}
+const stBadge=r=>r.st==='new'?'<span class="badge b-buy">New</span>':r.st==='present'?'<span class="badge b-off">Already present</span>':r.st==='overlap'?'<span class="badge b-sell">Overlaps earlier P&amp;L</span>':'<span class="badge b-sell">Possible duplicate</span>';
+const ST=[['new','New'],['present','Already present'],['overlap','Overlaps earlier P&L'],['dup','Possible duplicate']];
+function upSelAll(f){upRows().forEach(r=>{if(!r.locked)up.sel[r.id]=f(r)});rUp()}
 let upSt=new Set();function upTog(s){upSt.has(s)?upSt.delete(s):upSt.add(s);rUp()}
 function rUp(){const o=$('upOut');if(!up){o.innerHTML='';return}
  const rows=upRows(),c=s=>rows.filter(r=>r.st===s).length;
  const syms=[...new Set(up.trades.map(t=>t.sym))];
- const est=new Set(rows.filter(r=>r.st==='new'&&r.aid).map(r=>r.aid));
+ const est=new Set(rows.filter(r=>r.on&&r.aid).map(r=>r.aid));
  const estN=lots.filter(l=>l.est&&est.has(l.aid)).length+sales.filter(x=>x.est&&est.has(x.aid)).length;
  const opts=sym=>`<option value="new" ${chosen(sym)===null?'selected':''}>Create new holding "${sym}"</option>`+Object.entries(assets).map(([id,a])=>`<option value="${id}" ${chosen(sym)===id?'selected':''}>${a.name}</option>`).join('');
  o.innerHTML=`<div style="margin-top:20px">`+
   (up.done?`<div class="note" style="color:var(--ink)">${up.done}</div>`:'')+
-  `<p class="muted" style="margin:0 0 14px">${c('new')} new, ${c('imported')} already imported, ${c('dup')} possible duplicate${c('dup')===1?'':'s'}.</p>`+
-  `<div class="stc">${[['new','New'],['imported','Already imported'],['dup','Possible duplicate']].filter(([s])=>c(s)).map(([s,l])=>`<button class="fchip ${upSt.has(s)?'on':''}" aria-pressed="${upSt.has(s)}" onclick="upTog('${s}')">${l} <b>${c(s)}</b></button>`).join('')}</div>`+
+  `<p class="muted" style="margin:0 0 6px">${c('new')} new, ${c('present')+c('overlap')} already present, ${c('dup')} possible duplicate${c('dup')===1?'':'s'}. <b style="color:var(--ink);font-weight:500">${rows.filter(r=>r.on).length} selected to import.</b></p><div style="display:flex;gap:14px;margin-bottom:14px;font-size:13px"><a href="#" style="color:var(--primary-strong)" onclick="upSelAll(r=>r.st==='new');return false">New only</a><a href="#" class="muted" onclick="upSelAll(()=>true);return false">Select all</a><a href="#" class="muted" onclick="upSelAll(()=>false);return false">Select none</a></div>`+
+  `<div class="stc">${ST.filter(([s])=>c(s)).map(([s,l])=>`<button class="fchip ${upSt.has(s)?'on':''}" aria-pressed="${upSt.has(s)}" onclick="upTog('${s}')">${l} <b>${c(s)}</b></button>`).join('')}</div>`+
   `<div class="note" style="margin-bottom:14px"><b style="color:var(--ink);font-weight:500">Which holding does each stock belong to?</b><div class="hint" style="margin:4px 0 12px">This stops the same stock from being added twice. Pick an existing holding if one already covers it.</div>`+
   syms.map(sym=>`<div class="grid" style="grid-template-columns:minmax(120px,1fr) 1.6fr;align-items:center;margin-bottom:8px"><div><b>${sym}</b> <span class="muted" style="font-size:12px">${KIND[autoMatch(sym).kind]}</span></div><select onchange="up.map['${sym}']=this.value;rUp()">${opts(sym)}</select></div>`).join('')+`</div>`+
   (up.recon?`<div class="note" style="color:var(--ink)">Replacing ${up.recon} &quot;still held&quot; entry from your earlier P&amp;L with the holdings in this report, so the same shares are not counted twice.</div>`:'')+
   (estN?`<label class="note" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:14px"><input type="checkbox" ${up.rep?'checked':''} onchange="up.rep=this.checked" style="margin-top:3px;flex:none"><span>Replace ${estN} estimated entr${estN===1?'y':'ies'} created by Zerodha sync for these stocks with the real trades from this file. Keeping them would count the same shares twice.</span></label>`:'')+
-  `<div class="scroll" style="border:1px solid var(--line);border-radius:8px"><table><thead><tr><th>Stock</th><th>Date</th><th>Type</th><th class="r">Qty</th><th class="r">Price</th><th>Status</th></tr></thead><tbody>`+
-  rows.filter(r=>!upSt.size||upSt.has(r.st)).map(r=>`<tr><td><b>${r.sym}</b></td><td>${fmtD(r.date)}</td><td>${r.side==='buy'?'Buy':'Sell'}</td><td class="r num">${r.qty}</td><td class="r num">${inr(r.price)}</td><td>${r.st==='dup'?`<label style="display:flex;gap:8px;align-items:center">${stBadge(r)}<input type="checkbox" ${up.dup[r.id]?'checked':''} onchange="up.dup['${r.id}']=this.checked"><span class="muted" style="font-size:12px">Same stock, day and quantity as an existing entry. Import anyway</span></label>`:stBadge(r)}</td></tr>`).join('')+
-  `</tbody></table></div><div style="margin-top:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" onclick="doImport()">Import</button><span class="muted" style="font-size:13px">Try importing, then choose the file again: the same trades show as already imported.</span></div></div>`;paintIcons(o)}
-function doImport(){const rows=upRows(),todo=rows.filter(r=>r.st==='new'||(r.st==='dup'&&up.dup[r.id]));
+  `<div class="scroll" style="border:1px solid var(--line);border-radius:8px"><table><thead><tr><th style="width:32px"><span class="sr-only" style="position:absolute;left:-9999px">Import</span></th><th>Stock</th><th>Date</th><th>Type</th><th class="r">Qty</th><th class="r">Price</th><th>Status</th></tr></thead><tbody>`+
+  rows.filter(r=>!upSt.size||upSt.has(r.st)).map(r=>`<tr><td><input type="checkbox" ${r.on?'checked':''} ${r.locked?'disabled':''} aria-label="Import ${r.sym} ${r.side} on ${r.date}" onchange="up.sel['${r.id}']=this.checked;rUp()"></td><td><b>${r.sym}</b></td><td>${fmtD(r.date)}</td><td>${r.side==='buy'?'Buy':'Sell'}</td><td class="r num">${r.qty}</td><td class="r num">${inr(r.price)}</td><td><span style="display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center">${stBadge(r)}${r.msg?`<span class="muted" style="font-size:12px;white-space:normal;max-width:360px">${r.msg}</span>`:''}</span></td></tr>`).join('')+
+  `</tbody></table></div><div style="margin-top:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" onclick="doImport()">Import</button><span class="muted" style="font-size:13px">Try importing, then choose the file again: the same trades show as already present and can't be ticked.</span></div></div>`;paintIcons(o)}
+function doImport(){const rows=upRows(),todo=rows.filter(r=>r.on);
  if(!todo.length){toast('Nothing new to import');return}
  if(up.rep){const t=new Set(todo.map(r=>r.aid).filter(Boolean));sales=sales.filter(x=>!(x.est&&t.has(x.aid)));lots=lots.filter(l=>!(l.est&&t.has(l.aid)&&soldQty(l)<=1e-9))}
  todo.sort((a,b)=>a.date===b.date?(a.side===b.side?0:a.side==='buy'?-1:1):a.date<b.date?-1:1);
@@ -739,8 +743,8 @@ function doImport(){const rows=upRows(),todo=rows.filter(r=>r.st==='new'||(r.st=
  for(const r of todo){let aid=r.aid||made[r.sym];if(!aid){aid='a'+(++nextId);assets[aid]={name:r.sym,type:'equity'};made[r.sym]=aid}
   if(r.side==='buy'){lots.push({id:++nextId,aid,date:r.date,qty:r.qty,price:r.price,fees:0,bid:r.id});nb++;imported.add(r.id)}
   else{const f=fifo(aid,r.qty,r.date);if(f.short>1e-9){fail++;continue}sales.push({id:++nextId,aid,date:r.date,qty:r.qty,price:r.price,fees:0,tax:true,alloc:f.al,bid:r.id});ns++;imported.add(r.id)}}
- up.done=`Imported ${nb} buy${nb===1?'':'s'} and ${ns} sell${ns===1?'':'s'}. Skipped ${rows.length-todo.length} already-known trade${rows.length-todo.length===1?'':'s'}${fail?`; ${fail} could not be imported`:''}.`;
- up.dup={};toast('Import complete');rUp()}
+ up.done=`Imported ${nb} buy${nb===1?'':'s'} and ${ns} sell${ns===1?'':'s'}. Left out ${rows.length-todo.length} unticked or already-present trade${rows.length-todo.length===1?'':'s'}${fail?`; ${fail} could not be imported`:''}.`;
+ up.sel={};toast('Import complete');rUp()}
 function syncDiff(){const h=holdings();return BROKER.map(b=>{const m=autoMatch(b.sym),have=m.aid?(h.find(x=>x.aid===m.aid)?.qty||0):0,d=b.qty-have;
  return d>1e-9?{...b,aid:m.aid,kind:'add',qty:d,price:b.avg}:d<-1e-9?{...b,aid:m.aid,kind:'reduce',qty:-d,price:b.last}:null}).filter(Boolean)}
 function kSetupHtml(){return `<h3 style="font-size:16px;font-weight:600;margin:0 0 4px">Connect your Zerodha account</h3><p class="muted" style="margin:0 0 14px">Zerodha gives each person a free personal API key. Create yours once, then paste it here.</p>
